@@ -40,6 +40,7 @@ export class CircleAudioVisualizer {
   }
 
   public render(ctx: CanvasRenderingContext2D) {
+    // @ts-expect-error zegze
     this.analyser.getByteFrequencyData(this.dataArray);
 
     const centerX = 0;

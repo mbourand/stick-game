@@ -1,12 +1,15 @@
 import { GameCanvas } from "./modules/game/components/GameCanvas";
 import "./modules/fonts/constants";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { convertFromOsu, type ParsedMap } from "./modules/convert/OsuConverter";
+import { GamepadMapping } from "./modules/gamepad/mapping/GamepadMapping";
+import type { GamepadAxisKind, GamepadAxisMapping } from "./modules/gamepad/mapping/types";
+import { DEFAULT_MAPPING } from "./modules/gamepad/mapping/constants";
 
-const debounce = <T extends (...args: any[]) => void>(func: T, wait: number): T => {
+const debounce = <T extends (...args: never[]) => void>(func: T, wait: number): T => {
   let timeout: ReturnType<typeof setTimeout> | null = null;
 
-  return function (...args: any[]) {
+  return function (...args: never[]) {
     if (timeout) clearTimeout(timeout);
     timeout = setTimeout(() => {
       func(...args);
@@ -50,6 +53,28 @@ function App() {
   const [scrollSpeed, setScrollSpeed] = useState<number>(850);
   const selectRef = useRef<HTMLSelectElement>(null);
   const currentTimeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [gamepadMapping, setGamepadMapping] = useState<Record<GamepadAxisKind, GamepadAxisMapping>>(DEFAULT_MAPPING);
+  const [wasMappingDone, setWasMappingDone] = useState<boolean>(false);
+  const [isGamepadMappingVisible, setIsGamepadMappingVisible] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (wasMappingDone) return;
+
+    const intervalId = setInterval(() => {
+      const gamepad = navigator.getGamepads()[0];
+      if (!gamepad) return;
+
+      if (gamepad.mapping === "standard") {
+        setWasMappingDone(true);
+        return;
+      }
+
+      console.warn("Non-standard gamepad detected. Please configure your gamepad mapping.");
+      setIsGamepadMappingVisible(true);
+    }, 200);
+
+    return () => clearInterval(intervalId);
+  }, [wasMappingDone]);
 
   const changeMap = async (mapUrl: string) => {
     const baseUrl = mapUrl.slice(0, mapUrl.lastIndexOf("/"));
@@ -70,7 +95,7 @@ function App() {
   return (
     <div className="">
       <div className="absolute top-0 left-0 -z-1">
-        {parsedMap && <GameCanvas scrollSpeed={scrollSpeed} parsedMap={parsedMap} />}
+        {parsedMap && <GameCanvas scrollSpeed={scrollSpeed} parsedMap={parsedMap} gamepadMapping={gamepadMapping} />}
       </div>
       <div className="flex flex-row gap-4 items-center">
         <select ref={selectRef} className="bg-white p-2">
@@ -97,10 +122,12 @@ function App() {
           <option value="/centimeter/insane.osu">Centimeter - Hard</option>
           <option value="/megalovania/hard.osu">Megalovania - Hard</option>
           <option value="/no_title/hard.osu">No Title - Hard</option>
+          <option value="/machinegun_poem_doll/hard.osu">Machinegun poem doll - Hard</option>
 
           <option value="/no_title/insane.osu">No Title - Insane</option>
           <option value="/tower_of_heaven/another.osu">Tower of Heaven - Insane</option>
           <option value="/megalovania/insane.osu">Megalovania - Insane</option>
+          <option value="/machinegun_poem_doll/insane.osu">Machinegun poem doll - Insane</option>
 
           <option value="/no_title/expert.osu">No Title - Expert</option>
 
@@ -109,6 +136,7 @@ function App() {
           <option value="/hanairo_biyori/extra.osu">Hanairo Biyori - Extra</option>
           <option value="/inferno/inferno.osu">Inferno - Extra</option>
           <option value="/holdin_on/extra.osu">Holdin On - Extra</option>
+          <option value="/machinegun_poem_doll/extra.osu">Machinegun poem doll - Extra</option>
         </select>
         <button
           className="p-2 bg-white/20 hover:bg-white/50 active:bg-white/80 text-white transition-all"
@@ -123,6 +151,15 @@ function App() {
         </button>
         <ScrollSpeedSlider onChange={setScrollSpeed} />
       </div>
+      {isGamepadMappingVisible && (
+        <GamepadMapping
+          onCompleted={(mapping) => {
+            setIsGamepadMappingVisible(false);
+            setWasMappingDone(true);
+            setGamepadMapping(mapping);
+          }}
+        />
+      )}
     </div>
   );
 }

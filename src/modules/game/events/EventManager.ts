@@ -29,14 +29,14 @@ export class EventManager {
   public emit<K extends EventType>(eventType: K, event: Parameters<EventHandlers[K]>[0]) {
     const handlers = this.handlers[eventType];
     if (handlers) {
-      handlers.forEach((handler) => handler(event as any));
+      handlers.forEach((handler) => handler(event as never));
     }
   }
 
   public off<K extends EventType>(eventType: K, handler: EventHandlers[K]) {
     const handlers = this.handlers[eventType];
     if (handlers) {
-      // @ts-ignore
+      // @ts-expect-error zegez
       this.handlers[eventType] = handlers.filter((h) => h !== handler);
     }
   }

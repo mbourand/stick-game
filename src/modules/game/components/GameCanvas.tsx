@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useEffectEvent, useRef } from "react";
 import { type ParsedMap } from "../../convert/OsuConverter";
 import { Game } from "../Game";
+import type { GamepadAxisKind, GamepadAxisMapping } from "../../gamepad/mapping/types";
+import { Gamepad } from "../../gamepad/Gamepad";
 
 type GameCanvasProps = {
   parsedMap: ParsedMap;
   scrollSpeed: number;
+  gamepadMapping: Record<GamepadAxisKind, GamepadAxisMapping>;
 };
 
-export const GameCanvas = ({ parsedMap, scrollSpeed }: GameCanvasProps) => {
+export const GameCanvas = ({ parsedMap, scrollSpeed, gamepadMapping }: GameCanvasProps) => {
   const ref = useRef<HTMLCanvasElement>(null);
   const requestAnimationFrameId = useRef<number | null>(null);
+  const gamepad = useRef(new Gamepad(gamepadMapping));
+
   const gameRef = useRef<Game | null>(null);
 
   const onResize = useCallback(() => {
@@ -18,6 +23,10 @@ export const GameCanvas = ({ parsedMap, scrollSpeed }: GameCanvasProps) => {
     ref.current.width = window.innerWidth;
     ref.current.height = (window.innerWidth * 9) / 16;
   }, []);
+
+  useEffect(() => {
+    gamepad.current.setMapping(gamepadMapping);
+  }, [gamepadMapping]);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -42,7 +51,7 @@ export const GameCanvas = ({ parsedMap, scrollSpeed }: GameCanvasProps) => {
     const start = async () => {
       if (!ref.current) return;
 
-      gameRef.current = new Game(afterTick, scrollSpeed);
+      gameRef.current = new Game(afterTick, scrollSpeed, gamepad.current);
       gameRef.current.reset();
       await gameRef.current.loadBeatmap(parsedMap);
       await gameRef.current.start(ref.current);

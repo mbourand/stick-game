@@ -1,6 +1,6 @@
 import { AudioManager } from "../audio/AudioManager";
 import type { ParsedMap } from "../convert/OsuConverter";
-import { GamepadAxisKind } from "../gamepad/utils/constants";
+import type { Gamepad } from "../gamepad/Gamepad";
 import { EventManager } from "./events/EventManager";
 import type { NoteHoldTickEventType } from "./events/impl/NoteHoldTickEventType";
 import type { NoteReachedEdgeEventType } from "./events/impl/NoteReachedEdgeEvent";
@@ -35,7 +35,9 @@ export class Game {
 
   private afterTick: () => void;
 
-  constructor(afterTick: () => void, scrollSpeed: number) {
+  private gamepad: Gamepad;
+
+  constructor(afterTick: () => void, scrollSpeed: number, gamepad: Gamepad) {
     this.eventManager = new EventManager();
     this.combo = 0;
     this.score = 0;
@@ -45,6 +47,7 @@ export class Game {
     this.lastFrameTime = 0;
     this.backgroundLayerCanvas = document.createElement("canvas");
     this.scrollSpeed = scrollSpeed;
+    this.gamepad = gamepad;
     this.afterTick = afterTick;
 
     this.registerEvents();
@@ -66,7 +69,7 @@ export class Game {
     this.backgroundLayerCanvas.height = GAME_CIRCLE_RADIUS * 2;
 
     const ctx = this.backgroundLayerCanvas.getContext("2d")!;
-    ctx.filter = "blur(12px) brightness(0.15)";
+    ctx.filter = "blur(4px) brightness(0.15)";
     ctx.beginPath();
     ctx.arc(GAME_CIRCLE_RADIUS, GAME_CIRCLE_RADIUS, GAME_CIRCLE_RADIUS, 0, Math.PI * 2);
     ctx.closePath();
@@ -97,11 +100,8 @@ export class Game {
   }
 
   private onNoteHoldTick(event: NoteHoldTickEventType) {
-    const stickDotPosition = this.getStickDotFromAxis(
-      navigator.getGamepads()[0]!,
-      event.note.getColor() === NoteColor.Red ? GamepadAxisKind.LeftStickX : GamepadAxisKind.RightStickX,
-      event.note.getColor() === NoteColor.Red ? GamepadAxisKind.LeftStickY : GamepadAxisKind.RightStickY,
-      1,
+    const stickDotPosition = this.gamepad.getClampedStickPosition(
+      event.note.getColor() === NoteColor.Red ? "left" : "right",
     );
 
     if (!isHittingNote(stickDotPosition, event.note)) {
@@ -146,11 +146,8 @@ export class Game {
       return;
     }
 
-    const stickDotPosition = this.getStickDotFromAxis(
-      navigator.getGamepads()[0]!,
-      event.note.getColor() === NoteColor.Red ? GamepadAxisKind.LeftStickX : GamepadAxisKind.RightStickX,
-      event.note.getColor() === NoteColor.Red ? GamepadAxisKind.LeftStickY : GamepadAxisKind.RightStickY,
-      1,
+    const stickDotPosition = this.gamepad.getClampedStickPosition(
+      event.note.getColor() === NoteColor.Red ? "left" : "right",
     );
 
     if (!isHittingNote(stickDotPosition, event.note)) {
@@ -178,20 +175,6 @@ export class Game {
     this.offFunctions.push(offNoteReachedEndOfLife);
     const offNoteHoldTick = this.eventManager.on("onNoteHoldTick", (...args) => this.onNoteHoldTick(...args));
     this.offFunctions.push(offNoteHoldTick);
-  }
-
-  private getStickDotFromAxis(
-    gamepad: Gamepad,
-    axisKindX: GamepadAxisKind,
-    axisKindY: GamepadAxisKind,
-    sensivity: number,
-  ) {
-    const axisX = gamepad ? Math.min(Math.max(gamepad.axes[axisKindX] * sensivity, -1), 1) : 0;
-    const axisY = gamepad ? Math.min(Math.max(gamepad.axes[axisKindY] * sensivity, -1), 1) : 0;
-    const length = Math.sqrt(axisX * axisX + axisY * axisY);
-    const normalizedX = length > 1 ? axisX / length : axisX;
-    const normalizedY = length > 1 ? axisY / length : axisY;
-    return { x: normalizedX, y: normalizedY };
   }
 
   public setScrollSpeed(scrollSpeed: number) {
@@ -297,19 +280,8 @@ export class Game {
     this.updateNotes(ctx, deltaTime);
 
     if (gamepad) {
-      const sensivity = 1;
-      const leftStickDot = this.getStickDotFromAxis(
-        gamepad,
-        GamepadAxisKind.LeftStickX,
-        GamepadAxisKind.LeftStickY,
-        sensivity,
-      );
-      const rightStickDot = this.getStickDotFromAxis(
-        gamepad,
-        GamepadAxisKind.RightStickX,
-        GamepadAxisKind.RightStickY,
-        sensivity,
-      );
+      const leftStickDot = this.gamepad.getClampedStickPosition("left");
+      const rightStickDot = this.gamepad.getClampedStickPosition("right");
 
       this.drawStickFollowLine(
         ctx,

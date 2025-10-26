@@ -150,6 +150,9 @@ export class Game {
 
     if (event.note.getJudgement() === JudgmentKind.Miss) {
       this.miss();
+      this.noteHitGlowFlairs.add(
+        new NoteHitGlowFlair(event.note.getStartAngle(), event.note.getEndAngle(), 400, "red"),
+      );
       return;
     }
 

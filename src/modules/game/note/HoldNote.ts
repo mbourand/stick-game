@@ -55,7 +55,7 @@ export class HoldNote extends BaseNote {
   }
 
   public getLifeTime(): number {
-    return this.timeToReachEdge + this.holdDuration;
+    return Math.max(this.timeToReachEdge + this.holdDuration, DEFAULT_JUDGE.getLargestWindow());
   }
 
   public hasReachedEdge() {
@@ -78,14 +78,15 @@ export class HoldNote extends BaseNote {
       this.eventManager.emit("onNoteHoldTick", NoteHoldTickEvent(this));
     }
 
-    if (this.hasReachedEdge() && !this.wasReachedEdgeEventEmitted) {
+    if (this.headNoteJudge.isJudgementComplete() && !this.wasReachedEdgeEventEmitted) {
       this.eventManager.emit("onNoteWasJudged", NoteWasJudgedEvent(this));
       this.wasReachedEdgeEventEmitted = true;
     }
 
-    const reachedEndOfLife = this.elapsedTime >= this.getLifeTime();
+    const reachedEndOfLife = this.elapsedTime >= this.getLifeTime() && this.wasReachedEdgeEventEmitted;
     if (reachedEndOfLife) {
       this.eventManager.emit("onNoteReachedEndOfLife", NoteReachedEndOfLifeEvent(this));
+      this.isActive = false;
     }
   }
 

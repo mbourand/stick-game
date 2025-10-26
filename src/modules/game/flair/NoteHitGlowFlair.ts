@@ -1,4 +1,4 @@
-import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../utils/constants";
+import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_STROKE_WIDTH } from "../utils/constants";
 
 export class NoteHitGlowFlair {
   private startAngle: number;
@@ -30,16 +30,16 @@ export class NoteHitGlowFlair {
     ctx.globalAlpha = alpha;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.arc(0, 0, GAME_CIRCLE_DISPLAYED_RADIUS + 130, this.startAngle, this.endAngle);
-    ctx.arc(0, 0, GAME_CIRCLE_DISPLAYED_RADIUS, this.endAngle, this.startAngle, true);
+    ctx.arc(0, 0, GAME_CIRCLE_DISPLAYED_RADIUS + GAME_CIRCLE_STROKE_WIDTH / 2 + 200, this.startAngle, this.endAngle);
+    ctx.arc(0, 0, GAME_CIRCLE_DISPLAYED_RADIUS + GAME_CIRCLE_STROKE_WIDTH / 2, this.endAngle, this.startAngle, true);
     ctx.closePath();
     const gradient = ctx.createRadialGradient(
       0,
       0,
-      GAME_CIRCLE_DISPLAYED_RADIUS,
+      GAME_CIRCLE_DISPLAYED_RADIUS + GAME_CIRCLE_STROKE_WIDTH / 2,
       0,
       0,
-      GAME_CIRCLE_DISPLAYED_RADIUS + 130,
+      GAME_CIRCLE_DISPLAYED_RADIUS + GAME_CIRCLE_STROKE_WIDTH / 2 + 200,
     );
     gradient.addColorStop(0, this.color);
     gradient.addColorStop(1, "transparent");

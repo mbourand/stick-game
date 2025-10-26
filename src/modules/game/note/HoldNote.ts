@@ -1,11 +1,13 @@
+import type { Gamepad } from "../../gamepad/Gamepad";
 import type { EventManager } from "../events/EventManager";
 import { NoteHoldTickEvent } from "../events/impl/NoteHoldTickEventType";
-import { NoteReachedEdgeEvent } from "../events/impl/NoteReachedEdgeEvent";
 import { NoteReachedEndOfLifeEvent } from "../events/impl/NoteReachedEndOfLifeEventType";
-import { JudgmentKind } from "../score/ScoreCounter";
+import { NoteWasJudgedEvent } from "../events/impl/NoteWasJudgedEvent";
+import { DEFAULT_JUDGE } from "../judge/Judge";
 import { Clock } from "../utils/Clock";
 import { BaseNote } from "./Note";
 import { NoteColor } from "./NoteColor";
+import { NoteJudge } from "./NoteJudge";
 
 export class HoldNote extends BaseNote {
   private eventManager: EventManager;
@@ -17,8 +19,9 @@ export class HoldNote extends BaseNote {
   private holdDuration: number;
   private elapsedTime: number;
   private wasReachedEdgeEventEmitted: boolean;
-  private bestJudgmentSoFar: JudgmentKind;
   private holdTickClock: Clock;
+  private headNoteJudge: NoteJudge;
+  private isActive: boolean;
 
   private static BODY_COLOR: Record<NoteColor, string> = {
     [NoteColor.Red]: "rgba(255, 35, 0, 0.5)",
@@ -34,6 +37,7 @@ export class HoldNote extends BaseNote {
     angleSpan: number,
     holdDuration: number,
     beatLength: number,
+    gamepad: Gamepad,
   ) {
     super();
     this.eventManager = eventManager;
@@ -45,8 +49,9 @@ export class HoldNote extends BaseNote {
     this.holdDuration = holdDuration;
     this.elapsedTime = 0;
     this.wasReachedEdgeEventEmitted = false;
-    this.bestJudgmentSoFar = JudgmentKind.Miss;
     this.holdTickClock = new Clock(beatLength / 2);
+    this.headNoteJudge = new NoteJudge(this, DEFAULT_JUDGE, gamepad);
+    this.isActive = true;
   }
 
   public getLifeTime(): number {
@@ -62,7 +67,11 @@ export class HoldNote extends BaseNote {
   }
 
   public update(deltaTime: number): void {
+    if (!this.isActive) return;
+
     this.elapsedTime += deltaTime;
+
+    this.headNoteJudge.update();
 
     const shouldCheckHoldTick = this.holdTickClock.update(this.elapsedTime);
     if (shouldCheckHoldTick && this.hasReachedEdge() && this.wasReachedEdgeEventEmitted) {
@@ -70,7 +79,7 @@ export class HoldNote extends BaseNote {
     }
 
     if (this.hasReachedEdge() && !this.wasReachedEdgeEventEmitted) {
-      this.eventManager.emit("onNoteReachedEdge", NoteReachedEdgeEvent(this));
+      this.eventManager.emit("onNoteWasJudged", NoteWasJudgedEvent(this));
       this.wasReachedEdgeEventEmitted = true;
     }
 
@@ -129,15 +138,19 @@ export class HoldNote extends BaseNote {
     return this.color;
   }
 
-  public registerNewHit(judgmentKind: JudgmentKind) {
-    if (judgmentKind === JudgmentKind.Perfect) {
-      this.bestJudgmentSoFar = JudgmentKind.Perfect;
-    } else if (judgmentKind === JudgmentKind.Good && this.bestJudgmentSoFar !== JudgmentKind.Perfect) {
-      this.bestJudgmentSoFar = JudgmentKind.Good;
-    }
+  public getJudgement() {
+    return this.headNoteJudge.getJudgement();
   }
 
-  public getJudgement() {
-    return this.bestJudgmentSoFar;
+  public getTimeBeforeReachingEdge(): number {
+    return Math.max(this.timeToReachEdge - this.elapsedTime, 0);
+  }
+
+  public getTimeSinceHittingEdge(): number {
+    return Math.max(this.elapsedTime - this.timeToReachEdge, 0);
+  }
+
+  public getDistanceFromPerfectTiming(): number {
+    return Math.abs(this.elapsedTime - this.timeToReachEdge);
   }
 }

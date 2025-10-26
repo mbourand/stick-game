@@ -1,8 +1,10 @@
+import type { Gamepad } from "../../gamepad/Gamepad";
 import type { EventManager } from "../events/EventManager";
-import { NoteReachedEdgeEvent } from "../events/impl/NoteReachedEdgeEvent";
 import { NoteReachedEndOfLifeEvent } from "../events/impl/NoteReachedEndOfLifeEventType";
-import { JudgmentKind } from "../score/ScoreCounter";
-import type { NoteColor } from "./NoteColor";
+import { NoteWasJudgedEvent } from "../events/impl/NoteWasJudgedEvent";
+import { DEFAULT_JUDGE } from "../judge/Judge";
+import { NoteColor } from "./NoteColor";
+import { NoteJudge } from "./NoteJudge";
 
 export abstract class BaseNote {
   public abstract update(deltaTime: number): void;
@@ -17,7 +19,8 @@ export class Note extends BaseNote {
   private angle: number;
   private angleSpan: number;
   private eventManager: EventManager;
-  private bestJudgmentSoFar: JudgmentKind;
+  private noteJudge: NoteJudge;
+  private isActive: boolean;
 
   constructor(
     eventManager: EventManager,
@@ -26,6 +29,7 @@ export class Note extends BaseNote {
     color: NoteColor,
     angle: number,
     angleSpan: number,
+    gamepad: Gamepad,
   ) {
     super();
     this.eventManager = eventManager;
@@ -35,7 +39,8 @@ export class Note extends BaseNote {
     this.color = color;
     this.angle = angle;
     this.angleSpan = angleSpan;
-    this.bestJudgmentSoFar = JudgmentKind.Miss;
+    this.noteJudge = new NoteJudge(this, DEFAULT_JUDGE, gamepad);
+    this.isActive = true;
   }
 
   private getProgress(): number {
@@ -43,12 +48,16 @@ export class Note extends BaseNote {
   }
 
   public update(deltaTime: number) {
+    if (!this.isActive) return;
+
     this.elapsedTime += deltaTime;
 
-    const progress = this.getProgress();
-    if (progress === 1) {
-      this.eventManager.emit("onNoteReachedEdge", NoteReachedEdgeEvent(this));
+    this.noteJudge.update();
+
+    if (this.noteJudge.isJudgementComplete()) {
+      this.eventManager.emit("onNoteWasJudged", NoteWasJudgedEvent(this));
       this.eventManager.emit("onNoteReachedEndOfLife", NoteReachedEndOfLifeEvent(this));
+      this.isActive = false;
     }
   }
 
@@ -74,11 +83,19 @@ export class Note extends BaseNote {
     return (this.angle + this.angleSpan / 2) % (Math.PI * 2);
   }
 
-  public registerNewHit(judgmentKind: JudgmentKind) {
-    if (judgmentKind === JudgmentKind.Perfect) {
-      this.bestJudgmentSoFar = JudgmentKind.Perfect;
-    } else if (judgmentKind === JudgmentKind.Good && this.bestJudgmentSoFar !== JudgmentKind.Perfect) {
-      this.bestJudgmentSoFar = JudgmentKind.Good;
-    }
+  public getTimeBeforeReachingEdge(): number {
+    return Math.max(this.timeToReachEdge - this.elapsedTime, 0);
+  }
+
+  public getTimeSinceHittingEdge(): number {
+    return Math.max(this.elapsedTime - this.timeToReachEdge, 0);
+  }
+
+  public getDistanceFromPerfectTiming(): number {
+    return Math.abs(this.elapsedTime - this.timeToReachEdge);
+  }
+
+  public getJudgement(): number {
+    return this.noteJudge.getJudgement();
   }
 }

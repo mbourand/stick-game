@@ -1,4 +1,4 @@
-import { GAME_CIRCLE_RADIUS } from "../utils/constants";
+import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../utils/constants";
 
 export class NoteHitFlair {
   private startAngle: number;
@@ -23,12 +23,8 @@ export class NoteHitFlair {
     return this.elapsedTime >= this.duration;
   }
 
-  public reverseEaseInOut(progress: number) {
-    return (
-      (Math.pow(progress, 3) - 2 * Math.pow(progress, 2) + progress) * 3 +
-      (-2 * Math.pow(progress, 3) + 3 * Math.pow(progress, 2)) * 3 +
-      (Math.pow(progress, 3) - Math.pow(progress, 2)) * 3
-    );
+  public jumpEasing(progress: number) {
+    return Math.min(Math.max(-Math.abs(Math.pow(2 * progress - 1, 3)) + 1, 0), 1);
   }
 
   public render(ctx: CanvasRenderingContext2D) {
@@ -37,11 +33,11 @@ export class NoteHitFlair {
     const progress = Math.min(this.elapsedTime / this.duration, 1) * Math.PI;
 
     const amplitude = 10;
-    const currentAmplitude = amplitude * Math.sin(progress);
+    const currentAmplitude = amplitude * this.jumpEasing(progress);
     ctx.strokeStyle = this.color;
     ctx.lineWidth = currentAmplitude;
     ctx.beginPath();
-    ctx.arc(0, 0, GAME_CIRCLE_RADIUS + currentAmplitude, this.startAngle, this.endAngle);
+    ctx.arc(0, 0, GAME_CIRCLE_DISPLAYED_RADIUS - currentAmplitude, this.startAngle, this.endAngle);
     ctx.stroke();
   }
 }

@@ -21,7 +21,7 @@ export const GameCanvas = ({ parsedMap, scrollSpeed, gamepadMapping }: GameCanva
     if (!ref.current) return;
 
     ref.current.width = window.innerWidth;
-    ref.current.height = (window.innerWidth * 9) / 16;
+    ref.current.height = window.innerHeight;
   }, []);
 
   useEffect(() => {

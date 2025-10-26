@@ -3,26 +3,27 @@ import type { ParsedMap } from "../convert/OsuConverter";
 import type { Gamepad } from "../gamepad/Gamepad";
 import { EventManager } from "./events/EventManager";
 import type { NoteHoldTickEventType } from "./events/impl/NoteHoldTickEventType";
-import type { NoteReachedEdgeEventType } from "./events/impl/NoteReachedEdgeEvent";
 import type { NoteReachedEndOfLifeEventType } from "./events/impl/NoteReachedEndOfLifeEventType";
 import type { NoteShouldSpawnEventType } from "./events/impl/NoteShouldSpawnEvent";
+import type { NoteWasJudgedEventType } from "./events/impl/NoteWasJudgedEvent";
 import { CircleAudioVisualizer } from "./flair/CircleAudioVisualizer";
 import { NoteHitFlair } from "./flair/NoteHitFlair";
+import { NoteHitGlowFlair } from "./flair/NoteHitGlowFlair";
 import { isHittingNote } from "./hooks/hit-check";
+import { JudgmentKind } from "./judge/constants";
 import { HoldNote } from "./note/HoldNote";
 import { BaseNote, Note } from "./note/Note";
 import { NoteColor } from "./note/NoteColor";
 import { NoteSpawner } from "./note/NoteSpawner";
-import { GAME_CIRCLE_RADIUS } from "./utils/constants";
+import { ScoreCounter } from "./score/ScoreCounter";
+import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "./utils/constants";
 
 export class Game {
   private lastFrameTime: number;
   private eventManager: EventManager = new EventManager();
   private offFunctions: (() => void)[];
-  private combo: number;
   private noteSpawner: NoteSpawner | null = null;
   private started: boolean;
-  private score: number;
   private audioVisualizer: CircleAudioVisualizer | null;
   private backgroundLayerCanvas: HTMLCanvasElement;
   private parsedMap: ParsedMap | null = null;
@@ -30,17 +31,18 @@ export class Game {
 
   private notes: Set<BaseNote> = new Set();
   private noteHitFlairs: Set<NoteHitFlair> = new Set();
+  private noteHitGlowFlairs: Set<NoteHitGlowFlair> = new Set();
 
   private scrollSpeed: number;
 
   private afterTick: () => void;
 
   private gamepad: Gamepad;
+  private scoreCounter: ScoreCounter;
 
   constructor(afterTick: () => void, scrollSpeed: number, gamepad: Gamepad) {
     this.eventManager = new EventManager();
-    this.combo = 0;
-    this.score = 0;
+    this.scoreCounter = new ScoreCounter();
     this.offFunctions = [];
     this.started = false;
     this.audioVisualizer = null;
@@ -61,17 +63,17 @@ export class Game {
     await image.decode();
 
     const imageMinSize = Math.min(image.width, image.height);
-    const scale = (GAME_CIRCLE_RADIUS * 2) / imageMinSize;
+    const scale = (GAME_CIRCLE_DISPLAYED_RADIUS * 2) / imageMinSize;
     const drawWidth = image.width * scale;
     const drawHeight = image.height * scale;
 
-    this.backgroundLayerCanvas.width = GAME_CIRCLE_RADIUS * 2;
-    this.backgroundLayerCanvas.height = GAME_CIRCLE_RADIUS * 2;
+    this.backgroundLayerCanvas.width = GAME_CIRCLE_DISPLAYED_RADIUS * 2;
+    this.backgroundLayerCanvas.height = GAME_CIRCLE_DISPLAYED_RADIUS * 2;
 
     const ctx = this.backgroundLayerCanvas.getContext("2d")!;
     ctx.filter = "blur(4px) brightness(0.15)";
     ctx.beginPath();
-    ctx.arc(GAME_CIRCLE_RADIUS, GAME_CIRCLE_RADIUS, GAME_CIRCLE_RADIUS, 0, Math.PI * 2);
+    ctx.arc(GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_DISPLAYED_RADIUS, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
     ctx.drawImage(
@@ -85,8 +87,7 @@ export class Game {
   }
 
   public reset() {
-    this.combo = 0;
-    this.score = 0;
+    this.scoreCounter = new ScoreCounter();
     this.notes.clear();
     this.noteHitFlairs.clear();
     this.backgroundLayerCanvas = document.createElement("canvas");
@@ -109,8 +110,7 @@ export class Game {
       return;
     }
 
-    this.combo += 1;
-    this.score += 15 * this.combo;
+    this.scoreCounter.addHoldNoteTick();
   }
 
   private onNoteShouldSpawn(event: NoteShouldSpawnEventType) {
@@ -125,6 +125,7 @@ export class Game {
           Math.max((Math.random() * Math.PI) / 3, Math.PI / 5),
           event.parsedNote.holdDuration!,
           60000 / event.parsedNote.effectiveBPMAtHitTime,
+          this.gamepad,
         ),
       );
     } else {
@@ -136,34 +137,46 @@ export class Game {
           event.parsedNote.color,
           event.parsedNote.angle,
           Math.max((Math.random() * Math.PI) / 3, Math.PI / 5),
+          this.gamepad,
         ),
       );
     }
   }
 
-  private onNoteReachedEdge(event: NoteReachedEdgeEventType) {
+  private onNoteWasJudged(event: NoteWasJudgedEventType) {
     if (!(event.note instanceof Note || event.note instanceof HoldNote)) {
       return;
     }
 
-    const stickDotPosition = this.gamepad.getClampedStickPosition(
-      event.note.getColor() === NoteColor.Red ? "left" : "right",
-    );
-
-    if (!isHittingNote(stickDotPosition, event.note)) {
+    if (event.note.getJudgement() === JudgmentKind.Miss) {
       this.miss();
       return;
     }
 
+    const flairColor = (() => {
+      switch (event.note.getJudgement()) {
+        case JudgmentKind.Perfect:
+          return "cyan";
+        case JudgmentKind.Good:
+          return "lime";
+        case JudgmentKind.Meh:
+          return "gold";
+        default:
+          throw new Error("Invalid judgment kind for flair color");
+      }
+    })();
+
     AudioManager.playSound("hit");
-    this.noteHitFlairs.add(new NoteHitFlair(event.note.getStartAngle(), event.note.getEndAngle(), 150, "white"));
-    this.combo += 1;
-    this.score += 100 * this.combo;
+    this.noteHitFlairs.add(new NoteHitFlair(event.note.getStartAngle(), event.note.getEndAngle(), 400, "white"));
+    this.noteHitGlowFlairs.add(
+      new NoteHitGlowFlair(event.note.getStartAngle(), event.note.getEndAngle(), 400, flairColor),
+    );
+    this.scoreCounter.add(event.note.getJudgement());
   }
 
   private registerEvents() {
     console.log("Registering game events...");
-    const offNoteReachedEdge = this.eventManager.on("onNoteReachedEdge", (...args) => this.onNoteReachedEdge(...args));
+    const offNoteReachedEdge = this.eventManager.on("onNoteWasJudged", (...args) => this.onNoteWasJudged(...args));
     this.offFunctions.push(offNoteReachedEdge);
     const offNoteShouldSpawn = this.eventManager.on("onNoteShouldSpawn", (...args) => {
       this.onNoteShouldSpawn(...args);
@@ -183,8 +196,8 @@ export class Game {
   }
 
   private miss() {
-    if (this.combo > 5) AudioManager.playSound("miss");
-    this.combo = 0;
+    if (this.scoreCounter.getCombo() > 5) AudioManager.playSound("miss");
+    this.scoreCounter.add(JudgmentKind.Miss);
   }
 
   public destroy() {
@@ -210,7 +223,7 @@ export class Game {
     const buffer = await AudioManager.loadSound(this.parsedMap.audioUrl, AudioManager.musicContext);
     const audioSource = AudioManager.playMusic("beatmap_audio", buffer, 0.2);
 
-    this.audioVisualizer = new CircleAudioVisualizer(40, GAME_CIRCLE_RADIUS, 30);
+    this.audioVisualizer = new CircleAudioVisualizer(40, GAME_CIRCLE_DISPLAYED_RADIUS, 30);
     this.audioVisualizer.connectSource(audioSource);
 
     this.started = true;
@@ -243,8 +256,8 @@ export class Game {
 
     ctx.drawImage(
       this.backgroundLayerCanvas,
-      centerX - GAME_CIRCLE_RADIUS,
-      centerY - GAME_CIRCLE_RADIUS,
+      centerX - GAME_CIRCLE_DISPLAYED_RADIUS,
+      centerY - GAME_CIRCLE_DISPLAYED_RADIUS,
       this.backgroundLayerCanvas.width,
       this.backgroundLayerCanvas.height,
     );
@@ -254,20 +267,26 @@ export class Game {
     ctx.lineWidth = 10;
 
     ctx.beginPath();
-    ctx.arc(centerX, centerY, GAME_CIRCLE_RADIUS, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, GAME_CIRCLE_DISPLAYED_RADIUS, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
     ctx.font = "64px Rostex";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(this.combo.toString(), centerX, centerY);
+    ctx.fillText(this.scoreCounter.getCombo().toString(), centerX, centerY);
 
     ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
     ctx.font = "22px Rostex";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(this.score.toString().padStart(6, "0"), centerX, centerY + 48);
+    ctx.fillText(this.scoreCounter.getScore().toString().padStart(6, "0"), centerX, centerY + 48);
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+    ctx.font = "22px Rostex";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(this.scoreCounter.getAccuracy() + "%", centerX, centerY + 96);
 
     if (this.audioVisualizer) {
       ctx.translate(centerX, centerY);
@@ -277,6 +296,7 @@ export class Game {
     }
 
     const gamepad = navigator.getGamepads()[0];
+
     this.updateNotes(ctx, deltaTime);
 
     if (gamepad) {
@@ -287,28 +307,28 @@ export class Game {
         ctx,
         centerX,
         centerY,
-        centerX + leftStickDot.x * GAME_CIRCLE_RADIUS,
-        centerY + leftStickDot.y * GAME_CIRCLE_RADIUS,
+        centerX + leftStickDot.x * GAME_CIRCLE_DISPLAYED_RADIUS,
+        centerY + leftStickDot.y * GAME_CIRCLE_DISPLAYED_RADIUS,
         "rgb(255, 0, 0, 0.5)",
       );
       this.drawStickFollowLine(
         ctx,
         centerX,
         centerY,
-        centerX + rightStickDot.x * GAME_CIRCLE_RADIUS,
-        centerY + rightStickDot.y * GAME_CIRCLE_RADIUS,
+        centerX + rightStickDot.x * GAME_CIRCLE_DISPLAYED_RADIUS,
+        centerY + rightStickDot.y * GAME_CIRCLE_DISPLAYED_RADIUS,
         "rgb(0, 0, 255, 0.5)",
       );
       this.drawStickDot(
         ctx,
-        centerX + leftStickDot.x * GAME_CIRCLE_RADIUS,
-        centerY + leftStickDot.y * GAME_CIRCLE_RADIUS,
+        centerX + leftStickDot.x * GAME_CIRCLE_DISPLAYED_RADIUS,
+        centerY + leftStickDot.y * GAME_CIRCLE_DISPLAYED_RADIUS,
         "red",
       );
       this.drawStickDot(
         ctx,
-        centerX + rightStickDot.x * GAME_CIRCLE_RADIUS,
-        centerY + rightStickDot.y * GAME_CIRCLE_RADIUS,
+        centerX + rightStickDot.x * GAME_CIRCLE_DISPLAYED_RADIUS,
+        centerY + rightStickDot.y * GAME_CIRCLE_DISPLAYED_RADIUS,
         "blue",
       );
     }
@@ -332,6 +352,14 @@ export class Game {
       flair.update(deltaTime);
       flair.render(ctx);
       if (flair.isFinished()) this.noteHitFlairs.delete(flair);
+      ctx.resetTransform();
+    }
+
+    for (const glowFlair of this.noteHitGlowFlairs) {
+      ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+      glowFlair.update(deltaTime);
+      glowFlair.render(ctx);
+      if (glowFlair.isFinished()) this.noteHitGlowFlairs.delete(glowFlair);
       ctx.resetTransform();
     }
   }

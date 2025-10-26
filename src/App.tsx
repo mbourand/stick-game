@@ -137,6 +137,8 @@ function App() {
           <option value="/inferno/inferno.osu">Inferno - Extra</option>
           <option value="/holdin_on/extra.osu">Holdin On - Extra</option>
           <option value="/machinegun_poem_doll/extra.osu">Machinegun poem doll - Extra</option>
+          <option value="/through_the_fire_and_flames/extra.osu">Through the fire and flames - Extra</option>
+          <option value="/symphony_of_the_night/extra.osu">Symphony of the night - Extra</option>
         </select>
         <button
           className="p-2 bg-white/20 hover:bg-white/50 active:bg-white/80 text-white transition-all"

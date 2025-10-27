@@ -1,3 +1,5 @@
+import { Settings } from "../settings/Settings";
+
 export class AudioManager {
   public static soundEffectContext = new AudioContext();
   public static musicContext = new AudioContext();
@@ -5,12 +7,12 @@ export class AudioManager {
   public static SOUND_BUFFERS = {
     hit: {
       sound: AudioManager.loadSound("/hit.wav", AudioManager.soundEffectContext),
-      volume: 0.1,
+      volume: 0.66,
       context: AudioManager.soundEffectContext,
     },
     miss: {
       sound: AudioManager.loadSound("/miss.ogg", AudioManager.soundEffectContext),
-      volume: 0.3,
+      volume: 1,
       context: AudioManager.soundEffectContext,
     },
   } as const satisfies Record<string, { sound: Promise<AudioBuffer>; volume: number; context: AudioContext }>;
@@ -24,7 +26,7 @@ export class AudioManager {
 
     const source = AudioManager.SOUND_BUFFERS[buffer].context.createBufferSource();
     const gainNode = AudioManager.SOUND_BUFFERS[buffer].context.createGain();
-    gainNode.gain.value = AudioManager.SOUND_BUFFERS[buffer].volume;
+    gainNode.gain.value = AudioManager.SOUND_BUFFERS[buffer].volume * Settings.getSettings().volume;
 
     const audioBuffer = await AudioManager.SOUND_BUFFERS[buffer].sound;
     source.buffer = audioBuffer;

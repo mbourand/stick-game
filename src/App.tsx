@@ -3,8 +3,7 @@ import "./modules/fonts/constants";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { convertFromOsu, type ParsedMap } from "./modules/convert/OsuConverter";
 import { GamepadMapping } from "./modules/gamepad/mapping/GamepadMapping";
-import type { GamepadAxisKind, GamepadAxisMapping } from "./modules/gamepad/mapping/types";
-import { DEFAULT_MAPPING } from "./modules/gamepad/mapping/constants";
+import { DEFAULT_SETTINGS, Settings } from "./modules/settings/Settings";
 
 const debounce = <T extends (...args: never[]) => void>(func: T, wait: number): T => {
   let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -17,43 +16,56 @@ const debounce = <T extends (...args: never[]) => void>(func: T, wait: number): 
   } as T;
 };
 
-const ScrollSpeedSlider = ({ onChange }: { onChange: (value: number) => void }) => {
-  const [scrollSpeed, setScrollSpeed] = useState(850);
+const SettingSlider = ({
+  name,
+  min,
+  max,
+  onChange,
+  defaultValue,
+}: {
+  name: string;
+  min: number;
+  max: number;
+  onChange: (value: number) => void;
+  defaultValue: number;
+}) => {
+  const [value, setValue] = useState(defaultValue);
 
-  const debouncedSetScrollSpeed = useMemo(
+  const debouncedSetValue = useMemo(
     () =>
-      debounce((speed: number) => {
-        onChange(speed);
+      debounce((newValue: number) => {
+        onChange(newValue);
       }, 300),
     [onChange],
   );
 
-  const changeScrollSpeed = (speed: number) => {
-    debouncedSetScrollSpeed(speed);
-    setScrollSpeed(speed);
+  const changeValue = (newValue: number) => {
+    debouncedSetValue(newValue);
+    setValue(newValue);
   };
 
   return (
     <>
+      <span className="text-white">
+        {name}: {value}
+      </span>
       <input
         type="range"
-        min={300}
-        max={2000}
+        min={min}
+        max={max}
         className=""
-        defaultValue={scrollSpeed}
-        onChange={(e) => changeScrollSpeed(Number(e.target.value))}
+        defaultValue={value}
+        onChange={(e) => changeValue(Number(e.target.value))}
       />
-      <span className="text-white"> Scroll Speed: {scrollSpeed}ms</span>
     </>
   );
 };
 
 function App() {
   const [parsedMap, setParsedMap] = useState<ParsedMap | undefined>(undefined);
-  const [scrollSpeed, setScrollSpeed] = useState<number>(850);
+
   const selectRef = useRef<HTMLSelectElement>(null);
   const currentTimeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [gamepadMapping, setGamepadMapping] = useState<Record<GamepadAxisKind, GamepadAxisMapping>>(DEFAULT_MAPPING);
   const [wasMappingDone, setWasMappingDone] = useState<boolean>(false);
   const [isGamepadMappingVisible, setIsGamepadMappingVisible] = useState<boolean>(false);
 
@@ -94,9 +106,7 @@ function App() {
 
   return (
     <div className="">
-      <div className="absolute top-0 left-0 -z-1">
-        {parsedMap && <GameCanvas scrollSpeed={scrollSpeed} parsedMap={parsedMap} gamepadMapping={gamepadMapping} />}
-      </div>
+      <div className="absolute top-0 left-0 -z-1">{parsedMap && <GameCanvas parsedMap={parsedMap} />}</div>
       <div className="flex flex-row gap-4 items-center">
         <select ref={selectRef} className="bg-white p-2">
           <option value="" disabled selected>
@@ -151,14 +161,49 @@ function App() {
         >
           Play beatmap
         </button>
-        <ScrollSpeedSlider onChange={setScrollSpeed} />
+        <SettingSlider
+          name="Scroll Duration"
+          defaultValue={Settings.getSettings().scrollDuration}
+          min={300}
+          max={2000}
+          onChange={(value) => {
+            Settings.set("scrollDuration", value);
+          }}
+        />
+        <SettingSlider
+          name="Volume"
+          defaultValue={Settings.getSettings().volume * 100}
+          min={0}
+          max={100}
+          onChange={(value) => {
+            Settings.set("volume", value / 100);
+          }}
+        />
+        <SettingSlider
+          name="Background Blurriness"
+          defaultValue={Settings.getSettings().backgroundBlurriness}
+          min={0}
+          max={20}
+          onChange={(value) => {
+            Settings.set("backgroundBlurriness", value);
+          }}
+        />
+        <SettingSlider
+          name="Background Brightness"
+          defaultValue={Settings.getSettings().backgroundBrightness * 100}
+          min={0}
+          max={100}
+          onChange={(value) => {
+            Settings.set("backgroundBrightness", value / 100);
+          }}
+        />
       </div>
       {isGamepadMappingVisible && (
         <GamepadMapping
           onCompleted={(mapping) => {
             setIsGamepadMappingVisible(false);
             setWasMappingDone(true);
-            setGamepadMapping(mapping);
+            Settings.set("gamepadMapping", mapping);
           }}
         />
       )}

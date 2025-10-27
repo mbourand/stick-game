@@ -10,3 +10,5 @@ export type GamepadAxisMapping = {
   index: number;
   inverted: boolean;
 };
+
+export type GamepadMappingType = Record<GamepadAxisKind, GamepadAxisMapping>;

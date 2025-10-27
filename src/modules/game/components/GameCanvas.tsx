@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useEffectEvent, useRef } from "react";
 import { type ParsedMap } from "../../convert/OsuConverter";
 import { Game } from "../Game";
-import type { GamepadAxisKind, GamepadAxisMapping } from "../../gamepad/mapping/types";
 import { Gamepad } from "../../gamepad/Gamepad";
+import { Settings } from "../../settings/Settings";
 
 type GameCanvasProps = {
   parsedMap: ParsedMap;
-  scrollSpeed: number;
-  gamepadMapping: Record<GamepadAxisKind, GamepadAxisMapping>;
 };
 
-export const GameCanvas = ({ parsedMap, scrollSpeed, gamepadMapping }: GameCanvasProps) => {
+export const GameCanvas = ({ parsedMap }: GameCanvasProps) => {
   const ref = useRef<HTMLCanvasElement>(null);
   const requestAnimationFrameId = useRef<number | null>(null);
-  const gamepad = useRef(new Gamepad(gamepadMapping));
+  const gamepad = useRef(new Gamepad(Settings.getSettings().gamepadMapping));
 
   const gameRef = useRef<Game | null>(null);
+
+  const isPlaying = useRef(false);
 
   const onResize = useCallback(() => {
     if (!ref.current) return;
@@ -23,10 +23,6 @@ export const GameCanvas = ({ parsedMap, scrollSpeed, gamepadMapping }: GameCanva
     ref.current.width = window.innerWidth;
     ref.current.height = window.innerHeight;
   }, []);
-
-  useEffect(() => {
-    gamepad.current.setMapping(gamepadMapping);
-  }, [gamepadMapping]);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -38,9 +34,10 @@ export const GameCanvas = ({ parsedMap, scrollSpeed, gamepadMapping }: GameCanva
   const destroyGame = useEffectEvent(() => {
     if (requestAnimationFrameId.current) cancelAnimationFrame(requestAnimationFrameId.current);
     gameRef.current!.destroy();
+    isPlaying.current = false;
   });
 
-  useEffect(() => {
+  const startGame = useEffectEvent(async () => {
     if (!ref.current) return;
 
     const afterTick = () => {
@@ -48,24 +45,35 @@ export const GameCanvas = ({ parsedMap, scrollSpeed, gamepadMapping }: GameCanva
       requestAnimationFrameId.current = requestAnimationFrame(gameRef.current.tick.bind(gameRef.current));
     };
 
-    const start = async () => {
-      if (!ref.current) return;
+    console.log("Starting game with settings:", Settings.getSettings());
 
-      gameRef.current = new Game(afterTick, scrollSpeed, gamepad.current);
-      gameRef.current.reset();
-      await gameRef.current.loadBeatmap(parsedMap);
-      await gameRef.current.start(ref.current);
-      gameRef.current.tick();
+    gameRef.current = new Game(afterTick, gamepad.current, Settings.getSettings());
+    await gameRef.current.loadBeatmap(parsedMap);
+    if (isPlaying.current) return;
+    await gameRef.current.start(ref.current);
+    isPlaying.current = true;
+
+    gameRef.current.tick();
+  });
+
+  useEffect(() => {
+    const offSettingChanged = Settings.getEventManager().on("onSettingChanged", () => {
+      destroyGame();
+      startGame();
+    });
+
+    return () => {
+      offSettingChanged();
     };
+  }, [destroyGame, startGame]);
 
-    start();
+  useEffect(() => {
+    if (!ref.current) return;
+
+    startGame();
     return () => destroyGame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [destroyGame, parsedMap]);
-
-  useEffect(() => {
-    gameRef.current?.setScrollSpeed(scrollSpeed);
-  }, [scrollSpeed]);
 
   return <canvas ref={ref} />;
 };

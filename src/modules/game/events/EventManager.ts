@@ -2,14 +2,21 @@ import type { NoteHoldTickEventType } from "./impl/NoteHoldTickEventType";
 import type { NoteWasJudgedEventType } from "./impl/NoteWasJudgedEvent";
 import type { NoteReachedEndOfLifeEventType } from "./impl/NoteReachedEndOfLifeEventType";
 import type { NoteShouldSpawnEventType } from "./impl/NoteShouldSpawnEvent";
+import type { SettingChangedEventType } from "./impl/SettingChangedEventType";
 
-type EventType = "onNoteWasJudged" | "onNoteShouldSpawn" | "onNoteReachedEndOfLife" | "onNoteHoldTick";
+type EventType =
+  | "onNoteWasJudged"
+  | "onNoteShouldSpawn"
+  | "onNoteReachedEndOfLife"
+  | "onNoteHoldTick"
+  | "onSettingChanged";
 
 type EventHandlers = {
   onNoteWasJudged: (e: NoteWasJudgedEventType) => void;
   onNoteShouldSpawn: (e: NoteShouldSpawnEventType) => void;
   onNoteReachedEndOfLife: (e: NoteReachedEndOfLifeEventType) => void;
   onNoteHoldTick: (e: NoteHoldTickEventType) => void;
+  onSettingChanged: (e: SettingChangedEventType) => void;
 };
 
 type EventHandlersArray = {

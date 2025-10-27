@@ -1,6 +1,7 @@
 import { AudioManager } from "../audio/AudioManager";
 import type { ParsedMap } from "../convert/OsuConverter";
-import type { Gamepad } from "../gamepad/Gamepad";
+import { Gamepad } from "../gamepad/Gamepad";
+import { Settings, type SettingsListType } from "../settings/Settings";
 import { EventManager } from "./events/EventManager";
 import type { NoteHoldTickEventType } from "./events/impl/NoteHoldTickEventType";
 import type { NoteReachedEndOfLifeEventType } from "./events/impl/NoteReachedEndOfLifeEventType";
@@ -33,14 +34,14 @@ export class Game {
   private noteHitFlairs: Set<NoteHitFlair> = new Set();
   private noteHitGlowFlairs: Set<NoteHitGlowFlair> = new Set();
 
-  private scrollSpeed: number;
-
   private afterTick: () => void;
 
   private gamepad: Gamepad;
   private scoreCounter: ScoreCounter;
 
-  constructor(afterTick: () => void, scrollSpeed: number, gamepad: Gamepad) {
+  private settings: SettingsListType;
+
+  constructor(afterTick: () => void, gamepad: Gamepad, settings: SettingsListType) {
     this.eventManager = new EventManager();
     this.scoreCounter = new ScoreCounter();
     this.offFunctions = [];
@@ -48,9 +49,10 @@ export class Game {
     this.audioVisualizer = null;
     this.lastFrameTime = 0;
     this.backgroundLayerCanvas = document.createElement("canvas");
-    this.scrollSpeed = scrollSpeed;
-    this.gamepad = gamepad;
+    this.gamepad = new Gamepad(Settings.getSettings().gamepadMapping);
     this.afterTick = afterTick;
+    this.settings = settings;
+    this.gamepad = gamepad;
 
     this.registerEvents();
   }
@@ -71,7 +73,8 @@ export class Game {
     this.backgroundLayerCanvas.height = GAME_CIRCLE_DISPLAYED_RADIUS * 2;
 
     const ctx = this.backgroundLayerCanvas.getContext("2d")!;
-    ctx.filter = "blur(4px) brightness(0.15)";
+    const { backgroundBlurriness, backgroundBrightness } = Settings.getSettings();
+    ctx.filter = `blur(${backgroundBlurriness}px) brightness(${backgroundBrightness})`;
     ctx.beginPath();
     ctx.arc(GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_DISPLAYED_RADIUS, 0, Math.PI * 2);
     ctx.closePath();
@@ -94,6 +97,7 @@ export class Game {
     this.parsedMap = null;
     this.noteSpawner = null;
     this.started = false;
+    AudioManager.stopSoundById("beatmap_audio");
   }
 
   private onNoteReachedEndOfLife(event: NoteReachedEndOfLifeEventType) {
@@ -118,7 +122,7 @@ export class Game {
       this.notes.add(
         new HoldNote(
           this.eventManager,
-          this.scrollSpeed,
+          Settings.getSettings().scrollDuration,
           GAME_CIRCLE_RADIUS,
           event.parsedNote.color,
           event.parsedNote.angle,
@@ -132,7 +136,7 @@ export class Game {
       this.notes.add(
         new Note(
           this.eventManager,
-          this.scrollSpeed,
+          Settings.getSettings().scrollDuration,
           GAME_CIRCLE_RADIUS,
           event.parsedNote.color,
           event.parsedNote.angle,
@@ -193,11 +197,6 @@ export class Game {
     this.offFunctions.push(offNoteHoldTick);
   }
 
-  public setScrollSpeed(scrollSpeed: number) {
-    this.scrollSpeed = scrollSpeed;
-    this.noteSpawner?.setScrollSpeed(scrollSpeed);
-  }
-
   private miss() {
     if (this.scoreCounter.getCombo() > 5) AudioManager.playSound("miss");
     this.scoreCounter.add(JudgmentKind.Miss);
@@ -212,7 +211,7 @@ export class Game {
 
   public async loadBeatmap(parsedMap: ParsedMap) {
     this.parsedMap = parsedMap;
-    this.noteSpawner = new NoteSpawner(parsedMap.notes, this.eventManager, this.scrollSpeed);
+    this.noteSpawner = new NoteSpawner(parsedMap.notes, this.eventManager, Settings.getSettings().scrollDuration);
     await this.loadBackgroundImage();
   }
 
@@ -224,7 +223,7 @@ export class Game {
     this.canvas = canvas;
 
     const buffer = await AudioManager.loadSound(this.parsedMap.audioUrl, AudioManager.musicContext);
-    const audioSource = AudioManager.playMusic("beatmap_audio", buffer, 0.2);
+    const audioSource = AudioManager.playMusic("beatmap_audio", buffer, Settings.getSettings().volume);
 
     this.audioVisualizer = new CircleAudioVisualizer(40, GAME_CIRCLE_DISPLAYED_RADIUS, 30);
     this.audioVisualizer.connectSource(audioSource);

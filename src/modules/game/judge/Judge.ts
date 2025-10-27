@@ -41,4 +41,4 @@ export class Judge {
   }
 }
 
-export const DEFAULT_JUDGE = new Judge(30, 60, 100);
+export const DEFAULT_JUDGE = new Judge(32, 75, 110);

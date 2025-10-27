@@ -11,11 +11,12 @@ export class Gamepad {
     this.mapping = mapping;
   }
 
-  public getAxisValue(axisKind: GamepadAxisKind, sensitivity: number = 1): number {
+  public getAxisValue(axisKind: GamepadAxisKind, sensitivity: number = 1, deadzone = 0.02): number {
     const gamepad = navigator.getGamepads()[0];
     if (!gamepad) return 0;
     const axisMapping = this.mapping[axisKind];
     const value = (gamepad.axes[axisMapping.index] || 0) * sensitivity;
+    if (Math.abs(value) < deadzone) return 0;
     return axisMapping.inverted ? -value : value;
   }
 

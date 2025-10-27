@@ -298,11 +298,9 @@ export class Game {
       ctx.resetTransform();
     }
 
-    const gamepad = navigator.getGamepads()[0];
-
     this.updateNotes(ctx, deltaTime);
 
-    if (gamepad) {
+    if (this.gamepad) {
       const leftStickDot = this.gamepad.getClampedStickPosition("left");
       const rightStickDot = this.gamepad.getClampedStickPosition("right");
 

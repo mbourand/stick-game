@@ -1,4 +1,5 @@
 import { AudioManager } from "../../audio/AudioManager";
+import { Clock } from "../utils/Clock";
 
 export class CircleAudioVisualizer {
   private analyser: AnalyserNode;
@@ -8,6 +9,10 @@ export class CircleAudioVisualizer {
   private maxAmplitude: number;
 
   private barAmplitudes: Record<number, number> = {};
+
+  private maxDataLevelMovingAverageSamples: number[] = [];
+  private maxDataLevelMovingAverageSize = 10;
+  private maxDataLevelRecordClock = new Clock(16 / 1000);
 
   constructor(barAmount: number, radius: number, maxAmplitude: number) {
     this.analyser = AudioManager.musicContext.createAnalyser();
@@ -23,11 +28,47 @@ export class CircleAudioVisualizer {
     source.connect(this.analyser);
   }
 
+  private getDataIndexFromBarIndex(barIndex: number) {
+    const x = barIndex / this.barAmount;
+    return Math.floor(((1 - (x + 1) ** -2) / (1 - 2 ** -2)) * this.dataArray.length * 0.33);
+  }
+
+  public getAverageMaxDataLevel() {
+    const sum = this.maxDataLevelMovingAverageSamples.reduce((a, b) => a + b, 0);
+    const missingSamples = this.maxDataLevelMovingAverageSize - this.maxDataLevelMovingAverageSamples.length;
+    return (sum + 0.5 * missingSamples) / this.maxDataLevelMovingAverageSize;
+  }
+
+  public addMaxDataLevelSample(sample: number) {
+    if (sample < 0.5) return;
+    this.maxDataLevelMovingAverageSamples.push(sample);
+    if (this.maxDataLevelMovingAverageSamples.length > this.maxDataLevelMovingAverageSize) {
+      this.maxDataLevelMovingAverageSamples.shift();
+    }
+  }
+
   public update(deltaTime: number) {
+    let lastDataLevel: number | null = null;
+
+    if (this.maxDataLevelRecordClock.update(deltaTime)) {
+      let maxDataLevel = 0;
+      for (let i = 0; i < this.barAmount; i++)
+        maxDataLevel = Math.max(maxDataLevel, this.dataArray[this.getDataIndexFromBarIndex(i)] / 255);
+      this.addMaxDataLevelSample(maxDataLevel);
+    }
+
+    const avgMaxDataLevel = this.getAverageMaxDataLevel();
+
     for (let i = 0; i < this.barAmount; i++) {
-      const dataIndex = Math.floor((i / this.barAmount) * (this.dataArray.length * 0.66));
-      const dataLevel = this.dataArray[dataIndex] / 255;
-      const amplitude = Math.min(dataLevel ** 4.8 * 4.2 * this.maxAmplitude, this.maxAmplitude);
+      const easedDataIndex = this.getDataIndexFromBarIndex(i);
+      const thisDataLevel = this.dataArray[easedDataIndex] / 255;
+
+      const dataLevel = Math.min(
+        Math.max((thisDataLevel * 0.75 + (lastDataLevel ?? thisDataLevel) * 0.25) / (avgMaxDataLevel + 1e-5), 0),
+        1,
+      );
+
+      const amplitude = Math.min(dataLevel ** 7 * 4.8 * this.maxAmplitude, this.maxAmplitude);
 
       if (this.barAmplitudes[i] === undefined) {
         this.barAmplitudes[i] = amplitude;
@@ -36,6 +77,8 @@ export class CircleAudioVisualizer {
       } else {
         this.barAmplitudes[i] = Math.max(this.barAmplitudes[i] - deltaTime * 0.005 * this.maxAmplitude, 0);
       }
+
+      lastDataLevel = thisDataLevel;
     }
   }
 
@@ -52,9 +95,10 @@ export class CircleAudioVisualizer {
     ctx.arc(centerX, centerY, this.radius, 0, Math.PI * 2);
 
     for (let i = 0; i < this.barAmount; i++) {
-      const angle = i * angleStep;
-      const startAngle = (angle - angleStep / 2) % (Math.PI * 2);
-      const endAngle = (angle + angleStep / 2) % (Math.PI * 2);
+      const indexedI = i > 0 ? i + 1 : i;
+      const angle = Math.floor(indexedI / 2) * angleStep * (indexedI % 2 === 0 ? 1 : -1) + Math.PI / 2 + angleStep / 2;
+      const startAngle = (angle - angleStep / 2 + Math.PI * 2) % (Math.PI * 2);
+      const endAngle = (angle + angleStep / 2 + Math.PI * 2) % (Math.PI * 2);
 
       ctx.moveTo(centerX, centerY);
       ctx.arc(centerX, centerY, this.radius - this.barAmplitudes[i], endAngle, startAngle, true);

@@ -73,7 +73,7 @@ export class HoldNote extends BaseNote {
 
     this.headNoteJudge.update();
 
-    const shouldCheckHoldTick = this.holdTickClock.update(this.elapsedTime);
+    const shouldCheckHoldTick = this.holdTickClock.update(deltaTime);
     if (shouldCheckHoldTick && this.hasReachedEdge() && this.wasReachedEdgeEventEmitted) {
       this.eventManager.emit("onNoteHoldTick", NoteHoldTickEvent(this));
     }

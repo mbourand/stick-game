@@ -1,21 +1,13 @@
 export class Clock {
   private elapsedTime: number;
   private frequency: number;
-  private lastTime: number | undefined;
 
   constructor(frequency: number) {
     this.elapsedTime = 0;
     this.frequency = frequency;
   }
 
-  public update(currentTime: number) {
-    if (this.lastTime === undefined) {
-      this.lastTime = currentTime;
-      return;
-    }
-
-    const deltaTime = currentTime - this.lastTime;
-    this.lastTime = currentTime;
+  public update(deltaTime: number) {
     this.elapsedTime += deltaTime;
 
     if (this.elapsedTime >= this.frequency) {
@@ -27,7 +19,6 @@ export class Clock {
   }
 
   public reset() {
-    this.lastTime = undefined;
     this.elapsedTime = 0;
   }
 

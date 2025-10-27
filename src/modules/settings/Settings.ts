@@ -31,6 +31,8 @@ export class Settings {
         return DEFAULT_SETTINGS;
       }
     }
+
+    return DEFAULT_SETTINGS;
   })();
 
   private static eventManager = new EventManager();

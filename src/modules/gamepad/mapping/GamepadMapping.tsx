@@ -8,7 +8,7 @@ const detectMovedAxis = (threshold: number, expectNegative: boolean): { index: n
   if (gamepad) {
     for (let i = 0; i < gamepad.axes.length; i++) {
       const value = gamepad.axes[i];
-      if (Math.abs(value) > threshold) {
+      if (Math.abs(value) > threshold && Math.abs(value) <= 1.1) {
         return { index: i, inverted: expectNegative ? value > 0 : value < 0 };
       }
     }

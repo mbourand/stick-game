@@ -3,7 +3,7 @@ import "./modules/fonts/constants";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { convertFromOsu, type ParsedMap } from "./modules/convert/OsuConverter";
 import { GamepadMapping } from "./modules/gamepad/mapping/GamepadMapping";
-import { DEFAULT_SETTINGS, Settings } from "./modules/settings/Settings";
+import { Settings } from "./modules/settings/Settings";
 
 const debounce = <T extends (...args: never[]) => void>(func: T, wait: number): T => {
   let timeout: ReturnType<typeof setTimeout> | null = null;

@@ -45,8 +45,6 @@ export const GameCanvas = ({ parsedMap }: GameCanvasProps) => {
       requestAnimationFrameId.current = requestAnimationFrame(gameRef.current.tick.bind(gameRef.current));
     };
 
-    console.log("Starting game with settings:", Settings.getSettings());
-
     gameRef.current = new Game(afterTick, gamepad.current, Settings.getSettings());
     await gameRef.current.loadBeatmap(parsedMap);
     if (isPlaying.current) return;

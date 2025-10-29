@@ -64,6 +64,7 @@ const SettingSlider = ({
 
 function App() {
   const [parsedMap, setParsedMap] = useState<ParsedMap | undefined>(undefined);
+  const [playingMap, setPlayingMap] = useState<ParsedMap | undefined>(undefined);
 
   const [wasMappingDone, setWasMappingDone] = useState<boolean>(false);
   const [isGamepadMappingVisible, setIsGamepadMappingVisible] = useState<boolean>(false);
@@ -88,16 +89,26 @@ function App() {
   }, [wasMappingDone]);
 
   return (
-    <div className="">
-      <div className="absolute top-0 left-0 -z-1">{parsedMap && <GameCanvas parsedMap={parsedMap} />}</div>
+    <div>
+      <div className="absolute top-0 left-0 -z-1">{playingMap && <GameCanvas parsedMap={playingMap} />}</div>
       <div className="flex flex-row gap-4 items-center">
         <MapPicker
-          onMapPicked={(parsedMap) => {
-            setTimeout(() => {
-              setParsedMap(parsedMap);
-            }, 1000);
+          onMapPicked={(map) => {
+            setParsedMap(map);
           }}
         />
+        <button
+          className="p-2 bg-white/20 hover:bg-white/50 active:bg-white/80 text-white transition-all"
+          onClick={() => {
+            if (parsedMap) {
+              setTimeout(() => {
+                setPlayingMap(parsedMap);
+              }, 1000);
+            }
+          }}
+        >
+          Play
+        </button>
         <SettingSlider
           name="Scroll Duration"
           defaultValue={Settings.getSettings().scrollDuration}
@@ -117,7 +128,7 @@ function App() {
           }}
         />
         <SettingSlider
-          name="Background Blurriness"
+          name="BG Blur"
           defaultValue={Settings.getSettings().backgroundBlurriness}
           min={0}
           max={20}
@@ -126,7 +137,7 @@ function App() {
           }}
         />
         <SettingSlider
-          name="Background Brightness"
+          name="BG Brightness"
           defaultValue={Settings.getSettings().backgroundBrightness * 100}
           min={0}
           max={100}

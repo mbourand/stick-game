@@ -15,28 +15,28 @@ export class AudioManager {
       volume: 1,
       context: AudioManager.soundEffectContext,
     },
-  } as const satisfies Record<string, { sound: Promise<AudioBuffer>; volume: number; context: AudioContext }>;
+  } as const;
 
-  public static playingSources = new Map<string, AudioBufferSourceNode>();
+  public static playingSources = new Map<string, { source: AudioBufferSourceNode; gainNode: GainNode }>();
 
   public static async playSound(buffer: keyof typeof AudioManager.SOUND_BUFFERS) {
     if (AudioManager.playingSources.has(buffer)) {
       AudioManager.stopSoundById(buffer);
     }
 
-    const source = AudioManager.SOUND_BUFFERS[buffer].context.createBufferSource();
-    const gainNode = AudioManager.SOUND_BUFFERS[buffer].context.createGain();
-    gainNode.gain.value = AudioManager.SOUND_BUFFERS[buffer].volume * Settings.getSettings().volume;
+    const { context, volume, sound } = AudioManager.SOUND_BUFFERS[buffer];
+    const audioBuffer = await sound;
 
-    const audioBuffer = await AudioManager.SOUND_BUFFERS[buffer].sound;
+    const source = context.createBufferSource();
+    const gainNode = context.createGain();
+    gainNode.gain.value = volume * Settings.getSettings().volume;
+
     source.buffer = audioBuffer;
     source.connect(gainNode);
-    gainNode.connect(AudioManager.SOUND_BUFFERS[buffer].context.destination);
+    gainNode.connect(context.destination);
     source.start(0);
 
-    AudioManager.playingSources.set(buffer, source);
-
-    return source;
+    AudioManager.playingSources.set(buffer, { source, gainNode });
   }
 
   public static playMusic(id: string, buffer: AudioBuffer, volume: number) {
@@ -44,17 +44,18 @@ export class AudioManager {
       AudioManager.stopSoundById(id);
     }
 
-    const source = AudioManager.musicContext.createBufferSource();
-    const gainNode = AudioManager.musicContext.createGain();
-    gainNode.gain.value = volume;
+    const context = AudioManager.musicContext;
+    const source = context.createBufferSource();
+    const gainNode = context.createGain();
 
+    gainNode.gain.value = volume;
     source.buffer = buffer;
+
     source.connect(gainNode);
-    gainNode.connect(AudioManager.musicContext.destination);
+    gainNode.connect(context.destination);
     source.start(0);
 
-    AudioManager.playingSources.set(id, source);
-
+    AudioManager.playingSources.set(id, { source, gainNode });
     return source;
   }
 
@@ -65,10 +66,15 @@ export class AudioManager {
   }
 
   public static stopSoundById(id: string) {
-    const source = AudioManager.playingSources.get(id);
-    if (source) {
-      source.stop();
+    const entry = AudioManager.playingSources.get(id);
+    if (entry) {
+      entry.source.stop();
       AudioManager.playingSources.delete(id);
     }
+  }
+
+  public static setVolumeById(id: string, volume: number) {
+    const entry = AudioManager.playingSources.get(id);
+    if (entry) entry.gainNode.gain.value = volume;
   }
 }

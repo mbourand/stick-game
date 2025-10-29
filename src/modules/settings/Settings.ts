@@ -38,7 +38,7 @@ export class Settings {
   private static eventManager = new EventManager();
 
   public static getSettings(): SettingsListType {
-    return Settings.settings;
+    return structuredClone(Settings.settings);
   }
 
   public static set<K extends keyof SettingsListType>(key: K, value: SettingsListType[K]) {

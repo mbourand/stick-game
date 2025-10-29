@@ -117,6 +117,24 @@ export class GameplayScene extends Scene {
     this.audioVisualizer.render(ctx);
     ctx.resetTransform();
 
+    for (const note of this.notes) {
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      note.render(ctx);
+      ctx.resetTransform();
+    }
+
+    for (const flair of this.noteHitFlairs) {
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      flair.render(ctx);
+      ctx.resetTransform();
+    }
+
+    for (const glowFlair of this.noteHitGlowFlairs) {
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      glowFlair.render(ctx);
+      ctx.resetTransform();
+    }
+
     if (this.gamepad) {
       const leftStickDot = this.gamepad.getClampedStickPosition("left");
       const rightStickDot = this.gamepad.getClampedStickPosition("right");
@@ -149,24 +167,6 @@ export class GameplayScene extends Scene {
         centerY + rightStickDot.y * GAME_CIRCLE_DISPLAYED_RADIUS,
         "blue",
       );
-    }
-
-    for (const note of this.notes) {
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      note.render(ctx);
-      ctx.resetTransform();
-    }
-
-    for (const flair of this.noteHitFlairs) {
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      flair.render(ctx);
-      ctx.resetTransform();
-    }
-
-    for (const glowFlair of this.noteHitGlowFlairs) {
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      glowFlair.render(ctx);
-      ctx.resetTransform();
     }
   }
 

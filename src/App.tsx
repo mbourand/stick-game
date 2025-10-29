@@ -102,7 +102,8 @@ function App() {
           onClick={() => {
             if (parsedMap) {
               setTimeout(() => {
-                setPlayingMap(parsedMap);
+                // Destructure to force re-render and allow replaying the same map
+                setPlayingMap({ ...parsedMap });
               }, 1000);
             }
           }}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useRef } from "react";
-import { type ParsedMap } from "../../convert/OsuConverter";
+import { type ParsedMap } from "../../osu/convert/OsuConverter";
 import { Game } from "../Game";
 import { Gamepad } from "../../gamepad/Gamepad";
 import { Settings } from "../../settings/Settings";

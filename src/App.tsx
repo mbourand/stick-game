@@ -1,9 +1,10 @@
 import { GameCanvas } from "./modules/game/components/GameCanvas";
 import "./modules/fonts/constants";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { convertFromOsu, type ParsedMap } from "./modules/convert/OsuConverter";
+import { convertFromOsu, type ParsedMap } from "./modules/osu/convert/OsuConverter";
 import { GamepadMapping } from "./modules/gamepad/mapping/GamepadMapping";
 import { Settings } from "./modules/settings/Settings";
+import { MapPicker } from "./routes/home/components/MapPicker";
 
 const debounce = <T extends (...args: never[]) => void>(func: T, wait: number): T => {
   let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -89,14 +90,14 @@ function App() {
   }, [wasMappingDone]);
 
   const changeMap = async (mapUrl: string) => {
-    const baseUrl = mapUrl.slice(0, mapUrl.lastIndexOf("/"));
+    // const baseUrl = mapUrl.slice(0, mapUrl.lastIndexOf("/"));
 
     try {
       const response = await fetch(mapUrl);
       if (!response.ok) throw new Error("Failed to load map file");
       const mapData = await response.text();
       console.log("Loaded map data:", mapData);
-      const parsedMap = convertFromOsu(mapData, baseUrl);
+      const parsedMap = convertFromOsu(mapData);
       setParsedMap(parsedMap);
     } catch (error) {
       console.error("Failed to fetch map:", error);
@@ -108,8 +109,8 @@ function App() {
     <div className="">
       <div className="absolute top-0 left-0 -z-1">{parsedMap && <GameCanvas parsedMap={parsedMap} />}</div>
       <div className="flex flex-row gap-4 items-center">
-        <select ref={selectRef} className="bg-white p-2">
-          <option value="" disabled selected>
+        {/* <select ref={selectRef} className="bg-white p-2" defaultValue="select_map">
+          <option value="select_map" disabled>
             Select a beatmap
           </option>
           <option value="/nyan_pasu_bang_bang/beginner.osu">Nyanpasu Bang Bang - Beginner</option>
@@ -149,8 +150,8 @@ function App() {
           <option value="/machinegun_poem_doll/extra.osu">Machinegun poem doll - Extra</option>
           <option value="/through_the_fire_and_flames/extra.osu">Through the fire and flames - Extra</option>
           <option value="/symphony_of_the_night/extra.osu">Symphony of the night - Extra</option>
-        </select>
-        <button
+        </select> */}
+        {/* <button
           className="p-2 bg-white/20 hover:bg-white/50 active:bg-white/80 text-white transition-all"
           onClick={() => {
             if (currentTimeoutId.current) {
@@ -160,7 +161,12 @@ function App() {
           }}
         >
           Play beatmap
-        </button>
+        </button> */}
+        <MapPicker
+          onMapPicked={(parsedMap) => {
+            setParsedMap(parsedMap);
+          }}
+        />
         <SettingSlider
           name="Scroll Duration"
           defaultValue={Settings.getSettings().scrollDuration}

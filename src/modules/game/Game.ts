@@ -1,5 +1,5 @@
 import { AudioManager } from "../audio/AudioManager";
-import type { ParsedMap } from "../convert/OsuConverter";
+import type { ParsedMap } from "../osu/convert/OsuConverter";
 import { Gamepad } from "../gamepad/Gamepad";
 import { type SettingsListType } from "../settings/Settings";
 import { EventManager } from "./events/EventManager";

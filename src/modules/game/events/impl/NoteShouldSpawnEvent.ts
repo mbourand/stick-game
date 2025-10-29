@@ -1,4 +1,4 @@
-import type { ParsedNote } from "../../../convert/OsuConverter";
+import type { ParsedNote } from "../../../osu/convert/OsuConverter";
 
 export const NoteShouldSpawnEvent = (parsedNote: ParsedNote) => {
   return {

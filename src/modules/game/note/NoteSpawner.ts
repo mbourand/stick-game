@@ -1,4 +1,4 @@
-import type { ParsedNote } from "../../convert/OsuConverter";
+import type { ParsedNote } from "../../osu/convert/OsuConverter";
 import type { EventManager } from "../events/EventManager";
 import { NoteShouldSpawnEvent } from "../events/impl/NoteShouldSpawnEvent";
 

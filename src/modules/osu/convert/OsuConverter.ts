@@ -1,4 +1,4 @@
-import { NoteColor } from "../game/note/NoteColor";
+import { NoteColor } from "../../game/note/NoteColor";
 
 export type ParsedNote = {
   hitTime: number;
@@ -205,7 +205,10 @@ const parseEventLines = (lines: string[]) => {
   return { backgroundFilePath };
 };
 
-export const convertFromOsu = (mapContent: string, baseUrl: string): ParsedMap => {
+export const convertFromOsu = (
+  mapContent: string,
+  makeAbsoluteUrlFromRelativePath: (path: string) => string,
+): ParsedMap => {
   const lines = mapContent
     .split("\n")
     .map((line) => line.trim().replaceAll("\r", ""))
@@ -214,12 +217,12 @@ export const convertFromOsu = (mapContent: string, baseUrl: string): ParsedMap =
   const categoryLineIndices = lines.map((line, i) => (/^\[.+\]$/.test(line.trim()) ? i : -1)).filter((i) => i !== -1);
 
   let audioLeadIn: number | undefined = undefined;
-  let audioFileName: string | undefined = undefined;
+  let audioRelativePath: string | undefined = undefined;
   let notes: ParsedNote[] | undefined = undefined;
   let title: string | undefined = undefined;
   let baseSliderMultiplier: number | undefined = undefined;
   let timingPoints: TimingPoint[] | undefined = undefined;
-  let backgroundUrl: string | undefined = undefined;
+  let backgroundRelativePath: string | undefined = undefined;
 
   for (let i = 0; i < categoryLineIndices.length; i++) {
     const categoryLine = lines[categoryLineIndices[i]].trim();
@@ -230,7 +233,7 @@ export const convertFromOsu = (mapContent: string, baseUrl: string): ParsedMap =
       const generalLines = lines.slice(categoryLineIndices[i] + 1, nextCategoryLine);
       console.log("General lines:", generalLines);
       const generalResult = parseGeneral(generalLines);
-      audioFileName = generalResult.audioFileName;
+      audioRelativePath = generalResult.audioFileName;
       audioLeadIn = generalResult.audioLeadIn;
       continue;
     }
@@ -273,13 +276,13 @@ export const convertFromOsu = (mapContent: string, baseUrl: string): ParsedMap =
       const nextCategoryLine = i + 1 < categoryLineIndices.length ? categoryLineIndices[i + 1] : lines.length;
       const eventLines = lines.slice(categoryLineIndices[i] + 1, nextCategoryLine);
       const eventResult = parseEventLines(eventLines);
-      backgroundUrl = eventResult.backgroundFilePath;
+      backgroundRelativePath = eventResult.backgroundFilePath;
       continue;
     }
   }
 
   if (
-    audioFileName == null ||
+    audioRelativePath == null ||
     audioLeadIn == null ||
     notes == null ||
     title == null ||
@@ -288,26 +291,26 @@ export const convertFromOsu = (mapContent: string, baseUrl: string): ParsedMap =
     timingPoints.length === 0 ||
     notes == null ||
     notes.length === 0 ||
-    backgroundUrl == null
+    backgroundRelativePath == null
   ) {
     console.error({
-      audioFileName,
+      audioFileName: audioRelativePath,
       audioLeadIn,
       notes,
       title,
       baseSliderMultiplier,
       timingPoints,
-      backgroundUrl,
+      backgroundUrl: backgroundRelativePath,
     });
     throw new Error("Invalid osu! map file");
   }
 
   return {
     title,
-    audioUrl: baseUrl + "/" + audioFileName,
+    audioUrl: makeAbsoluteUrlFromRelativePath(audioRelativePath),
     mapStartDelayAfterAudioStart: audioLeadIn,
     notes,
-    backgroundUrl: baseUrl + "/" + backgroundUrl,
+    backgroundUrl: makeAbsoluteUrlFromRelativePath(backgroundRelativePath),
     backgroundOffsetX: 0,
     backgroundOffsetY: 0,
     baseSliderMultiplier,

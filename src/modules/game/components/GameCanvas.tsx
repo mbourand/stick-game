@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useEffectEvent, useRef } from "react";
-import { type ParsedMap } from "../../convert/OsuConverter";
+import { type ParsedMap } from "../../osu/convert/OsuConverter";
 import { Game } from "../Game";
 import { Gamepad } from "../../gamepad/Gamepad";
 import { Settings } from "../../settings/Settings";
@@ -44,8 +44,6 @@ export const GameCanvas = ({ parsedMap }: GameCanvasProps) => {
       if (!gameRef.current) return;
       requestAnimationFrameId.current = requestAnimationFrame(gameRef.current.tick.bind(gameRef.current));
     };
-
-    console.log("Starting game with settings:", Settings.getSettings());
 
     gameRef.current = new Game(afterTick, gamepad.current, Settings.getSettings());
     await gameRef.current.loadBeatmap(parsedMap);

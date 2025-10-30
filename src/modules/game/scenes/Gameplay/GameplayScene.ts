@@ -1,25 +1,25 @@
-import { AudioManager } from "../../audio/AudioManager";
-import { Gamepad } from "../../gamepad/Gamepad";
-import type { ParsedMap } from "../../osu/convert/OsuConverter";
-import { Settings, type SettingsListType } from "../../settings/Settings";
-import { EventManager } from "../events/EventManager";
-import type { NoteHoldTickEventType } from "../events/impl/NoteHoldTickEventType";
-import type { NoteReachedEndOfLifeEventType } from "../events/impl/NoteReachedEndOfLifeEventType";
-import type { NoteShouldSpawnEventType } from "../events/impl/NoteShouldSpawnEvent";
-import type { NoteWasJudgedEventType } from "../events/impl/NoteWasJudgedEvent";
-import { CircleAudioVisualizer } from "../flair/CircleAudioVisualizer";
-import { NoteHitFlair } from "../flair/NoteHitFlair";
-import { NoteHitGlowFlair } from "../flair/NoteHitGlowFlair";
-import { isHittingNote } from "../hooks/hit-check";
-import { JudgmentKind } from "../judge/constants";
-import { HoldNote } from "../note/HoldNote";
-import { BaseNote, Note } from "../note/Note";
-import { NoteColor } from "../note/NoteColor";
-import { NoteSpawner } from "../note/NoteSpawner";
-import { ScoreCounter } from "../score/ScoreCounter";
-import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "../utils/constants";
-import { Scene } from "./Scene";
-import type { SceneManager } from "./SceneManager";
+import { AudioManager } from "../../../audio/AudioManager";
+import { Gamepad } from "../../../gamepad/Gamepad";
+import type { ParsedMap } from "../../../osu/convert/OsuConverter";
+import { Settings, type SettingsListType } from "../../../settings/Settings";
+import { EventManager } from "../../events/EventManager";
+import type { NoteHoldTickEventType } from "../../events/impl/NoteHoldTickEventType";
+import type { NoteReachedEndOfLifeEventType } from "../../events/impl/NoteReachedEndOfLifeEventType";
+import type { NoteShouldSpawnEventType } from "../../events/impl/NoteShouldSpawnEvent";
+import type { NoteWasJudgedEventType } from "../../events/impl/NoteWasJudgedEvent";
+import { CircleAudioVisualizer } from "../../flair/CircleAudioVisualizer";
+import { NoteHitFlair } from "../../flair/NoteHitFlair";
+import { NoteHitGlowFlair } from "../../flair/NoteHitGlowFlair";
+import { isHittingNote } from "../../hooks/hit-check";
+import { JudgmentKind } from "../../judge/constants";
+import { HoldNote } from "../../note/HoldNote";
+import { BaseNote, Note } from "../../note/Note";
+import { NoteColor } from "../../note/NoteColor";
+import { NoteSpawner } from "../../note/NoteSpawner";
+import { ScoreCounter } from "../../score/ScoreCounter";
+import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "../../utils/constants";
+import { Scene } from "../Scene";
+import type { SceneManager } from "../SceneManager";
 
 export class GameplayScene extends Scene {
   private eventManager = new EventManager();
@@ -168,6 +168,10 @@ export class GameplayScene extends Scene {
         "blue",
       );
     }
+  }
+
+  public getViewModel() {
+    return null;
   }
 
   private updateNotes(deltaTime: number) {

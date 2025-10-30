@@ -1,18 +1,13 @@
-import { useCallback, useEffect, useEffectEvent, useRef } from "react";
-import { type ParsedMap } from "../../osu/convert/OsuConverter";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import { Game } from "../Game";
 
-type GameCanvasProps = {
-  parsedMap: ParsedMap;
-};
-
-export const GameCanvas = ({ parsedMap }: GameCanvasProps) => {
+export const GameCanvas = () => {
   const ref = useRef<HTMLCanvasElement>(null);
   const requestAnimationFrameId = useRef<number | null>(null);
 
   const gameRef = useRef<Game | null>(null);
 
-  const isPlaying = useRef(false);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const onResize = useCallback(() => {
     if (!ref.current) return;
@@ -30,10 +25,10 @@ export const GameCanvas = ({ parsedMap }: GameCanvasProps) => {
 
   const destroyGame = useEffectEvent(() => {
     if (requestAnimationFrameId.current) cancelAnimationFrame(requestAnimationFrameId.current);
-    isPlaying.current = false;
+    setIsPlaying(false);
   });
 
-  const startGame = useEffectEvent(async () => {
+  const startGame = useCallback(async () => {
     if (!ref.current) return;
 
     const afterTick = () => {
@@ -42,12 +37,13 @@ export const GameCanvas = ({ parsedMap }: GameCanvasProps) => {
     };
 
     gameRef.current = new Game(afterTick);
-    if (isPlaying.current) return;
+    if (isPlaying) return;
     await gameRef.current.start(ref.current);
-    isPlaying.current = true;
+    console.log(gameRef.current?.getUI());
+    setIsPlaying(true);
 
     gameRef.current.tick();
-  });
+  }, [isPlaying]);
 
   useEffect(() => {
     startGame();
@@ -55,10 +51,10 @@ export const GameCanvas = ({ parsedMap }: GameCanvasProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!gameRef.current) return;
-    gameRef.current.setParsedMap(parsedMap);
-  }, [parsedMap]);
-
-  return <canvas ref={ref} />;
+  return (
+    <>
+      <canvas ref={ref} />
+      <div className="absolute inset-0">{gameRef.current?.getUI()}</div>
+    </>
+  );
 };

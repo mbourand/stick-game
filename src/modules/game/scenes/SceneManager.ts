@@ -9,9 +9,7 @@ export class SceneManager {
     this.sceneStack[this.sceneStack.length - 1].onEntered();
   }
 
-  public goToScene(fromScene: Scene, toScene: Scene) {
-    if (fromScene !== this.sceneStack[this.sceneStack.length - 1]) return;
-
+  public goToScene(toScene: Scene) {
     this.sceneStack[this.sceneStack.length - 1].onBeforeExit();
     this.sceneStack.pop();
     this.sceneStack.push(toScene);
@@ -36,6 +34,10 @@ export class SceneManager {
     for (const scene of this.sceneStack) {
       scene.render(canvas, ctx);
     }
+  }
+
+  public getViewsComponents() {
+    return this.sceneStack.map((scene) => scene.getViewModel()?.getView());
   }
 
   public clearScenes() {

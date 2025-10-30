@@ -1,5 +1,4 @@
-import type { ParsedMap } from "../osu/convert/OsuConverter";
-import { GameplayScene } from "./scenes/GameplayScene";
+import { BeatmapSelectionModel } from "./scenes/BeatmapSelection/BeatmapSelectionModel";
 import { SceneManager } from "./scenes/SceneManager";
 
 export class Game {
@@ -22,6 +21,7 @@ export class Game {
     this.canvas = canvas;
     this.started = true;
     this.lastFrameTime = performance.now();
+    this.sceneManager.pushScene(new BeatmapSelectionModel(this.sceneManager));
   }
 
   public tick() {
@@ -49,8 +49,7 @@ export class Game {
     this.sceneManager.render(this.canvas, ctx);
   }
 
-  public setParsedMap(parsedMap: ParsedMap) {
-    this.sceneManager.clearScenes();
-    this.sceneManager.pushScene(new GameplayScene(this.sceneManager, parsedMap));
+  public getUI() {
+    return this.sceneManager.getViewsComponents();
   }
 }

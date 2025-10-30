@@ -1,10 +1,8 @@
 import { GameCanvas } from "./modules/game/components/GameCanvas";
 import "./modules/fonts/constants";
 import { useEffect, useMemo, useState } from "react";
-import { type ParsedMap } from "./modules/osu/convert/OsuConverter";
 import { GamepadMapping } from "./modules/gamepad/mapping/GamepadMapping";
 import { Settings } from "./modules/settings/Settings";
-import { MapPicker } from "./routes/home/components/MapPicker";
 
 const debounce = <T extends (...args: never[]) => void>(func: T, wait: number): T => {
   let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -63,9 +61,6 @@ const SettingSlider = ({
 };
 
 function App() {
-  const [parsedMap, setParsedMap] = useState<ParsedMap | undefined>(undefined);
-  const [playingMap, setPlayingMap] = useState<ParsedMap | undefined>(undefined);
-
   const [wasMappingDone, setWasMappingDone] = useState<boolean>(false);
   const [isGamepadMappingVisible, setIsGamepadMappingVisible] = useState<boolean>(false);
 
@@ -90,26 +85,10 @@ function App() {
 
   return (
     <div>
-      <div className="absolute top-0 left-0 -z-1">{playingMap && <GameCanvas parsedMap={playingMap} />}</div>
+      <div className="absolute top-0 left-0 -z-1">
+        <GameCanvas />
+      </div>
       <div className="flex flex-row gap-4 items-center">
-        <MapPicker
-          onMapPicked={(map) => {
-            setParsedMap(map);
-          }}
-        />
-        <button
-          className="p-2 bg-white/20 hover:bg-white/50 active:bg-white/80 text-white transition-all"
-          onClick={() => {
-            if (parsedMap) {
-              setTimeout(() => {
-                // Destructure to force re-render and allow replaying the same map
-                setPlayingMap({ ...parsedMap });
-              }, 1000);
-            }
-          }}
-        >
-          Play
-        </button>
         <SettingSlider
           name="Scroll Duration"
           defaultValue={Settings.getSettings().scrollDuration}

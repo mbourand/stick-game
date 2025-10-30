@@ -15,8 +15,27 @@ export class Gamepad {
     const gamepad = navigator.getGamepads()[0];
     if (!gamepad) return 0;
     const axisMapping = this.mapping[axisKind];
+
+    const otherStickAxisKind = (() => {
+      switch (axisKind) {
+        case GamepadAxisKind.LeftStickX:
+          return GamepadAxisKind.LeftStickY;
+        case GamepadAxisKind.LeftStickY:
+          return GamepadAxisKind.LeftStickX;
+        case GamepadAxisKind.RightStickX:
+          return GamepadAxisKind.RightStickY;
+        case GamepadAxisKind.RightStickY:
+          return GamepadAxisKind.RightStickX;
+      }
+    })();
+    const otherAxisMapping = this.mapping[otherStickAxisKind];
+
     const value = (gamepad.axes[axisMapping.index] || 0) * sensitivity;
-    if (Math.abs(value) < deadzone) return 0;
+    const otherValue = gamepad.axes[otherAxisMapping.index] || 0;
+
+    const isLockedInDeadzone = value * value + otherValue * otherValue < deadzone ** 2;
+
+    if (isLockedInDeadzone) return 0;
     return axisMapping.inverted ? -value : value;
   }
 

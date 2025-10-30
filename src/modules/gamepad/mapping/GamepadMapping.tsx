@@ -113,7 +113,7 @@ export const GamepadMapping = ({ onCompleted }: GamepadMappingProps) => {
   }, [MAPPING_STEPS.length, currentStep, currentStepIndex, detectedAxis, onCompleted]);
 
   return (
-    <Modal isVisible={true}>
+    <Modal isVisible={true} close={() => {}}>
       <p>
         {currentStepIndex + 1} / {MAPPING_STEPS.length}
       </p>

@@ -20,7 +20,7 @@ export const DEFAULT_SETTINGS: SettingsListType = {
 };
 
 export class Settings {
-  private static settings = DEFAULT_SETTINGS;
+  private static settings = Settings.loadSettings();
 
   private static eventManager = new EventManager();
 
@@ -37,14 +37,11 @@ export class Settings {
 
   public static loadSettings() {
     const savedSettings = localStorage.getItem("settings");
-    if (savedSettings) {
-      try {
-        const defaultSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) };
-        localStorage.setItem("settings", JSON.stringify(defaultSettings));
-        return defaultSettings;
-      } catch {
-        return;
-      }
+    if (!savedSettings) return DEFAULT_SETTINGS;
+    try {
+      return JSON.parse(savedSettings) as SettingsListType;
+    } catch {
+      return DEFAULT_SETTINGS;
     }
   }
 

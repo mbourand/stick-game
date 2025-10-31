@@ -1,0 +1,15 @@
+{
+  "conventionalCommits.scopes": [
+    "map",
+    "gamepad",
+    "judgement",
+    "fx",
+    "hold-notes",
+    "vizualizer",
+    "settings",
+    "convert",
+    "map-selection",
+    "engine"
+  ],
+  "typescript.tsdk": "node_modules\\typescript\\lib"
+}

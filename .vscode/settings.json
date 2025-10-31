@@ -9,7 +9,8 @@
     "settings",
     "convert",
     "map-selection",
-    "engine"
+    "engine",
+    "ui"
   ],
   "typescript.tsdk": "node_modules\\typescript\\lib"
 }

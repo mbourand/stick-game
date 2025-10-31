@@ -1,7 +1,13 @@
 {
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
   "files": [],
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    {
+      "path": "./apps/front-e2e"
+    },
+    {
+      "path": "./apps/front"
+    }
   ]
 }

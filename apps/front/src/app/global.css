@@ -1,3 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@font-face {
+  font-family: Rostex;
+  src: url("/Rostex-Regular.ttf") format("truetype");
+}

@@ -11,7 +11,7 @@ export class Gamepad {
     this.mapping = mapping;
   }
 
-  public getAxisValue(axisKind: GamepadAxisKind, sensitivity: number = 1, deadzone = 0.02): number {
+  public getAxisValue(axisKind: GamepadAxisKind, sensitivity = 1, deadzone = 0.02): number {
     const gamepad = navigator.getGamepads()[0];
     if (!gamepad) return 0;
     const axisMapping = this.mapping[axisKind];
@@ -28,6 +28,7 @@ export class Gamepad {
           return GamepadAxisKind.RightStickX;
       }
     })();
+
     const otherAxisMapping = this.mapping[otherStickAxisKind];
 
     const value = (gamepad.axes[axisMapping.index] || 0) * sensitivity;

@@ -10,7 +10,9 @@
     "convert",
     "map-selection",
     "engine",
-    "ui"
+    "ui",
+    "types",
+    "commits"
   ],
   "typescript.tsdk": "node_modules\\typescript\\lib"
 }

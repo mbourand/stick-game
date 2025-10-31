@@ -62,10 +62,15 @@ export class GameplayScene extends Scene {
     this.beatmapStarted = true;
   }
 
-  public onBeforeExit(): void {
+  public async onBeforeExit() {
     this.offFunctions.forEach((off) => off());
     this.offFunctions = [];
     AudioManager.stopSoundById("beatmap_audio");
+    this.beatmapStarted = false;
+  }
+
+  public onDestroy(): void {
+    return;
   }
 
   public update(deltaTime: number): void {

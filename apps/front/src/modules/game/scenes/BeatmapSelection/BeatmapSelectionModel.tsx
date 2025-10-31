@@ -6,6 +6,7 @@ import { SceneManager } from "@/modules/game/scenes/SceneManager";
 
 export class BeatmapSelectionModel extends Scene {
   private viewModel: BeatmapSelectionViewModel;
+  private lastGameplayScene: GameplayScene | null = null;
 
   constructor(sceneManager: SceneManager) {
     super(sceneManager);
@@ -15,7 +16,12 @@ export class BeatmapSelectionModel extends Scene {
   public onEntered(): void | Promise<void> {
     return;
   }
+
   public onBeforeExit(): void | Promise<void> {
+    return;
+  }
+
+  public onDestroy(): void | Promise<void> {
     return;
   }
 
@@ -28,7 +34,11 @@ export class BeatmapSelectionModel extends Scene {
   }
 
   public playMap(selectedMap: ParsedMap) {
-    this.sceneManager.goToScene(new GameplayScene(this.sceneManager, selectedMap));
+    this.lastGameplayScene?.remove();
+    const gameplayScene = new GameplayScene(this.sceneManager, selectedMap);
+    this.sceneManager.pushScene(gameplayScene);
+    this.lastGameplayScene = gameplayScene;
+    console.log(this.sceneManager);
   }
 
   public getViewModel() {

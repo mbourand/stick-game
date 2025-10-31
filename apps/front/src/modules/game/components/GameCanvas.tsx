@@ -39,7 +39,6 @@ export const GameCanvas = () => {
     gameRef.current = new Game(afterTick);
     if (isPlaying) return;
     await gameRef.current.start(ref.current);
-    console.log(gameRef.current?.getUI());
     setIsPlaying(true);
 
     gameRef.current.tick();

@@ -45,4 +45,16 @@ export class SceneManager {
       this.popScene();
     }
   }
+
+  public removeScene(scene: Scene) {
+    const index = this.sceneStack.indexOf(scene);
+    if (index === -1) return;
+
+    scene.onDestroy();
+    if (index === this.sceneStack.length - 1) {
+      scene.onBeforeExit();
+    }
+    this.sceneStack.splice(index, 1);
+    this.sceneStack[this.sceneStack.length - 1]?.onEntered();
+  }
 }

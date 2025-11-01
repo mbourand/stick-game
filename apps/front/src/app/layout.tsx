@@ -1,7 +1,7 @@
 import "./global.css";
 
 export const metadata = {
-  title: "Welcome to stick-game",
+  title: "Welcome to Tau",
   description: "",
 };
 

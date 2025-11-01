@@ -13,8 +13,8 @@ async function bootstrap() {
 
   // 🔧 Swagger configuration
   const config = new DocumentBuilder()
-    .setTitle("Stick Game API")
-    .setDescription("API documentation for the Stick Game backend")
+    .setTitle("Tau API")
+    .setDescription("API documentation for the Tau backend")
     .setVersion("1.0.0")
     .build();
 

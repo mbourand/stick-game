@@ -1,5 +1,5 @@
 {
-  "name": "@stick-game/back",
+  "name": "@tau/back",
   "version": "0.0.1",
   "private": true,
   "nx": {
@@ -63,15 +63,15 @@
           "build"
         ],
         "options": {
-          "buildTarget": "@stick-game/back:build",
+          "buildTarget": "@tau/back:build",
           "runBuildTargetDependencies": false
         },
         "configurations": {
           "development": {
-            "buildTarget": "@stick-game/back:build:development"
+            "buildTarget": "@tau/back:build:development"
           },
           "production": {
-            "buildTarget": "@stick-game/back:build:production"
+            "buildTarget": "@tau/back:build:production"
           }
         }
       },

@@ -28,58 +28,6 @@ export const MapPicker = ({ onMapPicked }: MapPickerType) => {
 
   return (
     <>
-      <button
-        className="p-2 bg-white/20 hover:bg-white/50 active:bg-white/80 text-white transition-all"
-        onClick={() => dbPickerRef.current?.click()}
-      >
-        Import osu!.db
-      </button>
-      <button
-        className="p-2 bg-white/20 hover:bg-white/50 active:bg-white/80 text-white transition-all"
-        onClick={() => songsPickerRef.current?.click()}
-      >
-        Import osu! songs folder
-      </button>
-      <input
-        ref={dbPickerRef}
-        className="hidden"
-        id="db-picker"
-        type="file"
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-
-          const content = await file.arrayBuffer();
-          const osuDB = new OsuDBParser(new Uint8Array(content));
-
-          const db = osuDB.parseOsuDBData();
-          console.log("Parsed osu!db:", db);
-          setOsuDb(db);
-        }}
-      />
-      <FolderPicker
-        ref={songsPickerRef}
-        className="hidden"
-        type="file"
-        id="file-picker"
-        multiple
-        onChange={async (e) => {
-          const files = e.target.files;
-          if (!files) {
-            return;
-          }
-
-          console.log(files[0].webkitRelativePath);
-          setSongsFiles(
-            new Map(
-              Array.from(files).map((file) => [
-                file.webkitRelativePath.slice(file.webkitRelativePath.indexOf("/") + 1),
-                file,
-              ]),
-            ),
-          );
-        }}
-      />
       <select
         className="bg-white text-black max-w-[250px]"
         defaultValue="select_map"

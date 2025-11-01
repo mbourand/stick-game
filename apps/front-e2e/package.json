@@ -1,10 +1,10 @@
 {
-  "name": "@stick-game/front-e2e",
+  "name": "@tau/front-e2e",
   "version": "0.0.1",
   "private": true,
   "nx": {
     "implicitDependencies": [
-      "@stick-game/front"
+      "@tau/front"
     ]
   }
 }

@@ -4,9 +4,9 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug @stick-game/back with Nx",
+      "name": "Debug @tau/back with Nx",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["nx", "serve", "@stick-game/back"],
+      "runtimeArgs": ["nx", "serve", "@tau/back"],
       "env": {
         "NODE_OPTIONS": "--inspect=9229"
       },

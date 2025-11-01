@@ -12,7 +12,8 @@
     "engine",
     "ui",
     "types",
-    "commits"
+    "commits",
+    "env"
   ],
   "typescript.tsdk": "node_modules\\typescript\\lib"
 }

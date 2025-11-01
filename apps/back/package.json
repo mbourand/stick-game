@@ -79,18 +79,35 @@
         "options": {
           "passWithNoTests": true
         }
+      },
+      "gen-types": {
+        "executor": "nx:run-commands",
+        "options": {
+          "cwd": "apps/back",
+          "command": "openapi-ts -i ./osu-api.yml -o ./src/osu/lib/generated"
+        }
       }
     }
   },
   "dependencies": {
+    "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
+    "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/swagger": "^11.2.1",
+    "axios": "^1.13.1",
+    "nestjs-zod": "^5.0.1",
+    "passport": "^0.7.0",
+    "passport-oauth2": "^1.8.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@nestjs/testing": "^11.0.0"
+    "@nestjs/testing": "^11.0.0",
+    "@types/passport-oauth2": "^1.8.0",
+    "swagger-ui-express": "^5.0.1"
   }
 }

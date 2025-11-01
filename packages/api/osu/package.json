@@ -1,0 +1,49 @@
+{
+  "name": "@stick-game/osu",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "@stick-game/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "nx": {
+    "sourceRoot": "packages/api/osu/src",
+    "targets": {
+      "build": {
+        "executor": "@nx/js:swc",
+        "outputs": [
+          "{options.outputPath}"
+        ],
+        "options": {
+          "outputPath": "packages/api/osu/dist",
+          "main": "packages/api/osu/src/index.ts",
+          "tsConfig": "packages/api/osu/tsconfig.lib.json",
+          "skipTypeCheck": true,
+          "stripLeadingPaths": true
+        }
+      },
+      "gen-types": {
+        "executor": "nx:run-commands",
+        "options": {
+          "cwd": "packages/api/osu",
+          "command": "openapi-ts -i ./osu-api.yml -o ./src/lib/generated"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "@swc/helpers": "~0.5.11"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "0.86.11"
+  }
+}

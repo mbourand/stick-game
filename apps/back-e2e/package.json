@@ -1,10 +1,10 @@
 {
-  "name": "@stick-game/back-e2e",
+  "name": "@tau/back-e2e",
   "version": "0.0.1",
   "private": true,
   "nx": {
     "implicitDependencies": [
-      "@stick-game/back"
+      "@tau/back"
     ],
     "targets": {
       "e2e": {
@@ -17,8 +17,8 @@
           "passWithNoTests": true
         },
         "dependsOn": [
-          "@stick-game/back:build",
-          "@stick-game/back:serve"
+          "@tau/back:build",
+          "@tau/back:serve"
         ]
       }
     }

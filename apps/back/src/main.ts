@@ -1,19 +1,40 @@
-/**
- * This is not a production server yet!
- * This is only a minimal backend to get started.
- */
-
 import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app/app.module";
+
+import { SERVER_CONFIG } from "./config/server.config";
+import { cleanupOpenApiDoc } from "nestjs-zod";
+import { writeFileSync } from "fs";
+import path from "path";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // 🔧 Swagger configuration
+  const config = new DocumentBuilder()
+    .setTitle("Stick Game API")
+    .setDescription("API documentation for the Stick Game backend")
+    .setVersion("1.0.0")
+    .build();
+
+  // 🌐 Server setup
   const globalPrefix = "api";
   app.setGlobalPrefix(globalPrefix);
-  const port = process.env.PORT || 3000;
+
+  const document = cleanupOpenApiDoc(SwaggerModule.createDocument(app, config));
+  SwaggerModule.setup("docs", app, document);
+  if (process.env.NODE_ENV === "development") {
+    const openApiSpecPath = path.join(__dirname, "./assets/openapi.json");
+    Logger.log(`Writing OpenAPI spec to ${openApiSpecPath}`);
+    writeFileSync(openApiSpecPath, JSON.stringify(document));
+  }
+
+  const port = SERVER_CONFIG.PORT;
   await app.listen(port);
+
   Logger.log(`🚀 Application is running on: http://localhost:${port}/${globalPrefix}`);
+  Logger.log(`📚 Swagger is running on: http://localhost:${port}/${globalPrefix}/docs`);
 }
 
 bootstrap();

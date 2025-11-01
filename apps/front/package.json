@@ -3,8 +3,13 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
+    "@tanstack/react-query": "^5.90.6",
     "next": "~15.2.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@tanstack/eslint-plugin-query": "^5.91.2"
   }
 }

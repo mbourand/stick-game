@@ -17,6 +17,9 @@
     },
     {
       "path": "./packages/api/osu"
+    },
+    {
+      "path": "./packages/api/back-types"
     }
   ]
 }

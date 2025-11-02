@@ -6,7 +6,9 @@ export const zBeatmapsetsSearchResponseDtoOutput = z.object({
     beatmapsets: z.array(z.object({
         beatmaps: z.array(z.object({
             url: z.string(),
-            mode: z.string()
+            mode: z.string(),
+            difficulty_rating: z.number(),
+            id: z.number()
         })),
         artist: z.string(),
         title: z.string(),
@@ -20,7 +22,7 @@ export const zOsuControllerBeatmapsetsSearchData = z.object({
     body: z.optional(z.never()),
     path: z.optional(z.never()),
     query: z.optional(z.object({
-        q: z.optional(z.string().min(3).max(100)).default('')
+        q: z.optional(z.string().max(100)).default('')
     }))
 });
 

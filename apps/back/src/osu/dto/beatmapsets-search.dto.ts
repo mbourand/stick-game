@@ -7,7 +7,7 @@ export const BeatmapsetsSearchResponseSchema = z.object({
 });
 
 export const BeatmapsetsSearchQueryParamsSchema = z.object({
-  q: z.string().min(3).max(100).optional().default(""),
+  q: z.string().max(100).optional().default(""),
 });
 
 export class BeatmapsetsSearchResponseDto extends createZodDto(BeatmapsetsSearchResponseSchema) {}

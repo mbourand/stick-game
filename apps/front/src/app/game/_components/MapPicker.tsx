@@ -1,79 +1,24 @@
-import { useMemo, useRef, useState } from "react";
+import { useState } from "react";
 import { convertFromOsu, type ParsedMap } from "../../../modules/osu/convert/OsuConverter";
-import { FolderPicker } from "../../../components/FolderPicker";
-import { OsuDBParser, type OsuDBType } from "../../../modules/osu/osu-db/OsuDBParser";
+import { BeatmapDownloader } from "@/app/game/_components/BeatmapDownloader";
 
 type MapPickerType = {
   onMapPicked: (parsedMap: ParsedMap) => void;
 };
 
 export const MapPicker = ({ onMapPicked }: MapPickerType) => {
-  const [osuDb, setOsuDb] = useState<OsuDBType | null>(null);
-  const [songsFiles, setSongsFiles] = useState<Map<string, File>>(new Map());
-
-  const dbPickerRef = useRef<HTMLInputElement | null>(null);
-  const songsPickerRef = useRef<HTMLInputElement | null>(null);
-
-  const displayedBeatmaps = useMemo(() => {
-    return osuDb?.beatmaps
-      .filter((beatmap) => beatmap.gameplayMode === 0)
-      .sort((a, b) => {
-        const titleA = a.songTitle.toLowerCase();
-        const titleB = b.songTitle.toLowerCase();
-        if (titleA < titleB) return -1;
-        if (titleA > titleB) return 1;
-        return 0;
-      });
-  }, [osuDb]);
+  const [isBeatmapDownloaderVisible, setIsBeatmapDownloaderVisible] = useState(false);
 
   return (
     <>
-      <select
-        className="bg-white text-black max-w-[250px]"
-        defaultValue="select_map"
-        id="map-picker"
-        onChange={async (e) => {
-          const index = Number(e.target.value);
-          const isOsuMap = !isNaN(index);
-          if (isOsuMap) {
-            if (!displayedBeatmaps) return;
-            const map = displayedBeatmaps[index];
-            const mapFile = songsFiles.get(map.folderName + "/" + map.osuFilename);
-
-            if (!mapFile) {
-              console.error("Map file not found:", map.folderName + "/" + map.osuFilename);
-              return;
-            }
-
-            const text = await mapFile.text();
-            const parsedMap = convertFromOsu(text, (relativePath) => {
-              const file = songsFiles.get(map.folderName + "/" + relativePath);
-              if (!file) {
-                console.warn("File not found for path:", relativePath);
-                return relativePath;
-              }
-
-              return URL.createObjectURL(file);
-            });
-            onMapPicked(parsedMap);
-            return;
-          }
-
-          try {
-            const mapUrl = e.target.value;
-            const baseUrl = mapUrl.slice(0, mapUrl.lastIndexOf("/"));
-            const response = await fetch(mapUrl);
-            if (!response.ok) throw new Error("Failed to load map file");
-            const mapData = await response.text();
-            const parsedMap = convertFromOsu(mapData, (path) => baseUrl + "/" + path);
-            onMapPicked(parsedMap);
-            return;
-          } catch (error) {
-            console.error("Failed to fetch map:", error);
-            return;
-          }
-        }}
+      <button
+        className="p-2 bg-white/20 hover:bg-white/50 active:bg-white/80 text-white transition-all"
+        onClick={() => setIsBeatmapDownloaderVisible(true)}
       >
+        Download beatmaps
+      </button>
+      <BeatmapDownloader isVisible={isBeatmapDownloaderVisible} onClose={() => setIsBeatmapDownloaderVisible(false)} />
+      <select className="bg-white text-black max-w-[250px]" defaultValue="select_map" id="map-picker">
         <option value="select_map" disabled>
           Select a beatmap
         </option>
@@ -114,11 +59,6 @@ export const MapPicker = ({ onMapPicked }: MapPickerType) => {
         <option value="/machinegun_poem_doll/extra.osu">Machinegun poem doll - Extra</option>
         <option value="/through_the_fire_and_flames/extra.osu">Through the fire and flames - Extra</option>
         <option value="/symphony_of_the_night/extra.osu">Symphony of the night - Extra</option>
-        {displayedBeatmaps?.map((map, index) => (
-          <option key={index} value={index}>
-            {map.songTitle} [{map.difficultyName}]
-          </option>
-        ))}
       </select>
     </>
   );

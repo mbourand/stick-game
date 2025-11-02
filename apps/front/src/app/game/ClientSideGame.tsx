@@ -3,18 +3,8 @@
 import { GameCanvas } from "@/modules/game/components/GameCanvas";
 import { GamepadMapping } from "@/modules/gamepad/mapping/GamepadMapping";
 import { Settings } from "@/modules/settings/Settings";
+import { debounce } from "@/modules/utils/debounce";
 import { useEffect, useMemo, useState } from "react";
-
-const debounce = <T extends (...args: never[]) => void>(func: T, wait: number): T => {
-  let timeout: ReturnType<typeof setTimeout> | null = null;
-
-  return function (...args: never[]) {
-    if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(() => {
-      func(...args);
-    }, wait);
-  } as T;
-};
 
 const SettingSlider = ({
   name,

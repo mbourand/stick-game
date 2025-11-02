@@ -75,7 +75,7 @@ export const ClientSideGame = () => {
   }, [wasMappingDone]);
 
   return (
-    <div>
+    <>
       <GameCanvas />
       <div className="absolute top-0 right-0 flex flex-row gap-4 items-center z-10">
         <SettingSlider
@@ -124,6 +124,6 @@ export const ClientSideGame = () => {
           }}
         />
       )}
-    </div>
+    </>
   );
 };

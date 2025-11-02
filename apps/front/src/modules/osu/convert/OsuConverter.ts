@@ -17,6 +17,9 @@ export type TimingPoint = {
 
 export type ParsedMap = {
   title: string;
+  artist: string;
+  creator: string;
+  difficulty: number;
   notes: ParsedNote[];
   backgroundUrl: string;
   backgroundOffsetX: number;
@@ -70,7 +73,7 @@ const parseHitObjects = (lines: string[], timingPoints: TimingPoint[], baseSlide
       const previousNote = notes.length === 0 ? undefined : notes[notes.length - 1];
       const angleDiff = previousNote ? Math.abs(angle - previousNote.angle) : 0;
 
-      if (!previousNote) return Math.random() < 0.5 ? NoteColor.Red : NoteColor.Blue;
+      if (!previousNote) return NoteColor.Red;
       if (angleDiff < Math.PI / 9) return previousNote.color;
       return previousNote.color === NoteColor.Red ? NoteColor.Blue : NoteColor.Red;
     })();
@@ -116,22 +119,24 @@ const parseGeneral = (lines: string[]) => {
 
 export const parseMetadata = (lines: string[]) => {
   let title: string | undefined = undefined;
+  let artist: string | undefined = undefined;
+  let creator: string | undefined = undefined;
 
   for (const line of lines) {
     const parts = line.split(":");
     const key = parts[0].trim();
     const value = parts[1].trim();
 
-    if (key === "Title") {
-      title = value;
-    }
+    if (key === "Title") title = value;
+    else if (key === "Artist") artist = value;
+    else if (key === "Creator") creator = value;
   }
 
-  if (title == null) {
+  if (title == null || artist == null || creator == null) {
     throw new Error("Invalid osu! map metadata section");
   }
 
-  return { title };
+  return { title, artist, creator };
 };
 
 export const parseDifficulty = (lines: string[]) => {
@@ -205,6 +210,32 @@ const parseEventLines = (lines: string[]) => {
   return { backgroundFilePath };
 };
 
+const computeDifficultyRating = (notes: ParsedNote[]): number => {
+  const diffData = {
+    [NoteColor.Red]: {
+      currentAngle: 0,
+      currentHitTime: 0,
+    },
+    [NoteColor.Blue]: {
+      currentAngle: 0,
+      currentHitTime: 0,
+    },
+  };
+
+  let speedValuesSum = 0;
+
+  for (const note of notes) {
+    const hand = diffData[note.color];
+    const toAngle = note.angle;
+    const angleDiff = Math.abs(toAngle - hand.currentAngle);
+    speedValuesSum += angleDiff / Math.max(1, note.hitTime - hand.currentHitTime);
+    hand.currentHitTime = note.hitTime + (note.holdDuration ?? 0);
+    hand.currentAngle = toAngle;
+  }
+
+  return Math.round((speedValuesSum / notes.length) * 100000) / 100;
+};
+
 export const convertFromOsu = (
   mapContent: string,
   makeAbsoluteUrlFromRelativePath: (path: string) => string,
@@ -220,6 +251,8 @@ export const convertFromOsu = (
   let audioRelativePath: string | undefined = undefined;
   let notes: ParsedNote[] | undefined = undefined;
   let title: string | undefined = undefined;
+  let artist: string | undefined = undefined;
+  let creator: string | undefined = undefined;
   let baseSliderMultiplier: number | undefined = undefined;
   let timingPoints: TimingPoint[] | undefined = undefined;
   let backgroundRelativePath: string | undefined = undefined;
@@ -243,6 +276,8 @@ export const convertFromOsu = (
       const metadataLines = lines.slice(categoryLineIndices[i] + 1, nextCategoryLine);
       const metadataResult = parseMetadata(metadataLines);
       title = metadataResult.title;
+      artist = metadataResult.artist;
+      creator = metadataResult.creator;
       continue;
     }
 
@@ -286,6 +321,8 @@ export const convertFromOsu = (
     audioLeadIn == null ||
     notes == null ||
     title == null ||
+    artist == null ||
+    creator == null ||
     baseSliderMultiplier == null ||
     timingPoints == null ||
     timingPoints.length === 0 ||
@@ -307,6 +344,9 @@ export const convertFromOsu = (
 
   return {
     title,
+    artist,
+    creator,
+    difficulty: computeDifficultyRating(notes),
     audioUrl: makeAbsoluteUrlFromRelativePath(audioRelativePath),
     mapStartDelayAfterAudioStart: audioLeadIn,
     notes,

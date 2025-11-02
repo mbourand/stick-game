@@ -15,7 +15,8 @@
     "commits",
     "env",
     "scripts",
-    "build"
+    "build",
+    "cors"
   ],
   "typescript.tsdk": "node_modules\\typescript\\lib"
 }

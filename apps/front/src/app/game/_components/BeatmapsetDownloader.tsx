@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import JSZip from "jszip";
 import { convertFromOsu } from "@/modules/osu/convert/OsuConverter";
 import { db } from "@/modules/db/db";
-import { fetchBackend } from "@/modules/fetching/back/fetchBackend";
 import { BeatmapsetCard } from "@/app/game/_components/BeatmapCard";
 
 type BeatmapsetDownloaderProps = {
@@ -29,10 +28,15 @@ export const BeatmapsetDownloader = ({ isVisible, onClose }: BeatmapsetDownloade
   return (
     <Modal isVisible={isVisible} onClose={onClose} rounded={false}>
       <h1 className="text-2xl bold">Download beatmaps</h1>
-      <input type="text" className="bg-white text-black" onChange={(e) => debouncedSetQuery(e.target.value)} />
-      {searchResults.isLoading && <p>Loading...</p>}
+      <input
+        type="text"
+        className="bg-white text-black w-[500px] mt-4"
+        onChange={(e) => debouncedSetQuery(e.target.value)}
+        placeholder="Search... (ex. Brain Power)"
+      />
+      {searchResults.isLoading && <p className="mt-4">Loading...</p>}
       {searchResults.data && (
-        <div className="grid grid-cols-2 gap-y-4 gap-x-4 w-[900px] max-h-screen overflow-y-scroll">
+        <div className="grid grid-cols-2 gap-y-4 gap-x-4 w-[900px] max-h-screen overflow-y-auto mt-8">
           {searchResults.data.beatmapsets.map((beatmapset) => (
             <BeatmapsetCard
               key={beatmapset.id}

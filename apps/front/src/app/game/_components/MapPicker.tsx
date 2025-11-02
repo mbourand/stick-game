@@ -106,7 +106,7 @@ export const MapPicker = ({ onMapPicked }: MapPickerType) => {
         {displayedBeatmaps?.map((beatmap) => {
           return (
             <option key={beatmap.id} value={beatmap.id}>
-              {beatmap.title} - {beatmap.artist} [{beatmap.difficulty}]
+              {beatmap.title} - {beatmap.artist} [{beatmap.difficulty}*]
             </option>
           );
         })}

@@ -22,6 +22,10 @@ async function bootstrap() {
   const globalPrefix = "api";
   app.setGlobalPrefix(globalPrefix);
 
+  app.enableCors({
+    origin: process.env.NODE_ENV === "development" ? "*" : undefined,
+  });
+
   const document = cleanupOpenApiDoc(SwaggerModule.createDocument(app, config));
   SwaggerModule.setup("docs", app, document);
   if (process.env.NODE_ENV === "development") {

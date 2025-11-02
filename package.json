@@ -3,7 +3,10 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "generate:api-types": "orval"
+    "front:build:production": "nx build front",
+    "front:start:production": "nx start front",
+    "back:build:production": "nx build back",
+    "back:start:production": "node apps/back/dist/main.js"
   },
   "private": true,
   "dependencies": {

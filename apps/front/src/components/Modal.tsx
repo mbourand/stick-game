@@ -4,7 +4,7 @@ import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../modules/game/utils/constants";
 type ModalProps = {
   isVisible: boolean;
   children: ReactNode;
-  onClose: () => void;
+  onClose?: () => void;
   rounded?: boolean;
 };
 

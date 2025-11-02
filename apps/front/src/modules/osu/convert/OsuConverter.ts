@@ -12,7 +12,7 @@ export type ParsedNote = {
 export type TimingPoint = {
   time: number;
   bpm: number;
-  sliderMultiplier?: number;
+  sliderMultiplier: number;
 };
 
 export type ParsedMap = {
@@ -38,29 +38,38 @@ const OSU_FIELD_CENTER = {
   y: OSU_FIELD_HEIGHT / 2,
 } as const;
 
-const binarySearchTimingPoint = (timingPoints: TimingPoint[], time: number): TimingPoint => {
+const binarySearchEffectiveTimingPoint = (timingPoints: TimingPoint[], time: number): TimingPoint => {
+  if (timingPoints.length === 0) {
+    throw new Error("No timing points available");
+  }
+
+  // If the time is before the first timing point, use the first one
+  if (time < timingPoints[0].time) {
+    return timingPoints[0];
+  }
+
   let left = 0;
   let right = timingPoints.length - 1;
+  let result = timingPoints[0];
 
   while (left <= right) {
     const mid = Math.floor((left + right) / 2);
-    if (timingPoints[mid].time === time) {
-      return timingPoints[mid];
-    } else if (timingPoints[mid].time < time) {
+
+    if (timingPoints[mid].time <= time) {
+      result = timingPoints[mid];
       left = mid + 1;
     } else {
       right = mid - 1;
     }
   }
-  return timingPoints[Math.max(0, right)];
+
+  return result;
 };
 
 const parseHitObjects = (lines: string[], timingPoints: TimingPoint[], baseSliderMultiplier: number): ParsedNote[] => {
   const notes: ParsedNote[] = [];
 
   for (const line of lines) {
-    const timingPoint = binarySearchTimingPoint(timingPoints, 0);
-
     const parts = line.split(",");
     const x = parseInt(parts[0], 10);
     const y = parseInt(parts[1], 10);
@@ -68,6 +77,7 @@ const parseHitObjects = (lines: string[], timingPoints: TimingPoint[], baseSlide
     const angle = Math.atan2(y - OSU_FIELD_CENTER.y, x - OSU_FIELD_CENTER.x);
 
     const hitTime = parseInt(parts[2], 10);
+    const timingPoint = binarySearchEffectiveTimingPoint(timingPoints, hitTime);
 
     const color = (() => {
       const previousNote = notes.length === 0 ? undefined : notes[notes.length - 1];
@@ -85,9 +95,8 @@ const parseHitObjects = (lines: string[], timingPoints: TimingPoint[], baseSlide
     }
 
     const beatLength = 60000 / timingPoint.bpm;
-    const sv = timingPoint.sliderMultiplier ?? 1;
     const length = Number(parts[7]);
-    const holdDuration = (length / (baseSliderMultiplier * 100 * sv)) * beatLength;
+    const holdDuration = (length / (baseSliderMultiplier * 100 * timingPoint.sliderMultiplier)) * beatLength;
 
     notes.push({ hitTime, isHold, holdDuration, angle, color, effectiveBPMAtHitTime: timingPoint.bpm });
   }
@@ -171,10 +180,11 @@ const parseTimingPoints = (lines: string[]) => {
     if (!isInherited) {
       const beatLength = parseFloat(parts[1]);
       const bpm = beatLength > 0 ? 60000 / beatLength : 0;
-      timingPoints.push({ time, bpm });
+      timingPoints.push({ time, bpm, sliderMultiplier: 1 });
       lastBpm = bpm;
     } else {
       const svMultiplier = -100 / parseFloat(parts[1]);
+
       if (lastBpm) {
         timingPoints.push({
           time,

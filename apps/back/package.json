@@ -79,13 +79,6 @@
         "options": {
           "passWithNoTests": true
         }
-      },
-      "gen-types": {
-        "executor": "nx:run-commands",
-        "options": {
-          "cwd": "apps/back",
-          "command": "openapi-ts -i ./osu-api.yml -o ./src/osu/lib/generated"
-        }
       }
     }
   },

@@ -1,5 +1,5 @@
 import { fetchData, FetchDataParams } from "@/modules/fetching/fetcher";
-import { zOsuControllerBeatmapsetsSearchResponse, zOsuControllerBeatmapsetsSearchData } from "@tau/back-types";
+import { zOsuControllerBeatmapsetsSearchResponse, zOsuControllerBeatmapsetsSearchData } from "@tau/back-schemas";
 import { Env } from "@/modules/env/Env";
 
 const BACK_ROUTES = {

@@ -16,10 +16,10 @@
       "path": "./apps/back"
     },
     {
-      "path": "./packages/api/osu"
+      "path": "./packages/api-schemas/back-schemas"
     },
     {
-      "path": "./packages/api/back-types"
+      "path": "./packages/api-schemas/osu-schemas"
     }
   ]
 }

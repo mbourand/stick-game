@@ -36,7 +36,7 @@ const SettingSlider = ({
 
   return (
     <>
-      <span className="text-white">
+      <span className="text-white text-sm whitespace-nowrap">
         {name}: {value}
       </span>
       <input

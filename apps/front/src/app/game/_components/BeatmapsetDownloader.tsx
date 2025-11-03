@@ -34,7 +34,7 @@ export const BeatmapsetDownloader = ({ isVisible, onClose }: BeatmapsetDownloade
         onChange={(e) => debouncedSetQuery(e.target.value)}
         placeholder="Search... (ex. Brain Power)"
       />
-      {searchResults.isLoading && <p className="mt-4">Loading...</p>}
+      {searchResults.isLoading && <p className="mt-4">Loading beatmaps...</p>}
       {searchResults.data && (
         <div className="grid grid-cols-2 gap-y-4 gap-x-4 w-[900px] max-h-screen overflow-y-auto mt-8">
           {searchResults.data.beatmapsets.map((beatmapset) => (

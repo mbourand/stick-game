@@ -29,7 +29,8 @@
           "buildDepsName": "build-deps",
           "watchDepsName": "watch-deps"
         }
-      }
+      },
+      "exclude": ["packages/api-schemas/back-schemas/*", "packages/api-schemas/osu-schemas/*"]
     },
     {
       "plugin": "@nx/next/plugin",
@@ -70,6 +71,15 @@
         "buildDepsTargetName": "build-deps",
         "watchDepsTargetName": "watch-deps",
         "serveStaticTargetName": "serve-static"
+      }
+    },
+    {
+      "plugin": "@nx/js/typescript",
+      "include": ["packages/api-schemas/back-schemas/*", "packages/api-schemas/osu-schemas/*"],
+      "options": {
+        "typecheck": {
+          "targetName": "typecheck"
+        }
       }
     }
   ],

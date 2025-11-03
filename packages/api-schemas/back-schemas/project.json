@@ -1,0 +1,15 @@
+{
+  "name": "back-schemas",
+  "implicitDependencies": ["back"],
+  "targets": {
+    "gen-types": {
+      "executor": "{workspaceRoot}/tools/executors/generate-openapi-schemas:zod",
+      "inputs": ["{workspaceRoot}/apps/back/openapi.json"],
+      "outputs": ["{projectRoot}/src"],
+      "options": {
+        "specPath": "apps/back/openapi.json",
+        "outputPath": "libs/api-schemas/src/"
+      }
+    }
+  }
+}

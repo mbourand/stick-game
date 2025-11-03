@@ -81,6 +81,7 @@
   "workspaces": [
     "apps/*",
     "api",
-    "packages/api/*"
+    "packages/api/*",
+    "packages/api-schemas/*"
   ]
 }

@@ -1,5 +1,5 @@
 import z from "zod";
-import { zOsuControllerBeatmapsetsSearchResponse } from "@tau/back-types";
+import { zOsuControllerBeatmapsetsSearchResponse } from "@tau/back-schemas";
 import Image from "next/image";
 import { useState } from "react";
 

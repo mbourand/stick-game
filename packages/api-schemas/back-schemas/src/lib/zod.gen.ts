@@ -21,9 +21,9 @@ export const zBeatmapsetsSearchResponseDtoOutput = z.object({
 export const zOsuControllerBeatmapsetsSearchData = z.object({
     body: z.optional(z.never()),
     path: z.optional(z.never()),
-    query: z.object({
-        q: z.number()
-    })
+    query: z.optional(z.object({
+        q: z.optional(z.string().max(100)).default('')
+    }))
 });
 
 export const zOsuControllerBeatmapsetsSearchResponse = zBeatmapsetsSearchResponseDtoOutput;

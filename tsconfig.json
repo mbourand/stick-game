@@ -20,6 +20,9 @@
     },
     {
       "path": "./packages/api-schemas/osu-schemas"
+    },
+    {
+      "path": "./tools/generate-openapi-schemas"
     }
   ]
 }

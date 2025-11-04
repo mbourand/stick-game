@@ -29,7 +29,7 @@ async function bootstrap() {
   const document = cleanupOpenApiDoc(SwaggerModule.createDocument(app, config));
   SwaggerModule.setup("docs", app, document);
   if (process.env.NODE_ENV === "development") {
-    const openApiSpecPath = path.join(__dirname, "../openapi.json");
+    const openApiSpecPath = path.join(__dirname, "../../../packages/api-schemas/back-schemas/openapi.json");
     Logger.log(`Writing OpenAPI spec to ${openApiSpecPath}`);
     writeFileSync(openApiSpecPath, JSON.stringify(document));
   }

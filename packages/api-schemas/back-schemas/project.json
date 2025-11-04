@@ -4,10 +4,10 @@
   "targets": {
     "generate-openapi-schemas": {
       "executor": "@tau/generate-openapi-schemas:zod",
-      "inputs": ["{workspaceRoot}/apps/back/openapi.json"],
+      "inputs": ["{projectRoot}/openapi.json"],
       "outputs": ["{projectRoot}/src"],
       "options": {
-        "specPath": "{workspaceRoot}/apps/back/openapi.json",
+        "specPath": "{projectRoot}/openapi.json",
         "outputPath": "{workspaceRoot}/packages/api-schemas/back-schemas/src/lib"
       }
     }

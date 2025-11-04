@@ -1,11 +1,9 @@
-import { ExecutorContext } from "@nx/devkit";
-import { execSync } from "child_process";
+import { PromiseExecutor } from "@nx/devkit";
+import { ZodExecutorSchema } from "./schema";
 import * as fs from "fs";
+import { createClient } from "@hey-api/openapi-ts";
 
-export default async function runExecutor(
-  options: { specPath: string; outputPath: string },
-  _context: ExecutorContext,
-) {
+const runExecutor: PromiseExecutor<ZodExecutorSchema> = async (options) => {
   console.log(`🔄 Generating Zod schemas from ${options.specPath}...`);
 
   if (!fs.existsSync(options.specPath)) {
@@ -14,11 +12,17 @@ export default async function runExecutor(
   }
 
   try {
-    execSync(`openapi-ts -i ${options.specPath} -o ${options.outputPath}`, { stdio: "inherit" });
+    await createClient({
+      input: options.specPath,
+      output: options.outputPath,
+      plugins: ["zod"],
+    });
     console.log("✅ Zod schemas generated successfully!");
     return { success: true };
   } catch (e) {
     console.error("Error generating schemas", e);
     return { success: false };
   }
-}
+};
+
+export default runExecutor;

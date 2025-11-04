@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/schema",
+  "version": 2,
+  "title": "Zod executor",
+  "description": "",
+  "type": "object",
+  "properties": {
+    "specPath": {
+      "type": "string",
+      "description": "Path to the OpenAPI specification file"
+    },
+    "outputPath": {
+      "type": "string",
+      "description": "Path to output the generated Zod schemas"
+    }
+  },
+  "required": []
+}

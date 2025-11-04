@@ -1,0 +1,9 @@
+{
+  "executors": {
+    "zod": {
+      "implementation": "./dist/executors/zod/zod",
+      "schema": "./dist/executors/zod/schema.json",
+      "description": "zod executor"
+    }
+  }
+}

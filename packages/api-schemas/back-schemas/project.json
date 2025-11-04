@@ -1,14 +1,14 @@
 {
-  "name": "back-schemas",
-  "implicitDependencies": ["back"],
+  "name": "@tau/back-schemas",
+  "implicitDependencies": ["@tau/back"],
   "targets": {
-    "gen-types": {
-      "executor": "{workspaceRoot}/tools/executors/generate-openapi-schemas:zod",
+    "generate-openapi-schemas": {
+      "executor": "@tau/generate-openapi-schemas:zod",
       "inputs": ["{workspaceRoot}/apps/back/openapi.json"],
       "outputs": ["{projectRoot}/src"],
       "options": {
-        "specPath": "apps/back/openapi.json",
-        "outputPath": "libs/api-schemas/src/"
+        "specPath": "{workspaceRoot}/apps/back/openapi.json",
+        "outputPath": "{workspaceRoot}/packages/api-schemas/back-schemas/src/lib"
       }
     }
   }

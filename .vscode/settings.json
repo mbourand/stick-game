@@ -20,5 +20,13 @@
     "wording"
   ],
   "typescript.tsdk": "node_modules\\typescript\\lib",
-  "eslint.validate": ["json"]
+  "eslint.validate": [
+    "json"
+  ],
+  "cSpell.words": [
+    "beatmap",
+    "beatmapsets",
+    "Beatmapsets",
+    "nestjs"
+  ]
 }

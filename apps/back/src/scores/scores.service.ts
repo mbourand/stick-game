@@ -30,12 +30,9 @@ export class ScoresService {
 
     const newScore = await this.prisma.score.upsert({
       where: {
-        id: currentPersonalBest ? currentPersonalBest.id : undefined,
-        playerName: {
-          equals: score.playerName,
-        },
-        beatmapId: {
-          equals: score.beatmapId,
+        playerName_beatmapId: {
+          playerName: score.playerName,
+          beatmapId: score.beatmapId,
         },
       },
       update: score,

@@ -19,12 +19,12 @@
     "cors",
     "wording",
     "db",
-    "scores"
+    "scores",
+    "lib",
+    "dependencies"
   ],
   "typescript.tsdk": "node_modules\\typescript\\lib",
-  "eslint.validate": [
-    "json"
-  ],
+  "eslint.validate": ["json"],
   "cSpell.words": [
     "autoincrement",
     "beatmap",

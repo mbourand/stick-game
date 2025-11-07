@@ -3,9 +3,10 @@ import { OsuModule } from "../osu/osu.module";
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from "@nestjs/core";
 import { ZodSerializerInterceptor, ZodValidationPipe } from "nestjs-zod";
 import { HttpExceptionFilter } from "./http-exception.filter";
+import { ScoresModule } from "../scores/scores.module";
 
 @Module({
-  imports: [OsuModule],
+  imports: [OsuModule, ScoresModule],
   controllers: [],
   providers: [
     {

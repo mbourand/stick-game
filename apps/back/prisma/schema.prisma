@@ -20,17 +20,30 @@ datasource db {
 }
 
 model Score {
-  id           Int      @id @default(autoincrement())
+  /// @zod.string().min(1).max(32)
   playerName   String
+  /// @zod.number().int().positive()
   beatmapId    Int
+  /// @zod.number().int().nonnegative()
   score        Int
+  /// @zod.number().int().nonnegative()
   maxCombo     Int
+  /// @zod.number().nonnegative()
   accuracy     Float
+  /// @zod.number().int().nonnegative()
   missCount    Int
+  /// @zod.number().int().nonnegative()
   mehCount     Int
+  /// @zod.number().int().nonnegative()
   goodCount    Int
+  /// @zod.number().int().nonnegative()
   greatCount   Int
+  /// @zod.number().int().nonnegative()
   perfectCount Int
+  /// @zod.coerce.date()
   createdAt    DateTime @default(now())
+  /// @zod.coerce.date()
   updatedAt    DateTime @updatedAt
+
+  @@id([playerName, beatmapId])
 }

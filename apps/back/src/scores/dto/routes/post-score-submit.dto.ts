@@ -2,7 +2,7 @@ import { createZodDto } from "nestjs-zod";
 import z from "zod";
 import { ScoreDtoSchema } from "../../../prisma/dto/score.dto";
 
-export const PostScoreSubmitBodySchema = ScoreDtoSchema.pick({
+const PostScoreSubmitBodySchema = ScoreDtoSchema.pick({
   beatmapId: true,
   playerName: true,
   score: true,
@@ -15,7 +15,7 @@ export const PostScoreSubmitBodySchema = ScoreDtoSchema.pick({
   perfectCount: true,
 });
 
-export const PostScoreSubmitResponseSchema = z.object({
+const PostScoreSubmitResponseSchema = z.object({
   wasUploaded: z.boolean(),
   score: ScoreDtoSchema,
 });

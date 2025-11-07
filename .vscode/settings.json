@@ -17,16 +17,21 @@
     "scripts",
     "build",
     "cors",
-    "wording"
+    "wording",
+    "db"
   ],
   "typescript.tsdk": "node_modules\\typescript\\lib",
   "eslint.validate": [
     "json"
   ],
   "cSpell.words": [
+    "autoincrement",
     "beatmap",
     "beatmapsets",
     "Beatmapsets",
-    "nestjs"
+    "datasource",
+    "nestjs",
+    "postgresql",
+    "prisma"
   ]
 }

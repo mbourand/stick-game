@@ -6,7 +6,9 @@
     "front:build:production": "nx build front",
     "front:start:production": "nx start front",
     "back:build:production": "nx build back",
-    "back:start:production": "node apps/back/dist/main.js"
+    "back:start:production": "node apps/back/dist/main.js",
+    "docker:up:dev": "docker compose -f docker-compose.dev.yml up --force-recreate --build -d",
+    "docker:down:dev": "docker compose -f docker-compose.dev.yml down -v"
   },
   "private": true,
   "dependencies": {

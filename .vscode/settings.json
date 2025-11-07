@@ -18,7 +18,8 @@
     "build",
     "cors",
     "wording",
-    "db"
+    "db",
+    "scores"
   ],
   "typescript.tsdk": "node_modules\\typescript\\lib",
   "eslint.validate": [

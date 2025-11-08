@@ -1,41 +1,49 @@
 import { Body, Controller, Get, HttpException, Param, Post } from "@nestjs/common";
 import { ScoresService } from "./scores.service";
-import { PostScoreSubmitBodyDto, PostScoreSubmitResponseDto } from "./dto/routes/post-score-submit.dto";
 import { ZodResponse } from "nestjs-zod";
-import {
-  GetScoreBeatmapLeaderboardParamsDto,
-  GetScoreBeatmapLeaderboardResponseDto,
-} from "./dto/routes/get-score-beatmap-leaderboard.dto";
-import {
-  GetScoreBeatmapPersonalBestParamsDto,
-  GetScoreBeatmapPersonalBestResponseDto,
-} from "./dto/routes/get-score-beatmap-personal-best.dto";
 import { HttpStatusCode } from "axios";
+import { toResponseScore } from "../prisma/dto/score.dto";
+import {
+  GetScoresBeatmapLeaderboardParamsDto,
+  GetScoresBeatmapLeaderboardResponseDto,
+} from "./dto/routes/get-scores-beatmap-leaderboard.dto";
+import {
+  GetScoresBeatmapPersonalBestParamsDto,
+  GetScoresBeatmapPersonalBestResponseDto,
+} from "./dto/routes/get-scores-beatmap-personal-best.dto";
+import { PostScoresSubmitBodyDto, PostScoresSubmitResponseDto } from "./dto/routes/post-scores-submit.dto";
 
 @Controller("scores")
 export class ScoresController {
   constructor(private readonly scores: ScoresService) {}
 
   @Get(":beatmapId/leaderboard")
-  @ZodResponse({ type: GetScoreBeatmapLeaderboardResponseDto })
-  async getBeatmapLeaderboard(@Param() params: GetScoreBeatmapLeaderboardParamsDto) {
-    return { leaderboard: await this.scores.getBeatmapLeaderboard(params.beatmapId) };
+  @ZodResponse({ type: GetScoresBeatmapLeaderboardResponseDto })
+  async getBeatmapLeaderboard(@Param() params: GetScoresBeatmapLeaderboardParamsDto) {
+    const leaderboard = await this.scores.getBeatmapLeaderboard(params.beatmapId);
+    return {
+      leaderboard: leaderboard.map(toResponseScore),
+    };
   }
 
   @Get(":beatmapId/personal-best/:playerName")
-  @ZodResponse({ type: GetScoreBeatmapPersonalBestResponseDto })
-  async getBeatmapPersonalBest(@Param() params: GetScoreBeatmapPersonalBestParamsDto) {
+  @ZodResponse({ type: GetScoresBeatmapPersonalBestResponseDto })
+  async getBeatmapPersonalBest(@Param() params: GetScoresBeatmapPersonalBestParamsDto) {
     const result = await this.scores.getBeatmapPersonalBest(params.beatmapId, params.playerName);
     if (!result) {
       throw new HttpException("Personal best not found", HttpStatusCode.NotFound);
     }
 
-    return result;
+    return toResponseScore(result);
   }
 
-  @Post("/submit")
-  @ZodResponse({ type: PostScoreSubmitResponseDto })
-  async submitScore(@Body() scoreDto: PostScoreSubmitBodyDto) {
-    return this.scores.submitScore(scoreDto);
+  @Post("submit")
+  @ZodResponse({ type: PostScoresSubmitResponseDto })
+  async submitScore(@Body() scoreDto: PostScoresSubmitBodyDto) {
+    const result = await this.scores.submitScore(scoreDto);
+    return {
+      wasUploaded: result.wasUploaded,
+      score: toResponseScore(result.score),
+    };
   }
 }

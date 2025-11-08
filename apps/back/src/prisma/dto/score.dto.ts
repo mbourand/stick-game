@@ -1,9 +1,16 @@
 import { createZodDto } from "nestjs-zod";
 import { ScoreSchema } from "../generated/zod/schemas";
+import z from "zod";
 
-export const ScoreDtoSchema = ScoreSchema.omit({
-  createdAt: true,
-  updatedAt: true,
-}).strip();
+const ScoreResponseDtoSchema = ScoreSchema.extend({
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+}).strict();
 
-export class ScoreDto extends createZodDto(ScoreDtoSchema) {}
+export const toResponseScore = (score: z.infer<typeof ScoreSchema>): z.infer<typeof ScoreResponseDtoSchema> => ({
+  ...score,
+  createdAt: score.createdAt.toISOString(),
+  updatedAt: score.updatedAt.toISOString(),
+});
+
+export class ScoreResponseDto extends createZodDto(ScoreResponseDtoSchema) {}

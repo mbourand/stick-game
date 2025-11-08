@@ -4,9 +4,10 @@ import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from "@nestjs/core";
 import { ZodSerializerInterceptor, ZodValidationPipe } from "nestjs-zod";
 import { HttpExceptionFilter } from "./http-exception.filter";
 import { ScoresModule } from "../scores/scores.module";
+import { PrismaModule } from "../prisma/prisma.module";
 
 @Module({
-  imports: [OsuModule, ScoresModule],
+  imports: [OsuModule, ScoresModule, PrismaModule],
   controllers: [],
   providers: [
     {

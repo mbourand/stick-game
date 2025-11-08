@@ -40,9 +40,7 @@ model Score {
   greatCount   Int
   /// @zod.number().int().nonnegative()
   perfectCount Int
-  /// @zod.coerce.date()
   createdAt    DateTime @default(now())
-  /// @zod.coerce.date()
   updatedAt    DateTime @updatedAt
 
   @@id([playerName, beatmapId])

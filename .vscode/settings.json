@@ -22,7 +22,8 @@
     "scores",
     "lib",
     "dependencies",
-    "openapi"
+    "openapi",
+    "fetching"
   ],
   "typescript.tsdk": "node_modules\\typescript\\lib",
   "eslint.validate": ["json"],

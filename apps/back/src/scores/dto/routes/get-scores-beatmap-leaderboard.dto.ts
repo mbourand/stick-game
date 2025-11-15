@@ -3,7 +3,7 @@ import z from "zod";
 import { ScoreResponseDto } from "../../../prisma/dto/score.dto";
 
 const ParamsSchema = z.strictObject({
-  beatmapId: z.number().int().positive(),
+  beatmapId: z.coerce.number().int().positive(),
 });
 
 const ResponseSchema = z.strictObject({

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { type ParsedMap } from "../../../osu/convert/OsuConverter";
 import { MapPicker } from "@/app/game/_components/MapPicker";
-import { useScoresBeatmapLeaderboard } from "@/modules/fetching/back/queries/useScoresBeatmapLeaderboard";
+import { createScoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/queries/scores-beatmap-leaderboard";
+import { useQuery } from "@tanstack/react-query";
 
 type BeatmapSelectionViewProps = {
   onPlayClicked: (selectedMap: ParsedMap) => void;
@@ -10,7 +11,9 @@ type BeatmapSelectionViewProps = {
 export const BeatmapSelectionView = ({ onPlayClicked }: BeatmapSelectionViewProps) => {
   const [selectedMap, setSelectedMap] = useState<ParsedMap | null>(null);
 
-  const leaderboardQuery = useScoresBeatmapLeaderboard(selectedMap?.id ?? "", !!selectedMap);
+  const leaderboardQuery = useQuery(
+    createScoresBeatmapLeaderboardQueryOptions(selectedMap?.id ?? "", { enabled: !!selectedMap }),
+  );
 
   return (
     <>

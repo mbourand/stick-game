@@ -43,7 +43,7 @@ const SettingSlider = ({
         type="range"
         min={min}
         max={max}
-        className=""
+        className="w-[125px]"
         defaultValue={value}
         onChange={(e) => changeValue(Number(e.target.value))}
       />
@@ -78,11 +78,18 @@ export const ClientSideGame = () => {
     <>
       <GameCanvas />
       <div className="absolute top-0 right-0 flex flex-row gap-4 items-center z-10">
+        <span className="text-white text-sm whitespace-nowrap">Player Name:</span>
+        <input
+          type="text"
+          className="w-[125px]"
+          defaultValue={Settings.getSettings().playerName}
+          onChange={(e) => Settings.set("playerName", e.target.value)}
+        />
         <SettingSlider
           name="Scroll Duration"
           defaultValue={Settings.getSettings().scrollDuration}
           min={300}
-          max={2000}
+          max={1700}
           onChange={(value) => {
             Settings.set("scrollDuration", value);
           }}

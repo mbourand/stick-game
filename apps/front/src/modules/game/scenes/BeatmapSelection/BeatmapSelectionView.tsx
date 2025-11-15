@@ -10,6 +10,7 @@ type BeatmapSelectionViewProps = {
 export const BeatmapSelectionView = ({ onPlayClicked }: BeatmapSelectionViewProps) => {
   const [selectedMap, setSelectedMap] = useState<ParsedMap | null>(null);
 
+  // TODO: support for beatmap osu!id
   const leaderboardQuery = useScoresBeatmapLeaderboard(1, true);
 
   return (

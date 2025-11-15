@@ -22,6 +22,8 @@ import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "../../utils/co
 import { Scene } from "../Scene";
 import type { SceneManager } from "../SceneManager";
 import { fetchBackend } from "@/modules/fetching/back/fetchBackend";
+import { createScoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/queries/scores-beatmap-leaderboard";
+import { browserQueryClient } from "@/components/QueryProvider";
 
 export class GameplayScene extends Scene {
   private eventManager = new EventManager();
@@ -341,9 +343,9 @@ export class GameplayScene extends Scene {
     this.scoreCounter.add(event.note.getJudgement());
   }
 
-  private onBeatmapEnded(event: BeatmapEndedEventType) {
+  private async onBeatmapEnded(event: BeatmapEndedEventType) {
     console.log("Beatmap ended! score:", this.scoreCounter.getScore());
-    fetchBackend("/scores/submit", {
+    const result = await fetchBackend("/scores/submit", {
       body: {
         accuracy: this.scoreCounter.getAccuracy(),
         score: this.scoreCounter.getScore(),
@@ -357,6 +359,12 @@ export class GameplayScene extends Scene {
         beatmapId: this.parsedMap.id,
       },
     });
+    if (result.wasUploaded) {
+      console.log("Invalidating leaderboard cache...");
+      browserQueryClient?.invalidateQueries({
+        queryKey: createScoresBeatmapLeaderboardQueryOptions(this.parsedMap.id).queryKey,
+      });
+    }
   }
 
   private registerEvents() {

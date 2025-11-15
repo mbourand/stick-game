@@ -3,8 +3,7 @@ import z from "zod";
 import { ScoreResponseDto } from "../../../prisma/dto/score.dto";
 
 const BodySchema = ScoreResponseDto.schema.omit({
-  updatedAt: true,
-  createdAt: true,
+  submissionTime: true,
 });
 
 const ResponseSchema = z.strictObject({

@@ -1,5 +1,10 @@
 import { fetchData, FetchDataParams } from "@/modules/fetching/fetcher";
-import { zOsuControllerBeatmapsetsSearchResponse, zOsuControllerBeatmapsetsSearchData } from "@tau/back-schemas";
+import {
+  zOsuControllerBeatmapsetsSearchResponse,
+  zOsuControllerBeatmapsetsSearchData,
+  zScoresControllerSubmitScoreData,
+  zScoresControllerSubmitScoreResponse,
+} from "@tau/back-schemas";
 import { Env } from "@/modules/env/Env";
 
 const BACK_ROUTES = {
@@ -9,6 +14,13 @@ const BACK_ROUTES = {
     bodySchema: zOsuControllerBeatmapsetsSearchData.shape.body,
     paramsSchema: zOsuControllerBeatmapsetsSearchData.shape.path,
     responseSchema: zOsuControllerBeatmapsetsSearchResponse,
+  },
+  "/scores/submit": {
+    method: "POST",
+    queryParamsSchema: zScoresControllerSubmitScoreData.shape.query,
+    paramsSchema: zScoresControllerSubmitScoreData.shape.path,
+    bodySchema: zScoresControllerSubmitScoreData.shape.body,
+    responseSchema: zScoresControllerSubmitScoreResponse,
   },
 } as const;
 
@@ -36,6 +48,6 @@ export const fetchBackend = async <const Route extends keyof typeof BACK_ROUTES>
     method: BACK_ROUTES[route].method,
     responseSchema: BACK_ROUTES[route].responseSchema,
     headers: params.headers,
-    ...("body" in params ? { body: params.body } : {}),
+    body: params.body,
   });
 };

@@ -21,7 +21,7 @@ export const zGetOsuBeatmapsetsSearchResponseDtoOutput = z.object({
 export const zGetScoresBeatmapLeaderboardResponseDtoOutput = z.object({
     leaderboard: z.array(z.object({
         playerName: z.string().min(1).max(32),
-        beatmapId: z.int().lte(9007199254740991),
+        beatmapId: z.string().min(1).max(32),
         score: z.int().gte(0).lte(9007199254740991),
         maxCombo: z.int().gte(0).lte(9007199254740991),
         accuracy: z.number().gte(0),
@@ -30,14 +30,13 @@ export const zGetScoresBeatmapLeaderboardResponseDtoOutput = z.object({
         goodCount: z.int().gte(0).lte(9007199254740991),
         greatCount: z.int().gte(0).lte(9007199254740991),
         perfectCount: z.int().gte(0).lte(9007199254740991),
-        createdAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
-        updatedAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
+        submissionTime: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
     }))
 });
 
 export const zGetScoresBeatmapPersonalBestResponseDtoOutput = z.object({
     playerName: z.string().min(1).max(32),
-    beatmapId: z.int().lte(9007199254740991),
+    beatmapId: z.string().min(1).max(32),
     score: z.int().gte(0).lte(9007199254740991),
     maxCombo: z.int().gte(0).lte(9007199254740991),
     accuracy: z.number().gte(0),
@@ -46,13 +45,12 @@ export const zGetScoresBeatmapPersonalBestResponseDtoOutput = z.object({
     goodCount: z.int().gte(0).lte(9007199254740991),
     greatCount: z.int().gte(0).lte(9007199254740991),
     perfectCount: z.int().gte(0).lte(9007199254740991),
-    createdAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
-    updatedAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
+    submissionTime: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
 });
 
 export const zPostScoresSubmitBodyDto = z.object({
     playerName: z.string().min(1).max(32),
-    beatmapId: z.int().lte(9007199254740991),
+    beatmapId: z.string().min(1).max(32),
     score: z.int().gte(0).lte(9007199254740991),
     maxCombo: z.int().gte(0).lte(9007199254740991),
     accuracy: z.number().gte(0),
@@ -67,7 +65,7 @@ export const zPostScoresSubmitResponseDtoOutput = z.object({
     wasUploaded: z.boolean(),
     score: z.object({
         playerName: z.string().min(1).max(32),
-        beatmapId: z.int().lte(9007199254740991),
+        beatmapId: z.string().min(1).max(32),
         score: z.int().gte(0).lte(9007199254740991),
         maxCombo: z.int().gte(0).lte(9007199254740991),
         accuracy: z.number().gte(0),
@@ -76,8 +74,7 @@ export const zPostScoresSubmitResponseDtoOutput = z.object({
         goodCount: z.int().gte(0).lte(9007199254740991),
         greatCount: z.int().gte(0).lte(9007199254740991),
         perfectCount: z.int().gte(0).lte(9007199254740991),
-        createdAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
-        updatedAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
+        submissionTime: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
     })
 });
 
@@ -94,7 +91,7 @@ export const zOsuControllerBeatmapsetsSearchResponse = zGetOsuBeatmapsetsSearchR
 export const zScoresControllerGetBeatmapLeaderboardData = z.object({
     body: z.optional(z.never()),
     path: z.object({
-        beatmapId: z.int().lte(9007199254740991)
+        beatmapId: z.string().min(1).max(32)
     }),
     query: z.optional(z.never())
 });
@@ -104,8 +101,8 @@ export const zScoresControllerGetBeatmapLeaderboardResponse = zGetScoresBeatmapL
 export const zScoresControllerGetBeatmapPersonalBestData = z.object({
     body: z.optional(z.never()),
     path: z.object({
-        beatmapId: z.int().lte(9007199254740991),
-        playerName: z.string().min(2).max(100)
+        beatmapId: z.string().min(1).max(32),
+        playerName: z.string().min(1).max(32)
     }),
     query: z.optional(z.never())
 });

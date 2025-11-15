@@ -6,7 +6,7 @@ import { ScoreCreateInput, ScoreModel } from "../prisma/generated/client/models"
 export class ScoresService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getBeatmapLeaderboard(beatmapId: number) {
+  async getBeatmapLeaderboard(beatmapId: string) {
     return this.prisma.score.findMany({
       where: { beatmapId },
       orderBy: { score: "desc" },
@@ -14,7 +14,7 @@ export class ScoresService {
     });
   }
 
-  async getBeatmapPersonalBest(beatmapId: number, playerName: string) {
+  async getBeatmapPersonalBest(beatmapId: string, playerName: string) {
     return this.prisma.score.findFirst({
       where: { beatmapId, playerName },
       orderBy: { score: "desc" },

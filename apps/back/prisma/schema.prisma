@@ -22,8 +22,8 @@ datasource db {
 model Score {
   /// @zod.string().min(1).max(32)
   playerName   String
-  /// @zod.number().int().positive()
-  beatmapId    Int
+  /// @zod.string().min(1).max(32)
+  beatmapId    String
   /// @zod.number().int().nonnegative()
   score        Int
   /// @zod.number().int().nonnegative()
@@ -40,8 +40,7 @@ model Score {
   greatCount   Int
   /// @zod.number().int().nonnegative()
   perfectCount Int
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  submissionTime    DateTime @default(now())
 
   @@id([playerName, beatmapId])
 }

@@ -1,10 +1,11 @@
 import { createZodDto } from "nestjs-zod";
 import z from "zod";
 import { ScoreResponseDto } from "../../../prisma/dto/score.dto";
+import { ScoreSchema } from "../../../prisma/generated/zod/schemas";
 
 const ParamsSchema = z.strictObject({
-  beatmapId: z.number().int().positive(),
-  playerName: z.string().min(2).max(100),
+  beatmapId: ScoreSchema.shape.beatmapId,
+  playerName: ScoreSchema.shape.playerName,
 });
 
 const ResponseSchema = ScoreResponseDto.schema;

@@ -22,7 +22,7 @@ import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "../../utils/co
 import { Scene } from "../Scene";
 import type { SceneManager } from "../SceneManager";
 import { fetchBackend } from "@/modules/fetching/back/fetchBackend";
-import { createScoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/queries/scores-beatmap-leaderboard";
+import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/queries/scores-beatmap-leaderboard";
 import { browserQueryClient } from "@/components/QueryProvider";
 
 export class GameplayScene extends Scene {
@@ -362,7 +362,7 @@ export class GameplayScene extends Scene {
     if (result.wasUploaded) {
       console.log("Invalidating leaderboard cache...");
       browserQueryClient?.invalidateQueries({
-        queryKey: createScoresBeatmapLeaderboardQueryOptions(this.parsedMap.id).queryKey,
+        queryKey: scoresBeatmapLeaderboardQueryOptions(this.parsedMap.id).queryKey,
       });
     }
   }

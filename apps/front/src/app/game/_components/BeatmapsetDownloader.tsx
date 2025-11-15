@@ -1,5 +1,5 @@
 import { Modal } from "@/components/Modal";
-import { createBeatmapsetsSearchQueryOptions } from "@/modules/fetching/back/queries/beatmapsets-search";
+import { beatmapsetsSearchQueryOptions } from "@/modules/fetching/back/queries/beatmapsets-search";
 import { debounce } from "@/modules/utils/debounce";
 import { useMemo, useState } from "react";
 import JSZip from "jszip";
@@ -24,7 +24,7 @@ export const BeatmapsetDownloader = ({ isVisible, onClose }: BeatmapsetDownloade
     [],
   );
 
-  const searchResults = useQuery(createBeatmapsetsSearchQueryOptions(query, { enabled: isVisible }));
+  const searchResults = useQuery({ ...beatmapsetsSearchQueryOptions(query), enabled: isVisible });
 
   return (
     <Modal isVisible={isVisible} onClose={onClose} rounded={false}>

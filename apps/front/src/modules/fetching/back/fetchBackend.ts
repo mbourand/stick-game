@@ -4,8 +4,11 @@ import {
   zOsuControllerBeatmapsetsSearchData,
   zScoresControllerSubmitScoreData,
   zScoresControllerSubmitScoreResponse,
+  zScoresControllerGetBeatmapLeaderboardData,
+  zScoresControllerGetBeatmapLeaderboardResponse,
 } from "@tau/back-schemas";
 import { Env } from "@/modules/env/Env";
+import z from "zod";
 
 const BACK_ROUTES = {
   "/osu/beatmapsets/search": {
@@ -21,6 +24,13 @@ const BACK_ROUTES = {
     paramsSchema: zScoresControllerSubmitScoreData.shape.path,
     bodySchema: zScoresControllerSubmitScoreData.shape.body,
     responseSchema: zScoresControllerSubmitScoreResponse,
+  },
+  "/scores/:beatmapId/leaderboard": {
+    method: "GET",
+    queryParamsSchema: zScoresControllerGetBeatmapLeaderboardData.shape.query,
+    paramsSchema: zScoresControllerGetBeatmapLeaderboardData.shape.path,
+    bodySchema: zScoresControllerGetBeatmapLeaderboardData.shape.body,
+    responseSchema: zScoresControllerGetBeatmapLeaderboardResponse,
   },
 } as const;
 
@@ -40,7 +50,7 @@ export const fetchBackend = async <const Route extends keyof typeof BACK_ROUTES>
   route: Route,
   params: ParamsType<Route>,
 ) => {
-  return await fetchData({
+  return fetchData({
     baseUrl: Env.NEXT_PUBLIC_BACKEND_URL,
     params: params.params,
     route: route,
@@ -49,5 +59,5 @@ export const fetchBackend = async <const Route extends keyof typeof BACK_ROUTES>
     responseSchema: BACK_ROUTES[route].responseSchema,
     headers: params.headers,
     body: params.body,
-  });
+  }) as Promise<z.infer<BackRoutesType[Route]["responseSchema"]>>;
 };

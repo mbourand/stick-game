@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { convertFromOsu, type ParsedMap } from "../../../modules/osu/convert/OsuConverter";
 import { BeatmapsetDownloader } from "@/app/game/_components/BeatmapsetDownloader";
-import { db } from "@/modules/db/db";
+import { latestDb } from "@/modules/db/db";
 import { useLiveQuery } from "dexie-react-hooks";
 
 type MapPickerType = {
@@ -11,7 +11,7 @@ type MapPickerType = {
 export const MapPicker = ({ onMapPicked }: MapPickerType) => {
   const [isBeatmapDownloaderVisible, setIsBeatmapDownloaderVisible] = useState(false);
   const displayedBeatmaps = useLiveQuery(() =>
-    db.beatmaps.toArray().then((maps) => maps.sort((a, b) => b.difficulty - a.difficulty)),
+    latestDb.beatmaps.toArray().then((maps) => maps.sort((a, b) => b.difficulty - a.difficulty)),
   );
 
   return (
@@ -41,18 +41,18 @@ export const MapPicker = ({ onMapPicked }: MapPickerType) => {
             return;
           }
 
-          const beatmap = await db.beatmaps.get(Number(e.target.value));
+          const beatmap = await latestDb.beatmaps.where("idv2").equals(e.target.value).first();
           if (!beatmap) {
             alert("Beatmap not found in the database.");
             return;
           }
           const parsedMap = convertFromOsu(await beatmap.content.text(), (path) => path);
-          const audioFile = await db.files.get(beatmap.audioId);
+          const audioFile = await latestDb.files.get(beatmap.audioId);
           if (!audioFile) {
             alert("Audio file not found in the database.");
             return;
           }
-          const gameplayBackgroundFile = await db.files.get(beatmap.gameplayBackgroundId);
+          const gameplayBackgroundFile = await latestDb.files.get(beatmap.gameplayBackgroundId);
           if (!gameplayBackgroundFile) {
             alert("Gameplay background file not found in the database.");
             return;
@@ -105,7 +105,7 @@ export const MapPicker = ({ onMapPicked }: MapPickerType) => {
         <option value="/symphony_of_the_night/extra.osu">Symphony of the night - Extra</option>
         {displayedBeatmaps?.map((beatmap) => {
           return (
-            <option key={beatmap.id} value={beatmap.id}>
+            <option key={beatmap.idv2} value={beatmap.idv2}>
               {beatmap.title} - {beatmap.artist} [{beatmap.difficulty}*]
             </option>
           );

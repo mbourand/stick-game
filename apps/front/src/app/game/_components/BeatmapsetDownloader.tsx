@@ -1,11 +1,12 @@
 import { Modal } from "@/components/Modal";
-import { useBeatmapsetsSearch } from "@/modules/fetching/back/queries/useBeatmapsetsSearch";
+import { createBeatmapsetsSearchQueryOptions } from "@/modules/fetching/back/queries/beatmapsets-search";
 import { debounce } from "@/modules/utils/debounce";
 import { useMemo, useState } from "react";
 import JSZip from "jszip";
 import { convertFromOsu } from "@/modules/osu/convert/OsuConverter";
 import { latestDb } from "@/modules/db/db";
 import { BeatmapsetCard } from "@/app/game/_components/BeatmapCard";
+import { useQuery } from "@tanstack/react-query";
 
 type BeatmapsetDownloaderProps = {
   isVisible: boolean;
@@ -23,7 +24,7 @@ export const BeatmapsetDownloader = ({ isVisible, onClose }: BeatmapsetDownloade
     [],
   );
 
-  const searchResults = useBeatmapsetsSearch(query, isVisible);
+  const searchResults = useQuery(createBeatmapsetsSearchQueryOptions(query, { enabled: isVisible }));
 
   return (
     <Modal isVisible={isVisible} onClose={onClose} rounded={false}>

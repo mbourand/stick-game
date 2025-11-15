@@ -2,7 +2,7 @@ import { fetchBackend } from "@/modules/fetching/back/fetchBackend";
 import { useQuery } from "@tanstack/react-query";
 
 const fetchBeatmapsetsSearch = async (query: string) => {
-  const data = await fetchBackend("/osu/beatmapsets/search", { queryParams: { q: query } } as const);
+  const data = await fetchBackend("/osu/beatmapsets/search", { queryParams: { q: query } });
   return data;
 };
 

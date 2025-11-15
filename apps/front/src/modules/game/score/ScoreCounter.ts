@@ -66,4 +66,8 @@ export class ScoreCounter {
     const maxScoreWithoutCombo = this.totalNotes * JudgmentKind.Perfect;
     return Math.round((scoreWithoutCombo / maxScoreWithoutCombo) * 10000) / 100;
   }
+
+  public getJudgmentCount(kind: JudgmentKind) {
+    return this.hitTracker[kind];
+  }
 }

@@ -28,6 +28,7 @@ export type ParsedMap = {
   timingPoints: TimingPoint[];
   audioUrl: string;
   mapStartDelayAfterAudioStart: number;
+  id: string;
 };
 
 const OSU_FIELD_WIDTH = 512;
@@ -130,6 +131,7 @@ export const parseMetadata = (lines: string[]) => {
   let title: string | undefined = undefined;
   let artist: string | undefined = undefined;
   let creator: string | undefined = undefined;
+  let id: string | undefined = undefined;
 
   for (const line of lines) {
     const parts = line.split(":");
@@ -139,13 +141,14 @@ export const parseMetadata = (lines: string[]) => {
     if (key === "Title") title = value;
     else if (key === "Artist") artist = value;
     else if (key === "Creator") creator = value;
+    else if (key === "BeatmapID") id = "osu_" + value;
   }
 
-  if (title == null || artist == null || creator == null) {
+  if (title == null || artist == null || creator == null || id == null) {
     throw new Error("Invalid osu! map metadata section");
   }
 
-  return { title, artist, creator };
+  return { title, artist, creator, id };
 };
 
 export const parseDifficulty = (lines: string[]) => {
@@ -266,15 +269,14 @@ export const convertFromOsu = (
   let baseSliderMultiplier: number | undefined = undefined;
   let timingPoints: TimingPoint[] | undefined = undefined;
   let backgroundRelativePath: string | undefined = undefined;
+  let id: string | undefined = undefined;
 
   for (let i = 0; i < categoryLineIndices.length; i++) {
     const categoryLine = lines[categoryLineIndices[i]].trim();
-    console.log("Parsing category:", categoryLine);
 
     if (categoryLine === "[General]") {
       const nextCategoryLine = i + 1 < categoryLineIndices.length ? categoryLineIndices[i + 1] : lines.length;
       const generalLines = lines.slice(categoryLineIndices[i] + 1, nextCategoryLine);
-      console.log("General lines:", generalLines);
       const generalResult = parseGeneral(generalLines);
       audioRelativePath = generalResult.audioFileName;
       audioLeadIn = generalResult.audioLeadIn;
@@ -288,6 +290,7 @@ export const convertFromOsu = (
       title = metadataResult.title;
       artist = metadataResult.artist;
       creator = metadataResult.creator;
+      id = metadataResult.id;
       continue;
     }
 
@@ -338,7 +341,8 @@ export const convertFromOsu = (
     timingPoints.length === 0 ||
     notes == null ||
     notes.length === 0 ||
-    backgroundRelativePath == null
+    backgroundRelativePath == null ||
+    id == null
   ) {
     console.error({
       audioFileName: audioRelativePath,
@@ -348,6 +352,7 @@ export const convertFromOsu = (
       baseSliderMultiplier,
       timingPoints,
       backgroundUrl: backgroundRelativePath,
+      id,
     });
     throw new Error("Invalid osu! map file");
   }
@@ -365,5 +370,6 @@ export const convertFromOsu = (
     backgroundOffsetY: 0,
     baseSliderMultiplier,
     timingPoints,
+    id,
   };
 };

@@ -354,7 +354,7 @@ export class GameplayScene extends Scene {
         goodCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Good),
         greatCount: 0,
         perfectCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Perfect),
-        beatmapId: 1, // TODO: implement beatmap osu!id support
+        beatmapId: this.parsedMap.id,
       },
     });
   }

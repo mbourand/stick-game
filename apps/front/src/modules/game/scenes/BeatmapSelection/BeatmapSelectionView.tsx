@@ -10,8 +10,7 @@ type BeatmapSelectionViewProps = {
 export const BeatmapSelectionView = ({ onPlayClicked }: BeatmapSelectionViewProps) => {
   const [selectedMap, setSelectedMap] = useState<ParsedMap | null>(null);
 
-  // TODO: support for beatmap osu!id
-  const leaderboardQuery = useScoresBeatmapLeaderboard(1, true);
+  const leaderboardQuery = useScoresBeatmapLeaderboard(selectedMap?.id ?? "", !!selectedMap);
 
   return (
     <>
@@ -26,19 +25,24 @@ export const BeatmapSelectionView = ({ onPlayClicked }: BeatmapSelectionViewProp
       >
         Play
       </button>
-      <div className="absolute left-0 top-1/2 -translate-y-1/2 text-white bg-white/10 p-6">
-        {leaderboardQuery.isLoading && <p>Loading leaderboard...</p>}
-        {leaderboardQuery.isError && <p>Error loading leaderboard</p>}
-        {leaderboardQuery.data && (
-          <ul>
-            {leaderboardQuery.data.leaderboard.map((entry, index) => (
-              <li key={entry.beatmapId + "_" + entry.playerName}>
-                {index + 1}. {entry.playerName} - {entry.score}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {leaderboardQuery.isEnabled && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 text-white bg-white/10 p-6">
+          {leaderboardQuery.isLoading && <p>Loading leaderboard...</p>}
+          {leaderboardQuery.isError && <p>Error loading leaderboard</p>}
+
+          {leaderboardQuery.data && leaderboardQuery.data.leaderboard.length > 0 ? (
+            <div className="flex flex-col gap-4 max-h-[500px] overflow-y-auto">
+              {leaderboardQuery.data.leaderboard.map((entry, index) => (
+                <li key={entry.beatmapId + "_" + entry.playerName}>
+                  {index + 1}. {entry.playerName} - {entry.score}
+                </li>
+              ))}
+            </div>
+          ) : (
+            <p>No scores yet</p>
+          )}
+        </div>
+      )}
     </>
   );
 };

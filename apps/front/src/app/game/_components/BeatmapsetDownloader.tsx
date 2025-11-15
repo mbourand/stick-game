@@ -4,7 +4,7 @@ import { debounce } from "@/modules/utils/debounce";
 import { useMemo, useState } from "react";
 import JSZip from "jszip";
 import { convertFromOsu } from "@/modules/osu/convert/OsuConverter";
-import { db } from "@/modules/db/db";
+import { latestDb } from "@/modules/db/db";
 import { BeatmapsetCard } from "@/app/game/_components/BeatmapCard";
 
 type BeatmapsetDownloaderProps = {
@@ -54,7 +54,7 @@ export const BeatmapsetDownloader = ({ isVisible, onClose }: BeatmapsetDownloade
                 const listBackgroundFileResponse = await fetch(beatmapset.covers["list"], { mode: "no-cors" });
                 const listBackgroundFileContent = await listBackgroundFileResponse.arrayBuffer();
 
-                const listBackgroundFileId = await db.files.add({
+                const listBackgroundFileId = await latestDb.files.add({
                   content: new Blob([listBackgroundFileContent]),
                   createdAt: new Date(),
                   extension: "jpg",
@@ -76,7 +76,7 @@ export const BeatmapsetDownloader = ({ isVisible, onClose }: BeatmapsetDownloade
                   if (backgroundFile && !backgroundFileId) {
                     const fileContent = await backgroundFile.async("arraybuffer");
                     const fileBlob = new Blob([fileContent]);
-                    backgroundFileId = await db.files.add({
+                    backgroundFileId = await latestDb.files.add({
                       content: fileBlob,
                       createdAt: new Date(),
                       extension: backgroundFile.name.split(".").pop() || "",
@@ -87,7 +87,7 @@ export const BeatmapsetDownloader = ({ isVisible, onClose }: BeatmapsetDownloade
                   if (audioFile && !audioFileId) {
                     const fileContent = await audioFile.async("arraybuffer");
                     const fileBlob = new Blob([fileContent]);
-                    audioFileId = await db.files.add({
+                    audioFileId = await latestDb.files.add({
                       content: fileBlob,
                       createdAt: new Date(),
                       extension: audioFile.name.split(".").pop() || "",
@@ -95,7 +95,8 @@ export const BeatmapsetDownloader = ({ isVisible, onClose }: BeatmapsetDownloade
                     alreadyAddedFiles.set(audioFile.name, audioFileId);
                   }
 
-                  await db.beatmaps.add({
+                  await latestDb.beatmaps.add({
+                    idv2: parsedMap.id,
                     title: parsedMap.title,
                     artist: parsedMap.artist,
                     creator: parsedMap.creator,

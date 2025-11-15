@@ -1,3 +1,4 @@
+import { BeatmapEndedEventType } from "@/modules/game/events/impl/BeatmapEndedEventType";
 import { AudioManager } from "../../../audio/AudioManager";
 import { Gamepad } from "../../../gamepad/Gamepad";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
@@ -20,6 +21,7 @@ import { ScoreCounter } from "../../score/ScoreCounter";
 import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "../../utils/constants";
 import { Scene } from "../Scene";
 import type { SceneManager } from "../SceneManager";
+import { fetchBackend } from "@/modules/fetching/back/fetchBackend";
 
 export class GameplayScene extends Scene {
   private eventManager = new EventManager();
@@ -339,6 +341,24 @@ export class GameplayScene extends Scene {
     this.scoreCounter.add(event.note.getJudgement());
   }
 
+  private onBeatmapEnded(event: BeatmapEndedEventType) {
+    console.log("Beatmap ended! score:", this.scoreCounter.getScore());
+    fetchBackend("/scores/submit", {
+      body: {
+        accuracy: this.scoreCounter.getAccuracy(),
+        score: this.scoreCounter.getScore(),
+        maxCombo: this.scoreCounter.getMaxCombo(),
+        playerName: "Player",
+        missCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Miss),
+        mehCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Meh),
+        goodCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Good),
+        greatCount: 0,
+        perfectCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Perfect),
+        beatmapId: 1, // TODO: implement beatmap osu!id support
+      },
+    });
+  }
+
   private registerEvents() {
     console.log("Registering game events...");
     const offNoteReachedEdge = this.eventManager.on("onNoteWasJudged", (...args) => this.onNoteWasJudged(...args));
@@ -353,6 +373,8 @@ export class GameplayScene extends Scene {
     this.offFunctions.push(offNoteReachedEndOfLife);
     const offNoteHoldTick = this.eventManager.on("onNoteHoldTick", (...args) => this.onNoteHoldTick(...args));
     this.offFunctions.push(offNoteHoldTick);
+    const offBeatmapEnded = this.eventManager.on("onBeatmapEnded", (...args) => this.onBeatmapEnded(...args));
+    this.offFunctions.push(offBeatmapEnded);
 
     const offSettingChanged = Settings.getEventManager().on("onSettingChanged", (e) => {
       if (e.key === "volume") {

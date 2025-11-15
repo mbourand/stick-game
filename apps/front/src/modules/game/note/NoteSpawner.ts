@@ -1,6 +1,8 @@
+import { DEFAULT_JUDGE } from "@/modules/game/judge/Judge";
 import type { ParsedNote } from "../../osu/convert/OsuConverter";
 import type { EventManager } from "../events/EventManager";
 import { NoteShouldSpawnEvent } from "../events/impl/NoteShouldSpawnEvent";
+import { BeatmapEndedEvent } from "@/modules/game/events/impl/BeatmapEndedEventType";
 
 export class NoteSpawner {
   private elapsedTime: number;
@@ -8,6 +10,9 @@ export class NoteSpawner {
   private lastNoteIndex = -1;
   private eventManager: EventManager;
   private scrollDuration: number;
+  private elapsedTimeSinceLastNoteSpawn = 0;
+
+  private hasFinished = false;
 
   constructor(parsedNotes: ParsedNote[], eventManager: EventManager, scrollDuration: number) {
     this.elapsedTime = 0;
@@ -21,6 +26,8 @@ export class NoteSpawner {
   }
 
   public update(deltaTime: number) {
+    if (this.hasFinished) return;
+
     this.elapsedTime += deltaTime;
 
     for (let i = this.lastNoteIndex + 1; i < this.parsedNotes.length; i++) {
@@ -28,6 +35,15 @@ export class NoteSpawner {
 
       this.lastNoteIndex = i;
       this.eventManager.emit("onNoteShouldSpawn", NoteShouldSpawnEvent(this.parsedNotes[i]));
+    }
+
+    const hasLastNoteSpawned = this.lastNoteIndex >= this.parsedNotes.length - 1;
+    if (hasLastNoteSpawned) {
+      this.elapsedTimeSinceLastNoteSpawn += deltaTime;
+      if (this.elapsedTimeSinceLastNoteSpawn >= this.scrollDuration + DEFAULT_JUDGE.getLargestWindow()) {
+        this.eventManager.emit("onBeatmapEnded", BeatmapEndedEvent());
+        this.hasFinished = true;
+      }
     }
   }
 }

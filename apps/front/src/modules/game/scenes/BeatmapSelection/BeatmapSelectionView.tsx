@@ -38,7 +38,13 @@ export const BeatmapSelectionView = ({ onPlayClicked }: BeatmapSelectionViewProp
             <div className="flex flex-col gap-4 max-h-[500px] overflow-y-auto">
               {leaderboardQuery.data.leaderboard.map((entry, index) => (
                 <li key={entry.beatmapId + "_" + entry.playerName}>
-                  {index + 1}. {entry.playerName} - {entry.score}
+                  {index + 1}. {entry.playerName} -{" "}
+                  {entry.score
+                    .toString()
+                    .split("")
+                    .flatMap((c, i, a) => (i && (a.length - i) % 3 === 0 ? [" ", c] : [c]))
+                    .join("")}
+                  <br /> {entry.accuracy.toFixed(2)}% - {entry.maxCombo}x
                 </li>
               ))}
             </div>

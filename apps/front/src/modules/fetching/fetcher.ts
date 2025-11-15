@@ -8,23 +8,15 @@ export type FetchDataParams<
   QueryParamsSchemaType extends z.ZodType,
   ParamsType extends z.ZodType,
   BodySchemaType extends z.ZodType,
-> =
-  | {
-      baseUrl: string;
-      route: string;
-      params?: z.infer<ParamsType>;
-      queryParams?: z.infer<QueryParamsSchemaType>;
-      responseSchema: ResponseSchemaType;
-      headers?: Record<string, string>;
-    } & (
-      | {
-          method: BodyMethod;
-          body: z.infer<BodySchemaType>;
-        }
-      | {
-          method: NoBodyMethod;
-        }
-    );
+> = {
+  baseUrl: string;
+  route: string;
+  params?: z.infer<ParamsType>;
+  queryParams?: z.infer<QueryParamsSchemaType>;
+  responseSchema: ResponseSchemaType;
+  headers?: Record<string, string>;
+  method: BodyMethod | NoBodyMethod;
+} & (z.infer<BodySchemaType> extends undefined ? { body?: never } : { body: z.infer<BodySchemaType> });
 
 export const fetchData = async <
   ResponseSchemaType extends z.ZodType,

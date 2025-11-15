@@ -348,7 +348,7 @@ export class GameplayScene extends Scene {
         accuracy: this.scoreCounter.getAccuracy(),
         score: this.scoreCounter.getScore(),
         maxCombo: this.scoreCounter.getMaxCombo(),
-        playerName: "Player",
+        playerName: this.settings.playerName,
         missCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Miss),
         mehCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Meh),
         goodCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Good),

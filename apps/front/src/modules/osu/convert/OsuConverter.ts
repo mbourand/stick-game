@@ -108,6 +108,7 @@ const parseHitObjects = (lines: string[], timingPoints: TimingPoint[], baseSlide
 const parseGeneral = (lines: string[]) => {
   let audioFileName: string | undefined = undefined;
   let audioLeadIn: number | undefined;
+
   for (const line of lines) {
     const parts = line.split(":");
     const key = parts[0].trim();
@@ -116,6 +117,11 @@ const parseGeneral = (lines: string[]) => {
       audioFileName = value;
     } else if (key === "AudioLeadIn") {
       audioLeadIn = parseInt(value, 10);
+    } else if (key === "Mode") {
+      const mode = parseInt(value, 10);
+      if (mode !== 0) {
+        throw new Error("Only osu!standard mode (0) is supported");
+      }
     }
   }
 
@@ -215,6 +221,8 @@ const parseEventLines = (lines: string[]) => {
       backgroundFilePath = backgroundFileName;
     }
   }
+
+  console.log(backgroundFilePath);
 
   if (!backgroundFilePath) {
     throw new Error("Invalid osu! map events section: no background found");

@@ -44,9 +44,7 @@ export const BeatmapsetDownloader = ({ isVisible, onClose }: BeatmapsetDownloade
               beatmapset={beatmapset}
               onDownloadClicked={async () => {
                 const zip = new JSZip();
-                const response = await fetch(
-                  `https://api.nerinyan.moe/d/${beatmapset.id}?NoHitSound=1&NoStoryboard=1&NoVideo=1`,
-                );
+                const response = await fetch(`https://api.nerinyan.moe/d/${beatmapset.id}?NoHitSound=1&NoVideo=1`);
 
                 const unzipped = await zip.loadAsync(await response.arrayBuffer());
                 const allFiles = Object.values(unzipped.files);
@@ -64,53 +62,55 @@ export const BeatmapsetDownloader = ({ isVisible, onClose }: BeatmapsetDownloade
                 const alreadyAddedFiles = new Map<string, number>();
 
                 for (const file of beatmapFileList) {
-                  const content = await file.async("string");
-                  const parsedMap = convertFromOsu(content, (path) => path);
+                  try {
+                    const content = await file.async("string");
+                    const parsedMap = convertFromOsu(content, (path) => path);
 
-                  const backgroundFile = allFiles.find((f) => f.name === parsedMap.backgroundUrl);
-                  const audioFile = allFiles.find((f) => f.name === parsedMap.audioUrl);
+                    const backgroundFile = allFiles.find((f) => f.name === parsedMap.backgroundUrl);
+                    const audioFile = allFiles.find((f) => f.name === parsedMap.audioUrl);
 
-                  let backgroundFileId: number | null =
-                    (backgroundFile && alreadyAddedFiles.get(backgroundFile.name)) || null;
-                  let audioFileId: number | null = (audioFile && alreadyAddedFiles.get(audioFile.name)) || null;
+                    let backgroundFileId: number | null =
+                      (backgroundFile && alreadyAddedFiles.get(backgroundFile.name)) || null;
+                    let audioFileId: number | null = (audioFile && alreadyAddedFiles.get(audioFile.name)) || null;
 
-                  if (backgroundFile && !backgroundFileId) {
-                    const fileContent = await backgroundFile.async("arraybuffer");
-                    const fileBlob = new Blob([fileContent]);
-                    backgroundFileId = await latestDb.files.add({
-                      content: fileBlob,
+                    if (backgroundFile && !backgroundFileId) {
+                      const fileContent = await backgroundFile.async("arraybuffer");
+                      const fileBlob = new Blob([fileContent]);
+                      backgroundFileId = await latestDb.files.add({
+                        content: fileBlob,
+                        createdAt: new Date(),
+                        extension: backgroundFile.name.split(".").pop() || "",
+                      });
+                      alreadyAddedFiles.set(backgroundFile.name, backgroundFileId);
+                    }
+
+                    if (audioFile && !audioFileId) {
+                      const fileContent = await audioFile.async("arraybuffer");
+                      const fileBlob = new Blob([fileContent]);
+                      audioFileId = await latestDb.files.add({
+                        content: fileBlob,
+                        createdAt: new Date(),
+                        extension: audioFile.name.split(".").pop() || "",
+                      });
+                      alreadyAddedFiles.set(audioFile.name, audioFileId);
+                    }
+
+                    await latestDb.beatmaps.add({
+                      idv2: parsedMap.id,
+                      title: parsedMap.title,
+                      artist: parsedMap.artist,
+                      creator: parsedMap.creator,
+                      difficulty: parsedMap.difficulty,
+                      content: new Blob([content]),
+                      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                      gameplayBackgroundId: backgroundFileId!,
+                      audioId: audioFileId!,
+                      listBackgroundId: listBackgroundFileId,
                       createdAt: new Date(),
-                      extension: backgroundFile.name.split(".").pop() || "",
                     });
-                    alreadyAddedFiles.set(backgroundFile.name, backgroundFileId);
+                  } catch (e) {
+                    console.error("Failed to import a beatmap from the beatmapset:", e);
                   }
-
-                  if (audioFile && !audioFileId) {
-                    const fileContent = await audioFile.async("arraybuffer");
-                    const fileBlob = new Blob([fileContent]);
-                    audioFileId = await latestDb.files.add({
-                      content: fileBlob,
-                      createdAt: new Date(),
-                      extension: audioFile.name.split(".").pop() || "",
-                    });
-                    alreadyAddedFiles.set(audioFile.name, audioFileId);
-                  }
-
-                  await latestDb.beatmaps.add({
-                    idv2: parsedMap.id,
-                    title: parsedMap.title,
-                    artist: parsedMap.artist,
-                    creator: parsedMap.creator,
-                    difficulty: parsedMap.difficulty,
-                    content: new Blob([content]),
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    gameplayBackgroundId: backgroundFileId!,
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    audioId: audioFileId!,
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    listBackgroundId: listBackgroundFileId!,
-                    createdAt: new Date(),
-                  });
                 }
               }}
             />

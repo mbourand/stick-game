@@ -48,6 +48,8 @@ export class CircleAudioVisualizer {
   }
 
   public update(deltaTime: number) {
+    if (this.analyser.context.state !== "running") return;
+
     let lastDataLevel: number | null = null;
 
     if (this.maxDataLevelRecordClock.update(deltaTime)) {

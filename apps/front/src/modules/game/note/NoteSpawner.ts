@@ -11,11 +11,13 @@ export class NoteSpawner {
   private eventManager: EventManager;
   private scrollDuration: number;
   private elapsedTimeSinceLastNoteSpawn = 0;
+  private startTime: number;
 
   private hasFinished = false;
 
   constructor(parsedNotes: ParsedNote[], eventManager: EventManager, scrollDuration: number) {
-    this.elapsedTime = 0;
+    this.startTime = Math.min(parsedNotes[0].hitTime - scrollDuration, 0);
+    this.elapsedTime = this.startTime;
     this.parsedNotes = parsedNotes;
     this.eventManager = eventManager;
     this.scrollDuration = scrollDuration;
@@ -23,6 +25,10 @@ export class NoteSpawner {
 
   public setScrollDuration(scrollDuration: number) {
     this.scrollDuration = scrollDuration;
+  }
+
+  public getStartTime() {
+    return this.startTime;
   }
 
   public update(deltaTime: number) {

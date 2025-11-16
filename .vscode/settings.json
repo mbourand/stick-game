@@ -23,7 +23,8 @@
     "lib",
     "dependencies",
     "openapi",
-    "fetching"
+    "fetching",
+    "gameplay"
   ],
   "typescript.tsdk": "node_modules\\typescript\\lib",
   "eslint.validate": ["json"],

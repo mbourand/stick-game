@@ -62,8 +62,17 @@ export class GameplayScene extends Scene {
       await this.loadBackgroundImage(),
     ]);
 
-    const audioSource = AudioManager.playMusic("beatmap_audio", buffer, this.settings.volume);
-    this.audioVisualizer.connectSource(audioSource);
+    const loadAudio = () => {
+      const audioSource = AudioManager.playMusic("beatmap_audio", buffer, this.settings.volume);
+      this.audioVisualizer.connectSource(audioSource);
+    };
+
+    if (this.noteSpawner.getStartTime() < 0) {
+      setTimeout(loadAudio, this.noteSpawner.getStartTime() * -1);
+    } else {
+      loadAudio();
+    }
+
     this.beatmapStarted = true;
   }
 

@@ -12991,6 +12991,11 @@ synckit@^0.11.8:
   dependencies:
     "@pkgr/core" "^0.2.9"
 
+tailwind-merge@^3.4.0:
+  version "3.4.0"
+  resolved "https://registry.yarnpkg.com/tailwind-merge/-/tailwind-merge-3.4.0.tgz#5a264e131a096879965f1175d11f8c36e6b64eca"
+  integrity sha512-uSaO4gnW+b3Y2aWoWfFpX62vn2sR3skfhbjsEnaBI81WD1wBLlHZe5sWf0AqjksNdYTbGBEd0UasQMT3SNV15g==
+
 tailwindcss@3.4.3:
   version "3.4.3"
   resolved "https://registry.npmjs.org/tailwindcss/-/tailwindcss-3.4.3.tgz"

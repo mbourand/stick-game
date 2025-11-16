@@ -21,9 +21,10 @@ import { ScoreCounter } from "../../score/ScoreCounter";
 import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "../../utils/constants";
 import { Scene } from "../Scene";
 import type { SceneManager } from "../SceneManager";
-import { fetchBackend } from "@/modules/fetching/back/fetchBackend";
 import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/queries/scores-beatmap-leaderboard";
 import { browserQueryClient } from "@/components/QueryProvider";
+import { submitScore } from "@/modules/score/submit-score";
+import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
 
 export class GameplayScene extends Scene {
   private eventManager = new EventManager();
@@ -344,26 +345,37 @@ export class GameplayScene extends Scene {
   }
 
   private async onBeatmapEnded(event: BeatmapEndedEventType) {
-    console.log("Beatmap ended! score:", this.scoreCounter.getScore());
-    const result = await fetchBackend("/scores/submit", {
-      body: {
-        accuracy: this.scoreCounter.getAccuracy(),
-        score: this.scoreCounter.getScore(),
-        maxCombo: this.scoreCounter.getMaxCombo(),
-        playerName: this.settings.playerName,
-        missCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Miss),
-        mehCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Meh),
-        goodCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Good),
-        greatCount: 0,
-        perfectCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Perfect),
-        beatmapId: this.parsedMap.id,
-      },
+    const { backendResult, localResult } = await submitScore({
+      accuracy: this.scoreCounter.getAccuracy(),
+      score: this.scoreCounter.getScore(),
+      maxCombo: this.scoreCounter.getMaxCombo(),
+      playerName: this.settings.playerName,
+      missCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Miss),
+      mehCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Meh),
+      goodCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Good),
+      greatCount: 0,
+      perfectCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Perfect),
+      beatmapId: this.parsedMap.id,
     });
-    if (result.wasUploaded) {
-      console.log("Invalidating leaderboard cache...");
-      browserQueryClient?.invalidateQueries({
-        queryKey: scoresBeatmapLeaderboardQueryOptions(this.parsedMap.id).queryKey,
-      });
+
+    if (backendResult.status === "fulfilled" && backendResult.value.wasUploaded) {
+      const queryKey = scoresBeatmapLeaderboardQueryOptions(this.parsedMap.id).queryKey;
+      browserQueryClient?.invalidateQueries({ queryKey });
+    }
+
+    if (localResult.status === "fulfilled") {
+      const queryKey = localScoresBeatmapLeaderboardQueryOptions(this.parsedMap.id).queryKey;
+      browserQueryClient?.invalidateQueries({ queryKey });
+    }
+
+    if (backendResult.status === "rejected") {
+      console.error("Failed to submit score to backend:", backendResult.reason);
+      alert("Score submission on global leaderboard failed, check the console for more details");
+    }
+
+    if (localResult.status === "rejected") {
+      console.error("Failed to save score locally:", localResult.reason);
+      alert("Score submission on local leaderboard failed, check the console for more details");
     }
   }
 

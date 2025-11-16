@@ -1,22 +1,22 @@
-import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/queries/scores-beatmap-leaderboard";
+import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
 import { useQuery } from "@tanstack/react-query";
 
-type LeaderboardGlobalScoresProps = {
+type LeaderboardLocalScoresProps = {
   beatmapId: string;
 };
 
-export const LeaderboardGlobalScores = ({ beatmapId }: LeaderboardGlobalScoresProps) => {
-  const leaderboardQuery = useQuery(scoresBeatmapLeaderboardQueryOptions(beatmapId ?? ""));
+export const LeaderboardLocalScores = ({ beatmapId }: LeaderboardLocalScoresProps) => {
+  const leaderboardQuery = useQuery(localScoresBeatmapLeaderboardQueryOptions(beatmapId));
 
   return (
     <>
       {leaderboardQuery.isLoading && <p>Loading leaderboard...</p>}
       {leaderboardQuery.isError && <p>Error loading leaderboard</p>}
-      {leaderboardQuery.data && leaderboardQuery.data.leaderboard.length === 0 && <p>No scores yet</p>}
-      {leaderboardQuery.data && leaderboardQuery.data.leaderboard.length > 0 && (
+      {leaderboardQuery.data && leaderboardQuery.data.length === 0 && <p>No scores yet</p>}
+      {leaderboardQuery.data && leaderboardQuery.data.length > 0 && (
         <div className="flex flex-col gap-4 max-h-[500px] overflow-y-auto">
-          {leaderboardQuery.data.leaderboard.map((entry, index) => (
-            <p key={entry.playerName}>
+          {leaderboardQuery.data.map((entry, index) => (
+            <p key={entry.submissionTime.getTime()}>
               {index + 1}. {entry.playerName} -{" "}
               {entry.score
                 .toString()

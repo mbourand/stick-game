@@ -1,4 +1,5 @@
 import { LeaderboardGlobalScores } from "@/app/game/_components/MapLeaderboard/LeaderboardGlobalScores";
+import { LeaderboardLocalScores } from "@/app/game/_components/MapLeaderboard/LeaderboardLocalScores";
 import { ReactNode, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
@@ -23,7 +24,7 @@ const LEADERBOARD_CONFIG = {
   },
   [LeaderboardType.Local]: {
     title: "Your scores",
-    renderScores: (props: ScoreDisplayerProps) => <p className="text-center">Local leaderboard not implemented yet.</p>,
+    renderScores: (props: ScoreDisplayerProps) => <LeaderboardLocalScores {...props} />,
   },
 } as const satisfies Record<LeaderboardType, LeaderboardConfigType>;
 

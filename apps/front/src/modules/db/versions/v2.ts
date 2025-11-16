@@ -23,9 +23,25 @@ export type V2FileEntity = {
   createdAt: Date;
 };
 
+export type V2LocalScoreEntity = {
+  id: number;
+  beatmapIdv2: string;
+  playerName: string;
+  score: number;
+  maxCombo: number;
+  accuracy: number;
+  missCount: number;
+  mehCount: number;
+  goodCount: number;
+  greatCount: number;
+  perfectCount: number;
+  submissionTime: Date;
+};
+
 export const v2db = new Dexie("tau") as Dexie & {
   beatmaps: EntityTable<V2BeatmapEntity, "id">;
   files: EntityTable<V2FileEntity, "id">;
+  localScores: EntityTable<V2LocalScoreEntity, "id">;
 };
 
 export const v2DexieDatabase = () => {
@@ -34,6 +50,8 @@ export const v2DexieDatabase = () => {
     .stores({
       beatmaps: "++id, idv2, content, gameplayBackgroundId, listBackgroundId, createdAt",
       files: "++id, content, extension, createdAt",
+      localScores:
+        "++id, beatmapIdv2, playerName, score, maxCombo, accuracy, missCount, mehCount, goodCount, greatCount, perfectCount, submissionTime",
     })
     .upgrade(async (transaction) => {
       await transaction

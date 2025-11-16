@@ -5,8 +5,8 @@
   "scripts": {
     "front:build:production": "nx build front",
     "front:start:production": "nx start front",
-    "back:build:production": "nx generate-prisma-schemas back && nx build back && nx migrate-prod-db back",
-    "back:start:production": "node apps/back/dist/main.js",
+    "back:build:production": "nx generate-prisma-schemas back && nx build back",
+    "back:start:production": "nx migrate-prod-db back && node apps/back/dist/main.js",
     "docker:up:dev": "docker compose -f docker-compose.dev.yml up --force-recreate --build -d",
     "docker:down:dev": "docker compose -f docker-compose.dev.yml down -v"
   },

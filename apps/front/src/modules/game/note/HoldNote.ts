@@ -18,10 +18,11 @@ export class HoldNote extends BaseNote {
   private angleSpan: number;
   private holdDuration: number;
   private elapsedTime: number;
-  private wasReachedEdgeEventEmitted: boolean;
+  private wasJudgementEventEmitted: boolean;
   private holdTickClock: Clock;
   private headNoteJudge: NoteJudge;
   private isActive: boolean;
+  private wasHoldClockResetted: boolean;
 
   private static BODY_COLOR: Record<NoteColor, string> = {
     [NoteColor.Red]: "rgba(255, 35, 0, 0.5)",
@@ -48,10 +49,11 @@ export class HoldNote extends BaseNote {
     this.angleSpan = angleSpan;
     this.holdDuration = holdDuration;
     this.elapsedTime = 0;
-    this.wasReachedEdgeEventEmitted = false;
+    this.wasJudgementEventEmitted = false;
     this.holdTickClock = new Clock(beatLength / 2);
     this.headNoteJudge = new NoteJudge(this, DEFAULT_JUDGE, gamepad);
     this.isActive = true;
+    this.wasHoldClockResetted = false;
   }
 
   public getLifeTime(): number {
@@ -73,17 +75,23 @@ export class HoldNote extends BaseNote {
 
     this.headNoteJudge.update();
 
+    if (!this.wasHoldClockResetted && this.hasReachedEdge()) {
+      this.holdTickClock.reset();
+      this.wasHoldClockResetted = true;
+    }
+
     const shouldCheckHoldTick = this.holdTickClock.update(deltaTime);
-    if (shouldCheckHoldTick && this.hasReachedEdge() && this.wasReachedEdgeEventEmitted) {
+
+    if (shouldCheckHoldTick && this.hasReachedEdge() && this.wasJudgementEventEmitted) {
       this.eventManager.emit("onNoteHoldTick", NoteHoldTickEvent(this));
     }
 
-    if (this.headNoteJudge.isJudgementComplete() && !this.wasReachedEdgeEventEmitted) {
+    if (this.headNoteJudge.isJudgementComplete() && !this.wasJudgementEventEmitted) {
       this.eventManager.emit("onNoteWasJudged", NoteWasJudgedEvent(this));
-      this.wasReachedEdgeEventEmitted = true;
+      this.wasJudgementEventEmitted = true;
     }
 
-    const reachedEndOfLife = this.elapsedTime >= this.getLifeTime() && this.wasReachedEdgeEventEmitted;
+    const reachedEndOfLife = this.elapsedTime >= this.getLifeTime() && this.wasJudgementEventEmitted;
     if (reachedEndOfLife) {
       this.eventManager.emit("onNoteReachedEndOfLife", NoteReachedEndOfLifeEvent(this));
       this.isActive = false;

@@ -56,7 +56,7 @@ export class HoldNote extends BaseNote {
     this.wasHoldClockResetted = false;
   }
 
-  public getLifeTime(): number {
+  public getLifeTime() {
     return Math.max(this.timeToReachEdge + this.holdDuration, DEFAULT_JUDGE.getLargestWindow());
   }
 
@@ -64,8 +64,12 @@ export class HoldNote extends BaseNote {
     return this.elapsedTime >= this.timeToReachEdge;
   }
 
-  public getProgressionTowardsEdge(): number {
+  public getProgressionTowardsEdge() {
     return Math.min(this.elapsedTime / this.timeToReachEdge, 1);
+  }
+
+  public getHoldTickCount() {
+    return Math.floor(this.holdDuration / this.holdTickClock.getFrequency());
   }
 
   public update(deltaTime: number): void {

@@ -28,7 +28,7 @@ import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/
 
 export class GameplayScene extends Scene {
   private eventManager = new EventManager();
-  private scoreCounter = new ScoreCounter();
+  private scoreCounter: ScoreCounter;
 
   private audioVisualizer: CircleAudioVisualizer = new CircleAudioVisualizer(40, GAME_CIRCLE_DISPLAYED_RADIUS, 30);
 
@@ -52,6 +52,9 @@ export class GameplayScene extends Scene {
     this.settings = Settings.getSettings();
     this.noteSpawner = new NoteSpawner(this.parsedMap.notes, this.eventManager, this.settings.scrollDuration);
     this.gamepad = new Gamepad(this.settings.gamepadMapping);
+    this.scoreCounter = new ScoreCounter(
+      this.parsedMap.notes.length + this.parsedMap.notes.filter((n) => n.isHold).length,
+    );
   }
 
   public async onEntered() {
@@ -285,7 +288,7 @@ export class GameplayScene extends Scene {
       return;
     }
 
-    this.scoreCounter.addHoldNoteTick();
+    this.scoreCounter.addHoldNoteTick(event.note.getHoldTickCount());
   }
 
   private onNoteShouldSpawn(event: NoteShouldSpawnEventType) {

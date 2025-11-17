@@ -58,6 +58,8 @@ export class ScoreCounter {
   }
 
   public addHoldNoteTick(holdTickCountInNote: number) {
+    if (holdTickCountInNote === 0) return;
+
     this.updateScore({
       hitBonus: JUDGEMENTS_CONFIG[JudgmentKind.Perfect].hitBonus / holdTickCountInNote,
       hitBonusValue: JUDGEMENTS_CONFIG[JudgmentKind.Perfect].hitBonusValue / holdTickCountInNote,

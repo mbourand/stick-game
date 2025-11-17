@@ -8,7 +8,7 @@ export class ScoresService {
 
   async getBeatmapLeaderboard(beatmapId: string) {
     return this.prisma.score.findMany({
-      where: { beatmapId },
+      where: { beatmapId, scoreVersion: 2 },
       orderBy: { score: "desc" },
       take: 50,
     });
@@ -16,7 +16,7 @@ export class ScoresService {
 
   async getBeatmapPersonalBest(beatmapId: string, playerName: string) {
     return this.prisma.score.findFirst({
-      where: { beatmapId, playerName },
+      where: { beatmapId, playerName, scoreVersion: 2 },
       orderBy: { score: "desc" },
     });
   }
@@ -28,6 +28,11 @@ export class ScoresService {
       return { wasUploaded: false, score: currentPersonalBest };
     }
 
+    const hydratedScore: ScoreCreateInput = {
+      ...score,
+      scoreVersion: 2,
+    };
+
     const newScore = await this.prisma.score.upsert({
       where: {
         playerName_beatmapId: {
@@ -35,8 +40,8 @@ export class ScoresService {
           beatmapId: score.beatmapId,
         },
       },
-      update: score,
-      create: score,
+      update: hydratedScore,
+      create: hydratedScore,
     });
 
     if (!newScore) {

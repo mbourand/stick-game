@@ -4,6 +4,7 @@ import { ScoreResponseDto } from "../../../prisma/dto/score.dto";
 
 const BodySchema = ScoreResponseDto.schema.omit({
   submissionTime: true,
+  scoreVersion: true,
 });
 
 const ResponseSchema = z.strictObject({

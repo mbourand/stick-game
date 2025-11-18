@@ -46,7 +46,12 @@ export class NoteSpawner {
     const hasLastNoteSpawned = this.lastNoteIndex >= this.parsedNotes.length - 1;
     if (hasLastNoteSpawned) {
       this.elapsedTimeSinceLastNoteSpawn += deltaTime;
-      if (this.elapsedTimeSinceLastNoteSpawn >= this.scrollDuration + DEFAULT_JUDGE.getLargestWindow()) {
+      if (
+        this.elapsedTimeSinceLastNoteSpawn >=
+        this.scrollDuration +
+          (this.parsedNotes[this.lastNoteIndex].holdDuration ?? 0) +
+          DEFAULT_JUDGE.getLargestWindow()
+      ) {
         this.eventManager.emit("onBeatmapEnded", BeatmapEndedEvent());
         this.hasFinished = true;
       }

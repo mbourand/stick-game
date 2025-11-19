@@ -44,6 +44,8 @@ export class ScoreCounter {
   }
 
   private updateScore({ hitValue, hitBonusValue, hitBonus }: JudgementConfigType, options?: { updateBonus?: boolean }) {
+    if (this.totalNotes === 0) return;
+
     const { updateBonus = true } = options || {};
     if (updateBonus) {
       this.bonus = Math.max(0, Math.min(this.bonus + hitBonus, MAX_BONUS_VALUE));

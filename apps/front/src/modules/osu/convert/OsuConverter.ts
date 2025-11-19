@@ -4,6 +4,7 @@ export type ParsedNote = {
   hitTime: number;
   isHold: boolean;
   holdDuration?: number;
+  holdTicksHitTimes?: number[];
   angle: number;
   color: NoteColor;
   effectiveBPMAtHitTime: number;
@@ -97,9 +98,24 @@ const parseHitObjects = (lines: string[], timingPoints: TimingPoint[], baseSlide
 
     const beatLength = 60000 / timingPoint.bpm;
     const length = Number(parts[7]);
-    const holdDuration = (length / (baseSliderMultiplier * 100 * timingPoint.sliderMultiplier)) * beatLength;
 
-    notes.push({ hitTime, isHold, holdDuration, angle, color, effectiveBPMAtHitTime: timingPoint.bpm });
+    const holdDuration = (length / (baseSliderMultiplier * 100 * timingPoint.sliderMultiplier)) * beatLength;
+    const timeBetweenHoldTicks = beatLength / 2;
+    const holdTicksCount = Math.floor((holdDuration - timeBetweenHoldTicks / 2) / timeBetweenHoldTicks);
+    const holdTicksHitTimes = Array.from(
+      { length: holdTicksCount },
+      (_, i) => hitTime + (i + 1) * timeBetweenHoldTicks,
+    );
+
+    notes.push({
+      hitTime,
+      isHold,
+      holdDuration,
+      angle,
+      color,
+      effectiveBPMAtHitTime: timingPoint.bpm,
+      holdTicksHitTimes,
+    });
   }
 
   return notes;

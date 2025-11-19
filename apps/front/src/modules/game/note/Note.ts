@@ -1,6 +1,6 @@
 import type { Gamepad } from "../../gamepad/Gamepad";
 import type { EventManager } from "../events/EventManager";
-import { NoteReachedEndOfLifeEvent } from "../events/impl/NoteReachedEndOfLifeEventType";
+import { NoteReachedEndOfLifeEvent } from "../events/impl/NoteReachedEndOfLifeEvent";
 import { NoteWasJudgedEvent } from "../events/impl/NoteWasJudgedEvent";
 import { DEFAULT_JUDGE } from "../judge/Judge";
 import { NoteColor } from "./NoteColor";
@@ -12,15 +12,15 @@ export abstract class BaseNote {
 }
 
 export class Note extends BaseNote {
-  private timeToReachEdge: number;
-  private elapsedTime: number;
-  private circleRadius: number;
-  private color: NoteColor;
-  private angle: number;
-  private angleSpan: number;
-  private eventManager: EventManager;
-  private noteJudge: NoteJudge;
-  private isActive: boolean;
+  protected timeToReachEdge: number;
+  protected elapsedTime: number;
+  protected circleRadius: number;
+  protected color: NoteColor;
+  protected angle: number;
+  protected angleSpan: number;
+  protected eventManager: EventManager;
+  protected noteJudge: NoteJudge;
+  protected isActive: boolean;
 
   constructor(
     eventManager: EventManager,

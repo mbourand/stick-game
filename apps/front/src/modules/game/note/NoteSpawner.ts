@@ -2,7 +2,7 @@ import { DEFAULT_JUDGE } from "@/modules/game/judge/Judge";
 import type { ParsedNote } from "../../osu/convert/OsuConverter";
 import type { EventManager } from "../events/EventManager";
 import { NoteShouldSpawnEvent } from "../events/impl/NoteShouldSpawnEvent";
-import { BeatmapEndedEvent } from "@/modules/game/events/impl/BeatmapEndedEventType";
+import { BeatmapEndedEvent } from "@/modules/game/events/impl/BeatmapEndedEvent";
 
 export class NoteSpawner {
   private elapsedTime: number;

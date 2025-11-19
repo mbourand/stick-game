@@ -1,28 +1,68 @@
+import { NoteTailWasJudgedEvent } from "@/modules/game/events/impl/NoteTailWasJudgedEvent";
 import type { Gamepad } from "../../gamepad/Gamepad";
 import type { EventManager } from "../events/EventManager";
-import { NoteHoldTickEvent } from "../events/impl/NoteHoldTickEventType";
-import { NoteReachedEndOfLifeEvent } from "../events/impl/NoteReachedEndOfLifeEventType";
+import { NoteHoldTickEvent } from "../events/impl/NoteHoldTickEvent";
+import { NoteReachedEndOfLifeEvent } from "../events/impl/NoteReachedEndOfLifeEvent";
 import { NoteWasJudgedEvent } from "../events/impl/NoteWasJudgedEvent";
 import { DEFAULT_JUDGE } from "../judge/Judge";
-import { Clock } from "../utils/Clock";
-import { BaseNote } from "./Note";
+import { BaseNote, Note } from "./Note";
 import { NoteColor } from "./NoteColor";
 import { NoteJudge } from "./NoteJudge";
 
+class HoldNoteTail extends Note {
+  private wasTailJudgementEventEmitted = false;
+  private parentNote: HoldNote;
+
+  constructor(
+    eventManager: EventManager,
+    timeToReachEdge: number,
+    circleRadius: number,
+    color: NoteColor,
+    angle: number,
+    angleSpan: number,
+    gamepad: Gamepad,
+    parentNote: HoldNote,
+  ) {
+    super(eventManager, timeToReachEdge, circleRadius, color, angle, angleSpan, gamepad);
+    this.parentNote = parentNote;
+  }
+
+  public override update(deltaTime: number): void {
+    if (!this.isActive) return;
+    this.elapsedTime += deltaTime;
+    this.noteJudge.update();
+
+    if (this.noteJudge.isJudgementComplete() && !this.wasTailJudgementEventEmitted) {
+      this.eventManager.emit("onNoteTailWasJudged", NoteTailWasJudgedEvent(this.parentNote));
+      this.wasTailJudgementEventEmitted = true;
+    }
+  }
+
+  public wasJudgementEventEmitted(): boolean {
+    return this.wasTailJudgementEventEmitted;
+  }
+
+  public override render(): void {}
+}
+
 export class HoldNote extends BaseNote {
   private eventManager: EventManager;
-  private timeToReachEdge: number;
   private circleRadius: number;
   private color: NoteColor;
   private angle: number;
   private angleSpan: number;
-  private holdDuration: number;
   private elapsedTime: number;
-  private wasJudgementEventEmitted: boolean;
-  private holdTickClock: Clock;
-  private headNoteJudge: NoteJudge;
   private isActive: boolean;
-  private wasHoldClockResetted: boolean;
+
+  private holdDuration: number;
+  private holdTicksHitTimes: number[];
+  private currentHoldTickIndex: number;
+
+  private headNoteJudge: NoteJudge;
+  private timeToReachEdge: number;
+  private wasHeadJudgementEventEmitted: boolean;
+
+  private tailNote: HoldNoteTail;
 
   private static BODY_COLOR: Record<NoteColor, string> = {
     [NoteColor.Red]: "rgba(255, 35, 0, 0.5)",
@@ -37,8 +77,8 @@ export class HoldNote extends BaseNote {
     angle: number,
     angleSpan: number,
     holdDuration: number,
-    beatLength: number,
     gamepad: Gamepad,
+    holdTicksHitTimes: number[],
   ) {
     super();
     this.eventManager = eventManager;
@@ -49,27 +89,38 @@ export class HoldNote extends BaseNote {
     this.angleSpan = angleSpan;
     this.holdDuration = holdDuration;
     this.elapsedTime = 0;
-    this.wasJudgementEventEmitted = false;
-    this.holdTickClock = new Clock(beatLength / 2);
+    this.wasHeadJudgementEventEmitted = false;
     this.headNoteJudge = new NoteJudge(this, DEFAULT_JUDGE, gamepad);
     this.isActive = true;
-    this.wasHoldClockResetted = false;
+    this.holdTicksHitTimes = holdTicksHitTimes;
+    this.currentHoldTickIndex = 0;
+
+    this.tailNote = new HoldNoteTail(
+      this.eventManager,
+      this.timeToReachEdge + this.holdDuration,
+      this.circleRadius,
+      this.color,
+      this.angle,
+      this.angleSpan,
+      gamepad,
+      this,
+    );
   }
 
   public getLifeTime() {
-    return Math.max(this.timeToReachEdge + this.holdDuration, DEFAULT_JUDGE.getLargestWindow());
-  }
-
-  public hasReachedEdge() {
-    return this.elapsedTime >= this.timeToReachEdge;
+    return this.timeToReachEdge + this.holdDuration + DEFAULT_JUDGE.getLargestWindow();
   }
 
   public getProgressionTowardsEdge() {
     return Math.min(this.elapsedTime / this.timeToReachEdge, 1);
   }
 
-  public getHoldTickCount() {
-    return Math.floor(this.holdDuration / this.holdTickClock.getFrequency());
+  public hasRemainingHoldTicks() {
+    return this.currentHoldTickIndex < this.holdTicksHitTimes.length;
+  }
+
+  public getHoldTickCount(options?: { includeTail: boolean }) {
+    return this.holdTicksHitTimes.length + (options?.includeTail ? 1 : 0);
   }
 
   public update(deltaTime: number): void {
@@ -78,24 +129,22 @@ export class HoldNote extends BaseNote {
     this.elapsedTime += deltaTime;
 
     this.headNoteJudge.update();
+    this.tailNote.update(deltaTime);
 
-    if (!this.wasHoldClockResetted && this.hasReachedEdge()) {
-      this.holdTickClock.reset();
-      this.wasHoldClockResetted = true;
-    }
-
-    const shouldCheckHoldTick = this.holdTickClock.update(deltaTime);
-
-    if (shouldCheckHoldTick && this.hasReachedEdge() && this.wasJudgementEventEmitted) {
+    if (this.hasRemainingHoldTicks() && this.elapsedTime >= this.holdTicksHitTimes[this.currentHoldTickIndex]) {
       this.eventManager.emit("onNoteHoldTick", NoteHoldTickEvent(this));
+      this.currentHoldTickIndex += 1;
     }
 
-    if (this.headNoteJudge.isJudgementComplete() && !this.wasJudgementEventEmitted) {
+    if (this.headNoteJudge.isJudgementComplete() && !this.wasHeadJudgementEventEmitted) {
       this.eventManager.emit("onNoteWasJudged", NoteWasJudgedEvent(this));
-      this.wasJudgementEventEmitted = true;
+      this.wasHeadJudgementEventEmitted = true;
     }
 
-    const reachedEndOfLife = this.elapsedTime >= this.getLifeTime() && this.wasJudgementEventEmitted;
+    const reachedEndOfLife =
+      this.elapsedTime >= this.getLifeTime() &&
+      this.wasHeadJudgementEventEmitted &&
+      this.tailNote.wasJudgementEventEmitted();
     if (reachedEndOfLife) {
       this.eventManager.emit("onNoteReachedEndOfLife", NoteReachedEndOfLifeEvent(this));
       this.isActive = false;
@@ -125,7 +174,7 @@ export class HoldNote extends BaseNote {
     const bodyRadius = this.circleRadius * progress;
 
     const tailElapsed = this.elapsedTime - this.holdDuration;
-    const tailProgress = Math.max(tailElapsed / this.timeToReachEdge, 0);
+    const tailProgress = Math.min(Math.max(tailElapsed / this.timeToReachEdge, 0), 1);
     const tailRadius = this.circleRadius * tailProgress;
 
     ctx.fillStyle = HoldNote.BODY_COLOR[this.color];

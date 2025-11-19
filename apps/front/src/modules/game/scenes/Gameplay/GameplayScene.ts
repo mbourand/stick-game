@@ -1,11 +1,11 @@
-import { BeatmapEndedEventType } from "@/modules/game/events/impl/BeatmapEndedEventType";
+import { BeatmapEndedEventType } from "@/modules/game/events/impl/BeatmapEndedEvent";
 import { AudioManager } from "../../../audio/AudioManager";
 import { Gamepad } from "../../../gamepad/Gamepad";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { Settings, type SettingsListType } from "../../../settings/Settings";
 import { EventManager } from "../../events/EventManager";
-import type { NoteHoldTickEventType } from "../../events/impl/NoteHoldTickEventType";
-import type { NoteReachedEndOfLifeEventType } from "../../events/impl/NoteReachedEndOfLifeEventType";
+import type { NoteHoldTickEventType } from "../../events/impl/NoteHoldTickEvent";
+import type { NoteReachedEndOfLifeEventType } from "../../events/impl/NoteReachedEndOfLifeEvent";
 import type { NoteShouldSpawnEventType } from "../../events/impl/NoteShouldSpawnEvent";
 import type { NoteWasJudgedEventType } from "../../events/impl/NoteWasJudgedEvent";
 import { CircleAudioVisualizer } from "../../flair/CircleAudioVisualizer";
@@ -25,6 +25,7 @@ import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/qu
 import { browserQueryClient } from "@/components/QueryProvider";
 import { submitScore } from "@/modules/score/submit-score";
 import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
+import { NoteTailWasJudgedEventType } from "@/modules/game/events/impl/NoteTailWasJudgedEvent";
 
 export class GameplayScene extends Scene {
   private eventManager = new EventManager();
@@ -288,7 +289,7 @@ export class GameplayScene extends Scene {
       return;
     }
 
-    this.scoreCounter.addHoldNoteTick(event.note.getHoldTickCount());
+    this.scoreCounter.addHoldNoteTick(event.note.getHoldTickCount({ includeTail: true }));
   }
 
   private onNoteShouldSpawn(event: NoteShouldSpawnEventType) {
@@ -303,8 +304,10 @@ export class GameplayScene extends Scene {
           Math.max((Math.random() * Math.PI) / 3, Math.PI / 5),
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
           event.parsedNote.holdDuration!,
-          60000 / event.parsedNote.effectiveBPMAtHitTime,
           this.gamepad,
+          event.parsedNote.holdTicksHitTimes!.map(
+            (hitTime) => hitTime - event.parsedNote.hitTime + this.settings.scrollDuration,
+          ),
         ),
       );
     } else {
@@ -356,6 +359,16 @@ export class GameplayScene extends Scene {
     this.scoreCounter.add(event.note.getJudgement());
   }
 
+  private onNoteTailWasJudged(event: NoteTailWasJudgedEventType) {
+    if (event.note.getJudgement() === JudgmentKind.Miss) {
+      this.miss();
+      return;
+    }
+
+    AudioManager.playSound("hit");
+    this.scoreCounter.addHoldNoteTick(event.note.getHoldTickCount({ includeTail: true }));
+  }
+
   private async onBeatmapEnded(event: BeatmapEndedEventType) {
     const { backendResult, localResult } = await submitScore({
       accuracy: this.scoreCounter.getAccuracy(),
@@ -395,16 +408,23 @@ export class GameplayScene extends Scene {
     console.log("Registering game events...");
     const offNoteReachedEdge = this.eventManager.on("onNoteWasJudged", (...args) => this.onNoteWasJudged(...args));
     this.offFunctions.push(offNoteReachedEdge);
-    const offNoteShouldSpawn = this.eventManager.on("onNoteShouldSpawn", (...args) => {
-      this.onNoteShouldSpawn(...args);
-    });
+
+    const offNoteTailWasJudged = this.eventManager.on("onNoteTailWasJudged", (...args) =>
+      this.onNoteTailWasJudged(...args),
+    );
+    this.offFunctions.push(offNoteTailWasJudged);
+
+    const offNoteShouldSpawn = this.eventManager.on("onNoteShouldSpawn", (...args) => this.onNoteShouldSpawn(...args));
     this.offFunctions.push(offNoteShouldSpawn);
+
     const offNoteReachedEndOfLife = this.eventManager.on("onNoteReachedEndOfLife", (...args) =>
       this.onNoteReachedEndOfLife(...args),
     );
     this.offFunctions.push(offNoteReachedEndOfLife);
+
     const offNoteHoldTick = this.eventManager.on("onNoteHoldTick", (...args) => this.onNoteHoldTick(...args));
     this.offFunctions.push(offNoteHoldTick);
+
     const offBeatmapEnded = this.eventManager.on("onBeatmapEnded", (...args) => this.onBeatmapEnded(...args));
     this.offFunctions.push(offBeatmapEnded);
 

@@ -3,10 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 
 type LeaderboardGlobalScoresProps = {
   beatmapId: string;
+  scoreVersion: number;
 };
 
-export const LeaderboardGlobalScores = ({ beatmapId }: LeaderboardGlobalScoresProps) => {
-  const leaderboardQuery = useQuery(scoresBeatmapLeaderboardQueryOptions(beatmapId ?? ""));
+export const LeaderboardGlobalScores = ({ beatmapId, scoreVersion }: LeaderboardGlobalScoresProps) => {
+  const leaderboardQuery = useQuery(scoresBeatmapLeaderboardQueryOptions(beatmapId, scoreVersion));
 
   return (
     <>

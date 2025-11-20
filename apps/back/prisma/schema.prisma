@@ -42,7 +42,7 @@ model Score {
   perfectCount    Int
   submissionTime  DateTime @default(now())
   /// @zod.number().int().nonnegative()
-  scoreVersion    Int      @default(1)
+  scoreVersion    Int
 
-  @@id([playerName, beatmapId])
+  @@id([playerName, beatmapId, scoreVersion])
 }

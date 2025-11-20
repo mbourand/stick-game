@@ -15,6 +15,7 @@ type LeaderboardConfigType = {
 
 type ScoreDisplayerProps = {
   beatmapId: string;
+  scoreVersion: number;
 };
 
 const LEADERBOARD_CONFIG = {
@@ -30,6 +31,7 @@ const LEADERBOARD_CONFIG = {
 
 export const MapLeaderboard = ({ beatmapId, className }: { beatmapId: string; className?: string }) => {
   const [leaderboardType, setLeaderboardType] = useState(LeaderboardType.Global);
+  const [scoreVersion, setScoreVersion] = useState(3);
 
   return (
     <>
@@ -48,9 +50,25 @@ export const MapLeaderboard = ({ beatmapId, className }: { beatmapId: string; cl
             </button>
           ))}
         </div>
-        <div className="p-6 pt-4">
+        <div className="p-6 pt-4 relative">
+          <select
+            className="absolute right-2 top-2 bg-white/10 px-1"
+            name="scoreVersion"
+            defaultValue={3}
+            onChange={(e) => setScoreVersion(Number(e.target.value))}
+          >
+            <option className="text-black" value={1}>
+              v1
+            </option>
+            <option className="text-black" value={2}>
+              v2
+            </option>
+            <option className="text-black" value={3}>
+              v3
+            </option>
+          </select>
           <h1 className="text-center font-semibold text-lg mb-2">{LEADERBOARD_CONFIG[leaderboardType].title}</h1>
-          {LEADERBOARD_CONFIG[leaderboardType].renderScores({ beatmapId })}
+          {LEADERBOARD_CONFIG[leaderboardType].renderScores({ beatmapId, scoreVersion })}
         </div>
       </div>
     </>

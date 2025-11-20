@@ -14,17 +14,17 @@ export const JUDGEMENTS_CONFIG = {
     hitValue: 300,
     // Mandatory for SS scores to give exactly MAX_SCORE
     hitBonusValue: 300 / Math.sqrt(MAX_BONUS_VALUE),
-    hitBonus: 2.0,
+    hitBonus: 1,
   },
   [JudgmentKind.Good]: {
-    hitValue: 100,
-    hitBonusValue: 8,
-    hitBonus: -24,
+    hitValue: 75,
+    hitBonusValue: 4,
+    hitBonus: -33,
   },
   [JudgmentKind.Meh]: {
-    hitValue: 50,
-    hitBonusValue: 4,
-    hitBonus: -44,
+    hitValue: 20,
+    hitBonusValue: 2,
+    hitBonus: -66,
   },
   [JudgmentKind.Miss]: {
     hitValue: 0,

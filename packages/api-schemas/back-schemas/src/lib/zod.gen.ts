@@ -31,7 +31,7 @@ export const zGetScoresBeatmapLeaderboardResponseDtoOutput = z.object({
         greatCount: z.int().gte(0).lte(9007199254740991),
         perfectCount: z.int().gte(0).lte(9007199254740991),
         submissionTime: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
-        scoreVersion: z.int().gte(0).lte(9007199254740991).default(1)
+        scoreVersion: z.int().gte(0).lte(9007199254740991)
     }))
 });
 
@@ -47,7 +47,7 @@ export const zGetScoresBeatmapPersonalBestResponseDtoOutput = z.object({
     greatCount: z.int().gte(0).lte(9007199254740991),
     perfectCount: z.int().gte(0).lte(9007199254740991),
     submissionTime: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
-    scoreVersion: z.int().gte(0).lte(9007199254740991).default(1)
+    scoreVersion: z.int().gte(0).lte(9007199254740991)
 });
 
 export const zPostScoresSubmitBodyDto = z.object({
@@ -77,7 +77,7 @@ export const zPostScoresSubmitResponseDtoOutput = z.object({
         greatCount: z.int().gte(0).lte(9007199254740991),
         perfectCount: z.int().gte(0).lte(9007199254740991),
         submissionTime: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
-        scoreVersion: z.int().gte(0).lte(9007199254740991).default(1)
+        scoreVersion: z.int().gte(0).lte(9007199254740991)
     })
 });
 
@@ -96,7 +96,9 @@ export const zScoresControllerGetBeatmapLeaderboardData = z.object({
     path: z.object({
         beatmapId: z.string().min(1).max(32)
     }),
-    query: z.optional(z.never())
+    query: z.optional(z.object({
+        scoreVersion: z.optional(z.number().gte(1).lte(3)).default(3)
+    }))
 });
 
 export const zScoresControllerGetBeatmapLeaderboardResponse = zGetScoresBeatmapLeaderboardResponseDtoOutput;
@@ -107,7 +109,9 @@ export const zScoresControllerGetBeatmapPersonalBestData = z.object({
         beatmapId: z.string().min(1).max(32),
         playerName: z.string().min(1).max(32)
     }),
-    query: z.optional(z.never())
+    query: z.optional(z.object({
+        scoreVersion: z.optional(z.number().gte(1).lte(3)).default(3)
+    }))
 });
 
 export const zScoresControllerGetBeatmapPersonalBestResponse = zGetScoresBeatmapPersonalBestResponseDtoOutput;

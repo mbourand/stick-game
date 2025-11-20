@@ -29,7 +29,7 @@ export const submitScore = async (params: SubmitScoreParams) => {
       greatCount: params.greatCount,
       perfectCount: params.perfectCount,
       submissionTime: new Date(),
-      scoreVersion: 2,
+      scoreVersion: 3,
     }),
   ]);
 

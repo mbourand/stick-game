@@ -8,7 +8,12 @@ const ParamsSchema = z.strictObject({
   playerName: ScoreSchema.shape.playerName,
 });
 
+const QueryParamsSchema = z.strictObject({
+  scoreVersion: z.coerce.number().min(1).max(3).default(3),
+});
+
 const ResponseSchema = ScoreResponseDto.schema;
 
 export class GetScoresBeatmapPersonalBestParamsDto extends createZodDto(ParamsSchema) {}
+export class GetScoresBeatmapPersonalBestQueryParamsDto extends createZodDto(QueryParamsSchema) {}
 export class GetScoresBeatmapPersonalBestResponseDto extends createZodDto(ResponseSchema) {}

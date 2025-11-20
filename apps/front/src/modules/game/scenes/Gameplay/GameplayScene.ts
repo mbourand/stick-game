@@ -384,12 +384,12 @@ export class GameplayScene extends Scene {
     });
 
     if (backendResult.status === "fulfilled" && backendResult.value.wasUploaded) {
-      const queryKey = scoresBeatmapLeaderboardQueryOptions(this.parsedMap.id).queryKey;
+      const queryKey = scoresBeatmapLeaderboardQueryOptions(this.parsedMap.id, 3).queryKey;
       browserQueryClient?.invalidateQueries({ queryKey });
     }
 
     if (localResult.status === "fulfilled") {
-      const queryKey = localScoresBeatmapLeaderboardQueryOptions(this.parsedMap.id).queryKey;
+      const queryKey = localScoresBeatmapLeaderboardQueryOptions(this.parsedMap.id, 3).queryKey;
       browserQueryClient?.invalidateQueries({ queryKey });
     }
 

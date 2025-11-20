@@ -4,7 +4,6 @@ import type { NoteReachedEndOfLifeEventType } from "./impl/NoteReachedEndOfLifeE
 import type { NoteShouldSpawnEventType } from "./impl/NoteShouldSpawnEvent";
 import type { SettingChangedEventType } from "./impl/SettingChangedEventType";
 import { BeatmapEndedEventType } from "@/modules/game/events/impl/BeatmapEndedEvent";
-import { NoteTailWasJudgedEventType } from "@/modules/game/events/impl/NoteTailWasJudgedEvent";
 
 type EventType =
   | "onNoteWasJudged"
@@ -12,8 +11,7 @@ type EventType =
   | "onNoteReachedEndOfLife"
   | "onNoteHoldTick"
   | "onSettingChanged"
-  | "onBeatmapEnded"
-  | "onNoteTailWasJudged";
+  | "onBeatmapEnded";
 
 type EventHandlers = {
   onNoteWasJudged: (e: NoteWasJudgedEventType) => void;
@@ -22,7 +20,6 @@ type EventHandlers = {
   onNoteHoldTick: (e: NoteHoldTickEventType) => void;
   onSettingChanged: (e: SettingChangedEventType) => void;
   onBeatmapEnded: (e: BeatmapEndedEventType) => void;
-  onNoteTailWasJudged: (e: NoteTailWasJudgedEventType) => void;
 };
 
 type EventHandlersArray = {

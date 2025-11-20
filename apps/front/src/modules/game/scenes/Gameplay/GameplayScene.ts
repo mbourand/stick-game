@@ -25,7 +25,6 @@ import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/qu
 import { browserQueryClient } from "@/components/QueryProvider";
 import { submitScore } from "@/modules/score/submit-score";
 import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
-import { NoteTailWasJudgedEventType } from "@/modules/game/events/impl/NoteTailWasJudgedEvent";
 
 export class GameplayScene extends Scene {
   private eventManager = new EventManager();
@@ -325,6 +324,29 @@ export class GameplayScene extends Scene {
     }
   }
 
+  private spawnNoteHitGlowFlair(note: Note | HoldNote) {
+    const flairColor = (() => {
+      switch (note.getJudgement()) {
+        case JudgmentKind.Perfect:
+          return "cyan";
+        case JudgmentKind.Good:
+          return "lime";
+        case JudgmentKind.Meh:
+          return "gold";
+        case JudgmentKind.Miss:
+          return "red";
+        default:
+          throw new Error("Invalid judgment kind for flair color");
+      }
+    })();
+
+    this.noteHitGlowFlairs.add(new NoteHitGlowFlair(note.getStartAngle(), note.getEndAngle(), 400, flairColor));
+  }
+
+  private spawnNoteHitFlair(note: Note | HoldNote) {
+    this.noteHitFlairs.add(new NoteHitFlair(note.getStartAngle(), note.getEndAngle(), 400, "white"));
+  }
+
   private onNoteWasJudged(event: NoteWasJudgedEventType) {
     if (!(event.note instanceof Note || event.note instanceof HoldNote)) {
       return;
@@ -332,41 +354,19 @@ export class GameplayScene extends Scene {
 
     if (event.note.getJudgement() === JudgmentKind.Miss) {
       this.miss();
-      this.noteHitGlowFlairs.add(
-        new NoteHitGlowFlair(event.note.getStartAngle(), event.note.getEndAngle(), 400, "red"),
-      );
+      if (!event.isNoteTail) this.spawnNoteHitGlowFlair(event.note);
       return;
     }
 
-    const flairColor = (() => {
-      switch (event.note.getJudgement()) {
-        case JudgmentKind.Perfect:
-          return "cyan";
-        case JudgmentKind.Good:
-          return "lime";
-        case JudgmentKind.Meh:
-          return "gold";
-        default:
-          throw new Error("Invalid judgment kind for flair color");
-      }
-    })();
+    if (event.isNoteTail && event.note instanceof HoldNote) {
+      this.scoreCounter.addHoldNoteTick(event.note.getHoldTickCount({ includeTail: true }));
+      return;
+    }
 
     AudioManager.playSound("hit");
-    this.noteHitFlairs.add(new NoteHitFlair(event.note.getStartAngle(), event.note.getEndAngle(), 400, "white"));
-    this.noteHitGlowFlairs.add(
-      new NoteHitGlowFlair(event.note.getStartAngle(), event.note.getEndAngle(), 400, flairColor),
-    );
+    this.spawnNoteHitFlair(event.note);
+    this.spawnNoteHitGlowFlair(event.note);
     this.scoreCounter.add(event.note.getJudgement());
-  }
-
-  private onNoteTailWasJudged(event: NoteTailWasJudgedEventType) {
-    if (event.note.getJudgement() === JudgmentKind.Miss) {
-      this.miss();
-      return;
-    }
-
-    AudioManager.playSound("hit");
-    this.scoreCounter.addHoldNoteTick(event.note.getHoldTickCount({ includeTail: true }));
   }
 
   private async onBeatmapEnded(event: BeatmapEndedEventType) {
@@ -408,11 +408,6 @@ export class GameplayScene extends Scene {
     console.log("Registering game events...");
     const offNoteReachedEdge = this.eventManager.on("onNoteWasJudged", (...args) => this.onNoteWasJudged(...args));
     this.offFunctions.push(offNoteReachedEdge);
-
-    const offNoteTailWasJudged = this.eventManager.on("onNoteTailWasJudged", (...args) =>
-      this.onNoteTailWasJudged(...args),
-    );
-    this.offFunctions.push(offNoteTailWasJudged);
 
     const offNoteShouldSpawn = this.eventManager.on("onNoteShouldSpawn", (...args) => this.onNoteShouldSpawn(...args));
     this.offFunctions.push(offNoteShouldSpawn);

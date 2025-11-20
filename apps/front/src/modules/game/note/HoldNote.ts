@@ -1,4 +1,3 @@
-import { NoteTailWasJudgedEvent } from "@/modules/game/events/impl/NoteTailWasJudgedEvent";
 import type { Gamepad } from "../../gamepad/Gamepad";
 import type { EventManager } from "../events/EventManager";
 import { NoteHoldTickEvent } from "../events/impl/NoteHoldTickEvent";
@@ -33,7 +32,7 @@ class HoldNoteTail extends Note {
     this.noteJudge.update();
 
     if (this.noteJudge.isJudgementComplete() && !this.wasTailJudgementEventEmitted) {
-      this.eventManager.emit("onNoteTailWasJudged", NoteTailWasJudgedEvent(this.parentNote));
+      this.eventManager.emit("onNoteWasJudged", NoteWasJudgedEvent(this.parentNote, true));
       this.wasTailJudgementEventEmitted = true;
     }
   }

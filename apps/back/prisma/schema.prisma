@@ -30,3 +30,32 @@ model Score {
 
   @@id([playerName, beatmapId, scoreVersion])
 }
+
+model User {
+  /// @zod.string().uuid()
+  id String @id @default(uuid())
+  /// @zod.string().min(1).max(32)
+  username String @unique
+  /// @zod.string().email()
+  email String @unique
+  /// @zod.boolean()
+  isEmailVerified Boolean @default(false)
+  /// @zod.string()
+  hashedPassword String
+  /// @zod.number().int().nonnegative()
+  totalScore Int @default(0)
+  /// @zod.number().int().nonnegative()
+  totalSubmittedScores Int @default(0)
+  /// @zod.number().nonnegative()
+  accuracySum Float @default(0)
+  /// @zod.number().int().nonnegative()
+  performancePoints Int @default(0)
+  /// @zod.number().int().nonnegative()
+  ssCount Int @default(0)
+  // @zod.number().int().nonnegative()
+  fullComboCount Int @default(0)
+  /// @zod.date()
+  createdAt DateTime @default(now())
+  /// @zod.date()
+  updatedAt DateTime @updatedAt
+}

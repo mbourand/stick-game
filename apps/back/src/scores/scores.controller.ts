@@ -29,13 +29,13 @@ export class ScoresController {
     return { leaderboard: leaderboard.map((score) => serializeScore(score)) };
   }
 
-  @Get(":beatmapId/personal-best/:playerName")
+  @Get(":beatmapId/personal-best/:playerId")
   @ZodResponse({ type: GetScoresBeatmapPersonalBestResponseDto })
   async getBeatmapPersonalBest(
     @Param() params: GetScoresBeatmapPersonalBestParamsDto,
     @Query() query: GetScoresBeatmapPersonalBestQueryParamsDto,
   ) {
-    const result = await this.scores.getBeatmapPersonalBest(params.beatmapId, params.playerName, query.scoreVersion);
+    const result = await this.scores.getBeatmapPersonalBest(params.beatmapId, params.playerId, query.scoreVersion);
     if (!result) throw new HttpException("Personal best not found", HttpStatusCode.NotFound);
 
     return serializeScore(result);

@@ -25,7 +25,8 @@
     "openapi",
     "fetching",
     "gameplay",
-    "scoring"
+    "scoring",
+    "authentication"
   ],
   "typescript.tsdk": "node_modules\\typescript\\lib",
   "eslint.validate": ["json"],

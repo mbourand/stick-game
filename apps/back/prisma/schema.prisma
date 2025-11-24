@@ -15,6 +15,9 @@ datasource db {
 }
 
 model Score {
+  id             Int      @id @default(autoincrement())
+  player         User?    @relation(fields: [playerId], references: [id])
+  playerId       String?
   playerName     String
   beatmapId      String
   score          Int
@@ -27,35 +30,21 @@ model Score {
   perfectCount   Int
   submissionTime DateTime @default(now())
   scoreVersion   Int
-
-  @@id([playerName, beatmapId, scoreVersion])
 }
 
 model User {
-  /// @zod.string().uuid()
-  id String @id @default(uuid())
-  /// @zod.string().min(1).max(32)
-  username String @unique
-  /// @zod.string().email()
-  email String @unique
-  /// @zod.boolean()
-  isEmailVerified Boolean @default(false)
-  /// @zod.string()
-  hashedPassword String
-  /// @zod.number().int().nonnegative()
-  totalScore Int @default(0)
-  /// @zod.number().int().nonnegative()
-  totalSubmittedScores Int @default(0)
-  /// @zod.number().nonnegative()
-  accuracySum Float @default(0)
-  /// @zod.number().int().nonnegative()
-  performancePoints Int @default(0)
-  /// @zod.number().int().nonnegative()
-  ssCount Int @default(0)
-  // @zod.number().int().nonnegative()
-  fullComboCount Int @default(0)
-  /// @zod.date()
-  createdAt DateTime @default(now())
-  /// @zod.date()
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(uuid())
+  username             String   @unique
+  email                String   @unique
+  isEmailVerified      Boolean  @default(false)
+  hashedPassword       String
+  totalScore           Int      @default(0)
+  totalSubmittedScores Int      @default(0)
+  accuracySum          Float    @default(0)
+  performancePoints    Int      @default(0)
+  ssCount              Int      @default(0)
+  fullComboCount       Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  scores               Score[]
 }

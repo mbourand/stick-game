@@ -6,6 +6,10 @@ import {
   zScoresControllerSubmitScoreResponse,
   zScoresControllerGetBeatmapLeaderboardData,
   zScoresControllerGetBeatmapLeaderboardResponse,
+  zAuthControllerRegisterData,
+  zAuthControllerRegisterResponse,
+  zAuthControllerLoginData,
+  zAuthControllerLoginResponse,
 } from "@tau/back-schemas";
 import { Env } from "@/modules/env/Env";
 import z from "zod";
@@ -31,6 +35,20 @@ const BACK_ROUTES = {
     paramsSchema: zScoresControllerGetBeatmapLeaderboardData.shape.path,
     bodySchema: zScoresControllerGetBeatmapLeaderboardData.shape.body,
     responseSchema: zScoresControllerGetBeatmapLeaderboardResponse,
+  },
+  "/auth/register": {
+    method: "POST",
+    queryParamsSchema: zAuthControllerRegisterData.shape.query,
+    paramsSchema: zAuthControllerRegisterData.shape.path,
+    bodySchema: zAuthControllerRegisterData.shape.body,
+    responseSchema: zAuthControllerRegisterResponse,
+  },
+  "/auth/login": {
+    method: "POST",
+    queryParamsSchema: zAuthControllerLoginData.shape.query,
+    paramsSchema: zAuthControllerLoginData.shape.path,
+    bodySchema: zAuthControllerLoginData.shape.body,
+    responseSchema: zAuthControllerLoginResponse,
   },
 } as const;
 

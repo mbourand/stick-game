@@ -1,15 +1,15 @@
 import { createZodDto } from "nestjs-zod";
 import z from "zod";
-import { ScoreResponseDto } from "../../../prisma/dto/score.dto";
+import { SerializedScoreSchema } from "../../../prisma/dto/score.dto";
 
-const BodySchema = ScoreResponseDto.schema.omit({
+const BodySchema = SerializedScoreSchema.omit({
   submissionTime: true,
   scoreVersion: true,
 });
 
 const ResponseSchema = z.strictObject({
   wasUploaded: z.boolean(),
-  score: ScoreResponseDto.schema,
+  score: SerializedScoreSchema,
 });
 
 export class PostScoresSubmitBodyDto extends createZodDto(BodySchema) {}

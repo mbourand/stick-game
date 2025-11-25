@@ -1,9 +1,19 @@
 {
+  "$schema": "../../../node_modules/prisma-zod-generator/lib/config/schema.json",
   "mode": "full",
+  "globalExclusions": { "result": ["hashedPassword"] },
   "pureModels": true,
   "variants": {
     "pure": { "enabled": true },
     "input": { "enabled": true },
     "result": { "enabled": true }
+  },
+  "jsonSchemaCompatible": true,
+  "jsonSchemaOptions": {
+    "conversionOptions": {
+      "unrepresentable": "throw",
+      "cycles": "throw",
+      "reused": "ref"
+    }
   }
 }

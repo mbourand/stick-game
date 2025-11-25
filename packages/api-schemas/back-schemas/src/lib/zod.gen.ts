@@ -148,6 +148,23 @@ export const zPostAuthRegisterResponseDtoOutput = z.object({
     token: z.string()
 });
 
+export const zGetAuthMeResponseDtoOutput = z.object({
+    user: z.object({
+        id: z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
+        username: z.string().min(1).max(32),
+        email: z.email().regex(/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/),
+        isEmailVerified: z.boolean(),
+        totalScore: z.int().gte(0).lte(9007199254740991),
+        totalSubmittedScores: z.int().gte(0).lte(9007199254740991),
+        accuracySum: z.number().gte(0),
+        performancePoints: z.int().gte(0).lte(9007199254740991),
+        ssCount: z.int().gte(0).lte(9007199254740991),
+        fullComboCount: z.int().gte(-9007199254740991).lte(9007199254740991),
+        createdAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
+        updatedAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
+    })
+});
+
 export const zOsuControllerBeatmapsetsSearchData = z.object({
     body: z.optional(z.never()),
     path: z.optional(z.never()),
@@ -209,3 +226,11 @@ export const zAuthControllerRegisterData = z.object({
 });
 
 export const zAuthControllerRegisterResponse = zPostAuthRegisterResponseDtoOutput;
+
+export const zAuthControllerMeData = z.object({
+    body: z.optional(z.never()),
+    path: z.optional(z.never()),
+    query: z.optional(z.never())
+});
+
+export const zAuthControllerMeResponse = zGetAuthMeResponseDtoOutput;

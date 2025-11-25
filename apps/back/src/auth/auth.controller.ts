@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { ZodResponse } from "nestjs-zod";
 import { PostAuthRegisterBodyDto, PostAuthRegisterResponseDto } from "./dto/post-auth-register.dto";
 import { UsersService } from "../users/users.service";
@@ -9,6 +9,7 @@ import { Public } from "./public.decorator";
 import { AuthService } from "./auth.service";
 import { LocalAuthGuard } from "./local-auth.guard";
 import { User } from "./user.decorator";
+import { GetAuthMeResponseDto } from "./dto/get-auth-me.dto";
 
 @Controller("auth")
 export class AuthController {
@@ -35,5 +36,11 @@ export class AuthController {
     const token = await this.authService.login(user);
 
     return { user: toResponseUser(user), token };
+  }
+
+  @Get("me")
+  @ZodResponse({ type: GetAuthMeResponseDto })
+  async me(@User() user: UserType) {
+    return { user: toResponseUser(user) };
   }
 }

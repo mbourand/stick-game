@@ -1,14 +1,33 @@
-import { createZodDto } from "nestjs-zod";
-import { ScoreSchema } from "../generated/zod/schemas";
 import z from "zod";
+import { ScoreModel } from "../generated/client/models";
 
-const ScoreResponseDtoSchema = ScoreSchema.extend({
+export const ScoreSchema = z.strictObject({
+  playerName: z.string().min(1).max(32),
+  beatmapId: z.string().min(1).max(32),
+  score: z.number().int().nonnegative(),
+  maxCombo: z.number().int().nonnegative(),
+  accuracy: z.number().nonnegative(),
+  missCount: z.number().int().nonnegative(),
+  mehCount: z.number().int().nonnegative(),
+  goodCount: z.number().int().nonnegative(),
+  greatCount: z.number().int().nonnegative(),
+  perfectCount: z.number().int().nonnegative(),
+  submissionTime: z.date(),
+  scoreVersion: z.number().int().nonnegative(),
+}) satisfies z.ZodType<ScoreModel>;
+
+export const SerializedScoreSchema = ScoreSchema.extend({
   submissionTime: z.iso.datetime(),
-}).strict();
+});
 
-export const toResponseScore = (score: z.infer<typeof ScoreSchema>): z.infer<typeof ScoreResponseDtoSchema> => ({
+export type SerializedScoreType = z.infer<typeof SerializedScoreSchema>;
+
+export const serializeScore = (score: ScoreModel): SerializedScoreType => ({
   ...score,
   submissionTime: score.submissionTime.toISOString(),
 });
 
-export class ScoreResponseDto extends createZodDto(ScoreResponseDtoSchema) {}
+export const deserializeScore = (score: SerializedScoreType): ScoreModel => ({
+  ...score,
+  submissionTime: new Date(score.submissionTime),
+});

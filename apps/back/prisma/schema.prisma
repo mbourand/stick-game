@@ -9,11 +9,6 @@ generator client {
   output   = "../src/prisma/generated/client"
 }
 
-generator zod {
-  provider = "prisma-zod-generator"
-  output   = "../src/prisma/generated/zod"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -21,28 +16,28 @@ datasource db {
 
 model Score {
   /// @zod.string().min(1).max(32)
-  playerName      String
+  playerName     String
   /// @zod.string().min(1).max(32)
-  beatmapId       String
+  beatmapId      String
   /// @zod.number().int().nonnegative()
-  score           Int
+  score          Int
   /// @zod.number().int().nonnegative()
-  maxCombo        Int
+  maxCombo       Int
   /// @zod.number().nonnegative()
-  accuracy        Float
+  accuracy       Float
   /// @zod.number().int().nonnegative()
-  missCount       Int
+  missCount      Int
   /// @zod.number().int().nonnegative()
-  mehCount        Int
+  mehCount       Int
   /// @zod.number().int().nonnegative()
-  goodCount       Int
+  goodCount      Int
   /// @zod.number().int().nonnegative()
-  greatCount      Int
+  greatCount     Int
   /// @zod.number().int().nonnegative()
-  perfectCount    Int
-  submissionTime  DateTime @default(now())
+  perfectCount   Int
+  submissionTime DateTime @default(now())
   /// @zod.number().int().nonnegative()
-  scoreVersion    Int
+  scoreVersion   Int
 
   @@id([playerName, beatmapId, scoreVersion])
 }

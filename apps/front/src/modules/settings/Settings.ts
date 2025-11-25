@@ -9,7 +9,6 @@ export type SettingsListType = {
   backgroundBlurriness: number;
   gamepadMapping: GamepadMappingType;
   scrollDuration: number;
-  playerName: string;
 };
 
 export const DEFAULT_SETTINGS: SettingsListType = {
@@ -18,7 +17,6 @@ export const DEFAULT_SETTINGS: SettingsListType = {
   backgroundBlurriness: 4,
   gamepadMapping: DEFAULT_MAPPING,
   scrollDuration: 850,
-  playerName: "Guest",
 };
 
 export class Settings {

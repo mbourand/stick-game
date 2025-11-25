@@ -1,3 +1,4 @@
+import { UserType } from "@/modules/auth/types";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { ViewModel } from "../ViewModel";
 import type { BeatmapSelectionModel } from "./BeatmapSelectionModel";
@@ -15,7 +16,17 @@ export class BeatmapSelectionViewModel extends ViewModel {
     this.model.playMap(selectedMap);
   };
 
+  public onUserChanged = (user: UserType | null) => {
+    this.model.setUser(user);
+  };
+
   public getView() {
-    return <BeatmapSelectionView key="beatmapselectionviewmodel" onPlayClicked={this.onPlayClicked.bind(this)} />;
+    return (
+      <BeatmapSelectionView
+        key="beatmapselectionviewmodel"
+        onPlayClicked={this.onPlayClicked.bind(this)}
+        onUserChanged={this.onUserChanged.bind(this)}
+      />
+    );
   }
 }

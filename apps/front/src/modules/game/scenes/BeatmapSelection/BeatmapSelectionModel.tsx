@@ -3,14 +3,21 @@ import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { GameplayScene } from "../Gameplay/GameplayScene";
 import { Scene } from "../Scene";
 import { SceneManager } from "@/modules/game/scenes/SceneManager";
+import { UserType } from "@/modules/auth/types";
 
 export class BeatmapSelectionModel extends Scene {
   private viewModel: BeatmapSelectionViewModel;
   private lastGameplayScene: GameplayScene | null = null;
+  private user: UserType | null = null;
 
-  constructor(sceneManager: SceneManager) {
+  constructor(sceneManager: SceneManager, user: UserType | null) {
     super(sceneManager);
     this.viewModel = new BeatmapSelectionViewModel(this);
+    this.user = user;
+  }
+
+  public setUser(user: UserType | null) {
+    this.user = user;
   }
 
   public onEntered(): void | Promise<void> {
@@ -35,7 +42,7 @@ export class BeatmapSelectionModel extends Scene {
 
   public playMap(selectedMap: ParsedMap) {
     this.lastGameplayScene?.remove();
-    const gameplayScene = new GameplayScene(this.sceneManager, selectedMap);
+    const gameplayScene = new GameplayScene(this.sceneManager, selectedMap, this.user);
     this.sceneManager.pushScene(gameplayScene);
     this.lastGameplayScene = gameplayScene;
     console.log(this.sceneManager);

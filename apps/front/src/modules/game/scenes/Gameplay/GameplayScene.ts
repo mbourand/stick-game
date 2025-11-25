@@ -25,6 +25,7 @@ import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/qu
 import { browserQueryClient } from "@/components/QueryProvider";
 import { submitScore } from "@/modules/score/submit-score";
 import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
+import { UserType } from "@/modules/auth/types";
 
 export class GameplayScene extends Scene {
   private eventManager = new EventManager();
@@ -46,10 +47,13 @@ export class GameplayScene extends Scene {
   private gamepad: Gamepad;
   private beatmapStarted = false;
 
-  constructor(sceneManager: SceneManager, parsedMap: ParsedMap) {
+  private user: UserType | null;
+
+  constructor(sceneManager: SceneManager, parsedMap: ParsedMap, user: UserType | null) {
     super(sceneManager);
     this.parsedMap = parsedMap;
     this.settings = Settings.getSettings();
+    this.user = user;
     this.noteSpawner = new NoteSpawner(this.parsedMap.notes, this.eventManager, this.settings.scrollDuration);
     this.gamepad = new Gamepad(this.settings.gamepadMapping);
     this.scoreCounter = new ScoreCounter(
@@ -374,7 +378,7 @@ export class GameplayScene extends Scene {
       accuracy: this.scoreCounter.getAccuracy(),
       score: this.scoreCounter.getScore(),
       maxCombo: this.scoreCounter.getMaxCombo(),
-      playerName: this.settings.playerName,
+      playerName: this.user?.username ?? "Guest",
       missCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Miss),
       mehCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Meh),
       goodCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Good),

@@ -21,7 +21,7 @@ export class Game {
     this.canvas = canvas;
     this.started = true;
     this.lastFrameTime = performance.now();
-    this.sceneManager.pushScene(new BeatmapSelectionModel(this.sceneManager));
+    this.sceneManager.pushScene(new BeatmapSelectionModel(this.sceneManager, null));
   }
 
   public tick() {

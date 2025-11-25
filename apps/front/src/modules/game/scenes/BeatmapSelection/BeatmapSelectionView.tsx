@@ -2,13 +2,22 @@ import { useState } from "react";
 import { type ParsedMap } from "../../../osu/convert/OsuConverter";
 import { MapPicker } from "@/app/game/_components/MapPicker";
 import { MapLeaderboard } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
+import { useQuery } from "@tanstack/react-query";
+import { authMeQueryOptions } from "@/modules/fetching/back/queries/auth-me";
+import { UserType } from "@/modules/auth/types";
 
 type BeatmapSelectionViewProps = {
   onPlayClicked: (selectedMap: ParsedMap) => void;
+  onUserChanged: (user: UserType | null) => void;
 };
 
-export const BeatmapSelectionView = ({ onPlayClicked }: BeatmapSelectionViewProps) => {
+export const BeatmapSelectionView = ({ onPlayClicked, onUserChanged }: BeatmapSelectionViewProps) => {
   const [selectedMap, setSelectedMap] = useState<ParsedMap | null>(null);
+  const userQuery = useQuery(authMeQueryOptions());
+
+  if (userQuery.isSuccess) {
+    onUserChanged(userQuery.data.user);
+  }
 
   return (
     <>

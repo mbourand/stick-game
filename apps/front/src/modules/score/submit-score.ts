@@ -15,8 +15,10 @@ type SubmitScoreParams = {
 };
 
 export const submitScore = async (params: SubmitScoreParams) => {
+  const backendParams = { ...params, playerName: undefined };
+
   const [backendResult, localResult] = await Promise.allSettled([
-    fetchBackend("/scores/submit", { body: params }),
+    fetchBackend("/scores/submit", { body: backendParams }),
     latestDb.localScores.add({
       beatmapIdv2: params.beatmapId,
       playerName: params.playerName,

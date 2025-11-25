@@ -18,7 +18,7 @@ model Score {
   id             Int      @id @default(autoincrement())
   player         User?    @relation(fields: [playerId], references: [id])
   playerId       String?
-  playerName     String
+  playerName     String?
   beatmapId      String
   score          Int
   maxCombo       Int

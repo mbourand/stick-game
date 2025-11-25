@@ -25,7 +25,10 @@ export const zGetScoresBeatmapLeaderboardResponseDtoOutput = z.object({
             z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
             z.null()
         ])),
-        playerName: z.string(),
+        playerName: z.optional(z.union([
+            z.string(),
+            z.null()
+        ])),
         beatmapId: z.string().min(1).max(32),
         score: z.int().gte(0).lte(9007199254740991),
         maxCombo: z.int().gte(0).lte(9007199254740991),
@@ -46,7 +49,10 @@ export const zGetScoresBeatmapPersonalBestResponseDtoOutput = z.object({
         z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
         z.null()
     ])),
-    playerName: z.string(),
+    playerName: z.optional(z.union([
+        z.string(),
+        z.null()
+    ])),
     beatmapId: z.string().min(1).max(32),
     score: z.int().gte(0).lte(9007199254740991),
     maxCombo: z.int().gte(0).lte(9007199254740991),
@@ -61,12 +67,6 @@ export const zGetScoresBeatmapPersonalBestResponseDtoOutput = z.object({
 });
 
 export const zPostScoresSubmitBodyDto = z.object({
-    id: z.int().gte(-9007199254740991).lte(9007199254740991),
-    playerId: z.optional(z.union([
-        z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
-        z.null()
-    ])),
-    playerName: z.string(),
     beatmapId: z.string().min(1).max(32),
     score: z.int().gte(0).lte(9007199254740991),
     maxCombo: z.int().gte(0).lte(9007199254740991),
@@ -86,7 +86,10 @@ export const zPostScoresSubmitResponseDtoOutput = z.object({
             z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
             z.null()
         ])),
-        playerName: z.string(),
+        playerName: z.optional(z.union([
+            z.string(),
+            z.null()
+        ])),
         beatmapId: z.string().min(1).max(32),
         score: z.int().gte(0).lte(9007199254740991),
         maxCombo: z.int().gte(0).lte(9007199254740991),
@@ -191,10 +194,7 @@ export const zScoresControllerGetBeatmapPersonalBestData = z.object({
     body: z.optional(z.never()),
     path: z.object({
         beatmapId: z.string().min(1).max(32),
-        playerId: z.optional(z.union([
-            z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
-            z.unknown()
-        ]))
+        playerId: z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/)
     }),
     query: z.optional(z.object({
         scoreVersion: z.optional(z.number().gte(1).lte(3)).default(3)

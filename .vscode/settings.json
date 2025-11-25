@@ -26,7 +26,8 @@
     "fetching",
     "gameplay",
     "scoring",
-    "authentication"
+    "authentication",
+    "nx"
   ],
   "typescript.tsdk": "node_modules\\typescript\\lib",
   "eslint.validate": ["json"],

@@ -7,4 +7,5 @@ export const authMeQueryOptions = () =>
   queryOptions({
     queryKey: ["auth", "me"],
     queryFn: () => fetchMe(),
+    staleTime: 6 * 60 * 60 * 1000,
   });

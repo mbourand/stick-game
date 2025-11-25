@@ -13,6 +13,7 @@ export class ScoresService {
       where: { beatmapId, scoreVersion },
       orderBy: { score: "desc" },
       take: 50,
+      include: { player: true },
     });
   }
 
@@ -39,11 +40,14 @@ export class ScoresService {
       player: { connect: { id: user.id } },
     };
 
-    const newScore = await this.prisma.score.upsert({
-      where: { id: currentPersonalBest?.id },
-      update: hydratedScore,
-      create: hydratedScore,
-    });
+    const newScore = currentPersonalBest
+      ? await this.prisma.score.update({
+          where: { id: currentPersonalBest.id },
+          data: hydratedScore,
+        })
+      : await this.prisma.score.create({
+          data: hydratedScore,
+        });
 
     if (!newScore) {
       throw new Error("Failed to submit score");

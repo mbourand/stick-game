@@ -5,6 +5,9 @@ import { SerializedScoreSchema } from "../../../prisma/dto/score.dto";
 const BodySchema = SerializedScoreSchema.omit({
   submissionTime: true,
   scoreVersion: true,
+  id: true,
+  playerId: true,
+  playerName: true,
 });
 
 const ResponseSchema = z.strictObject({

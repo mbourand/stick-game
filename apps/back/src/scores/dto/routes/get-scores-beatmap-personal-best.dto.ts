@@ -4,7 +4,7 @@ import { SerializedScoreSchema } from "../../../prisma/dto/score.dto";
 
 const ParamsSchema = z.strictObject({
   beatmapId: SerializedScoreSchema.shape.beatmapId,
-  playerId: SerializedScoreSchema.shape.playerId,
+  playerId: z.uuid(),
 });
 
 const QueryParamsSchema = z.strictObject({

@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { ScoreCreateInput, ScoreModel } from "../prisma/generated/client/models";
+import { UserType } from "../prisma/generated/zod/schemas/models/User.schema";
+import { LATEST_SCORE_VERSION } from "./score.constants";
 
 @Injectable()
 export class ScoresService {
@@ -14,35 +16,31 @@ export class ScoresService {
     });
   }
 
-  async getBeatmapPersonalBest(beatmapId: string, playerName: string, scoreVersion: number) {
+  async getBeatmapPersonalBest(beatmapId: string, playerId: string, scoreVersion: number) {
     return this.prisma.score.findFirst({
-      where: { beatmapId, playerName, scoreVersion },
+      where: { beatmapId, playerId, scoreVersion },
       orderBy: { score: "desc" },
     });
   }
 
   // Saves the new score to the database if it is the new personal best
   async submitScore(
-    score: Omit<ScoreCreateInput, "scoreVersion">,
+    score: Omit<ScoreCreateInput, "scoreVersion" | "player" | "playerName">,
+    user: UserType,
   ): Promise<{ wasUploaded: boolean; score: ScoreModel }> {
-    const currentPersonalBest = await this.getBeatmapPersonalBest(score.beatmapId, score.playerName, 3);
+    const currentPersonalBest = await this.getBeatmapPersonalBest(score.beatmapId, user.id, LATEST_SCORE_VERSION);
     if (currentPersonalBest && score.score <= currentPersonalBest.score) {
       return { wasUploaded: false, score: currentPersonalBest };
     }
 
     const hydratedScore: ScoreCreateInput = {
       ...score,
-      scoreVersion: 3,
+      scoreVersion: LATEST_SCORE_VERSION,
+      player: { connect: { id: user.id } },
     };
 
     const newScore = await this.prisma.score.upsert({
-      where: {
-        playerName_beatmapId_scoreVersion: {
-          playerName: score.playerName,
-          beatmapId: score.beatmapId,
-          scoreVersion: 3,
-        },
-      },
+      where: { id: currentPersonalBest?.id },
       update: hydratedScore,
       create: hydratedScore,
     });

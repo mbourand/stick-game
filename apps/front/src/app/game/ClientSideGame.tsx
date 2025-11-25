@@ -1,5 +1,7 @@
 "use client";
 
+import { LoginButton } from "@/app/game/_components/LoginButton/LoginButton";
+import { RegisterButton } from "@/app/game/_components/RegisterButton/RegisterButton";
 import { GameCanvas } from "@/modules/game/components/GameCanvas";
 import { GamepadMapping } from "@/modules/gamepad/mapping/GamepadMapping";
 import { Settings } from "@/modules/settings/Settings";
@@ -78,13 +80,8 @@ export const ClientSideGame = () => {
     <>
       <GameCanvas />
       <div className="absolute top-0 right-0 flex flex-row gap-4 items-center z-10">
-        <span className="text-white text-sm whitespace-nowrap">Player Name:</span>
-        <input
-          type="text"
-          className="w-[125px]"
-          defaultValue={Settings.getSettings().playerName}
-          onChange={(e) => Settings.set("playerName", e.target.value)}
-        />
+        <RegisterButton />
+        <LoginButton />
         <SettingSlider
           name="Scroll Duration"
           defaultValue={Settings.getSettings().scrollDuration}

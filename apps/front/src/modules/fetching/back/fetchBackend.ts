@@ -10,6 +10,8 @@ import {
   zAuthControllerRegisterResponse,
   zAuthControllerLoginData,
   zAuthControllerLoginResponse,
+  zAuthControllerMeData,
+  zAuthControllerMeResponse,
 } from "@tau/back-schemas";
 import { Env } from "@/modules/env/Env";
 import z from "zod";
@@ -50,6 +52,13 @@ const BACK_ROUTES = {
     bodySchema: zAuthControllerLoginData.shape.body,
     responseSchema: zAuthControllerLoginResponse,
   },
+  "/auth/me": {
+    method: "GET",
+    queryParamsSchema: zAuthControllerMeData.shape.query,
+    paramsSchema: zAuthControllerMeData.shape.path,
+    bodySchema: zAuthControllerMeData.shape.body,
+    responseSchema: zAuthControllerMeResponse,
+  },
 } as const;
 
 type BackRoutesType = typeof BACK_ROUTES;
@@ -68,6 +77,8 @@ export const fetchBackend = async <const Route extends keyof typeof BACK_ROUTES>
   route: Route,
   params: ParamsType<Route>,
 ) => {
+  const authToken = localStorage.getItem("authToken");
+
   return fetchData({
     baseUrl: Env.NEXT_PUBLIC_BACKEND_URL,
     params: params.params,
@@ -75,7 +86,10 @@ export const fetchBackend = async <const Route extends keyof typeof BACK_ROUTES>
     queryParams: params.queryParams,
     method: BACK_ROUTES[route].method,
     responseSchema: BACK_ROUTES[route].responseSchema,
-    headers: params.headers,
+    headers: {
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      ...params.headers,
+    },
     body: params.body,
   }) as Promise<z.infer<BackRoutesType[Route]["responseSchema"]>>;
 };

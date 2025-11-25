@@ -8,8 +8,8 @@ type AuthLoginParams = {
 
 const fetchLogin = async (params: AuthLoginParams) => fetchBackend("/auth/login", { body: params });
 
-export const authLoginMutationOptions = (params: AuthLoginParams) =>
+export const authLoginMutationOptions = () =>
   mutationOptions({
-    mutationKey: ["auth", "login", params.username],
-    mutationFn: () => fetchLogin(params),
+    mutationKey: ["auth", "login"],
+    mutationFn: (params: AuthLoginParams) => fetchLogin(params),
   });

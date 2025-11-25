@@ -9,8 +9,8 @@ type AuthRegisterParams = {
 
 const fetchRegister = async (params: AuthRegisterParams) => fetchBackend("/auth/register", { body: params });
 
-export const authRegisterMutationOptions = (params: AuthRegisterParams) =>
+export const authRegisterMutationOptions = () =>
   mutationOptions({
-    mutationKey: ["auth", "register", params.username],
-    mutationFn: () => fetchRegister(params),
+    mutationKey: ["auth", "register"],
+    mutationFn: (params: AuthRegisterParams) => fetchRegister(params),
   });

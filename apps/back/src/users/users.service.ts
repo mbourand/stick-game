@@ -7,7 +7,11 @@ import bcrypt from "bcrypt";
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findOne(username: string) {
+  async findOne(id: string) {
+    return this.prisma.user.findUnique({ where: { id } });
+  }
+
+  async findOneByUsername(username: string) {
     return this.prisma.user.findUnique({ where: { username } });
   }
 

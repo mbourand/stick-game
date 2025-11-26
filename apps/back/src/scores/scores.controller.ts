@@ -15,6 +15,7 @@ import {
 import { PostScoresSubmitBodyDto, PostScoresSubmitResponseDto } from "./dto/routes/post-scores-submit.dto";
 import { serializeScore } from "../prisma/dto/score.dto";
 import { User } from "../auth/user.decorator";
+import { type UserModel } from "../prisma/generated/client/models";
 
 @Controller("scores")
 export class ScoresController {
@@ -44,7 +45,7 @@ export class ScoresController {
 
   @Post("submit")
   @ZodResponse({ type: PostScoresSubmitResponseDto })
-  async submitScore(@Body() scoreDto: PostScoresSubmitBodyDto, @User() user: UserType) {
+  async submitScore(@Body() scoreDto: PostScoresSubmitBodyDto, @User() user: UserModel) {
     const result = await this.scores.submitScore(scoreDto, user);
     return {
       wasUploaded: result.wasUploaded,

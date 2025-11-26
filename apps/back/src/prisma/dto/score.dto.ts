@@ -1,8 +1,10 @@
 import z from "zod";
 import { ScoreModel } from "../generated/client/models";
 
-export const ScoreSchema = z.strictObject({
-  playerName: z.string().min(1).max(32),
+export const UnsafeScoreSchema = z.strictObject({
+  id: z.number().int().nonnegative(),
+  playerName: z.string().min(1).max(32).nullable(),
+  playerId: z.uuid().nullable(),
   beatmapId: z.string().min(1).max(32),
   score: z.number().int().nonnegative(),
   maxCombo: z.number().int().nonnegative(),

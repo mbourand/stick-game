@@ -1,6 +1,6 @@
 import { createZodDto } from "nestjs-zod";
 import z from "zod";
-import { UserResponseDto } from "../../prisma/dto/user.dto";
+import { SerializedUserSchema } from "../../prisma/dto/user.dto";
 
 const LoginBodySchema = z.strictObject({
   username: z.string().min(1, "Username is required"),
@@ -8,7 +8,7 @@ const LoginBodySchema = z.strictObject({
 });
 
 const ResponseSchema = z.strictObject({
-  user: UserResponseDto.schema,
+  user: SerializedUserSchema,
   token: z.jwt(),
 });
 

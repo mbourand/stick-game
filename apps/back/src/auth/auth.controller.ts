@@ -2,14 +2,14 @@ import { Body, Controller, Get, Post, UseGuards } from "@nestjs/common";
 import { ZodResponse } from "nestjs-zod";
 import { PostAuthRegisterBodyDto, PostAuthRegisterResponseDto } from "./dto/post-auth-register.dto";
 import { UsersService } from "../users/users.service";
-import { toResponseUser } from "../prisma/dto/user.dto";
 import { PostAuthLoginBodyDto, PostAuthLoginResponseDto } from "./dto/post-auth-login.dto";
-import { type UserType } from "../prisma/generated/zod/schemas/models/User.schema";
 import { Public } from "./public.decorator";
 import { AuthService } from "./auth.service";
 import { LocalAuthGuard } from "./local-auth.guard";
 import { User } from "./user.decorator";
 import { GetAuthMeResponseDto } from "./dto/get-auth-me.dto";
+import { serializeUser } from "../prisma/dto/user.dto";
+import { type UserModel } from "../prisma/generated/client/models";
 
 @Controller("auth")
 export class AuthController {
@@ -19,8 +19,8 @@ export class AuthController {
   @Public()
   @UseGuards(LocalAuthGuard)
   @ZodResponse({ type: PostAuthLoginResponseDto })
-  async login(@Body() _body: PostAuthLoginBodyDto, @User() user: UserType) {
-    return { user: toResponseUser(user), token: await this.authService.login(user) };
+  async login(@Body() _body: PostAuthLoginBodyDto, @User() user: UserModel) {
+    return { user: serializeUser(user), token: await this.authService.login(user) };
   }
 
   @Post("register")
@@ -35,12 +35,12 @@ export class AuthController {
 
     const token = await this.authService.login(user);
 
-    return { user: toResponseUser(user), token };
+    return { user: serializeUser(user), token };
   }
 
   @Get("me")
   @ZodResponse({ type: GetAuthMeResponseDto })
-  async me(@User() user: UserType) {
-    return { user: toResponseUser(user) };
+  async me(@User() user: UserModel) {
+    return { user: serializeUser(user) };
   }
 }

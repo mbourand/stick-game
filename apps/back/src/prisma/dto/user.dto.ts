@@ -17,14 +17,16 @@ const RawSchema = z.strictObject({
   createdAt: z.date(),
   updatedAt: z.date(),
 });
+
 const SerializedRawSchema = RawSchema.extend({
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
+
 const PrivateSchema = RawSchema.omit({ hashedPassword: true });
 const SerializedPrivateSchema = SerializedRawSchema.omit({ hashedPassword: true });
-const PublicSchema = PrivateSchema.omit({ email: true });
-const SerializedPublicSchema = SerializedPrivateSchema.omit({ email: true });
+const PublicSchema = PrivateSchema.omit({ email: true, isEmailVerified: true });
+const SerializedPublicSchema = SerializedPrivateSchema.omit({ email: true, isEmailVerified: true });
 
 export type RawUserType = z.infer<typeof RawSchema>;
 export type SerializedUserType = z.infer<typeof SerializedRawSchema>;
@@ -36,35 +38,67 @@ export type SerializedPublicUserType = z.infer<typeof SerializedPublicSchema>;
 type SchemasType = DatabaseSchemasType<
   UserModel,
   "hashedPassword",
-  "email",
+  "email" | "isEmailVerified",
+  never,
   SerializedUserType,
+  {},
   PrivateUserType,
   SerializedPrivateUserType,
   PublicUserType,
   SerializedPublicUserType
 >;
 
-const serializeUser = <T extends Pick<UserModel, "createdAt" | "updatedAt">>(user: T) => ({
-  ...user,
-  createdAt: user.createdAt.toISOString(),
-  updatedAt: user.updatedAt.toISOString(),
-});
+const serializePublic = (user: PublicUserType | PrivateUserType | RawUserType): SerializedPublicUserType => {
+  const publicUser = toPublic(user);
+  return {
+    ...publicUser,
+    createdAt: publicUser.createdAt.toISOString(),
+    updatedAt: publicUser.updatedAt.toISOString(),
+  };
+};
 
-const deserializeUser = <T extends Pick<SerializedUserType, "createdAt" | "updatedAt">>(user: T) => ({
+const serializePrivate = (user: PrivateUserType | RawUserType): SerializedPrivateUserType => {
+  const privateUser = toPrivate(user);
+  return {
+    ...privateUser,
+    createdAt: privateUser.createdAt.toISOString(),
+    updatedAt: privateUser.updatedAt.toISOString(),
+  };
+};
+
+const deserializePublic = (user: SerializedPublicUserType): PublicUserType => ({
   ...user,
   createdAt: new Date(user.createdAt),
   updatedAt: new Date(user.updatedAt),
 });
 
-export const UserSchemas: SchemasType = {
-  raw: RawSchema,
-  serializedRaw: SerializedRawSchema,
-  private: PrivateSchema,
-  serializedPrivate: SerializedPrivateSchema,
-  public: PublicSchema,
-  serializedPublic: SerializedPublicSchema,
-  serializePrivateSchema: serializeUser,
-  serializePublicSchema: serializeUser,
-  deserializePrivateSchema: deserializeUser,
-  deserializePublicSchema: deserializeUser,
+const deserializePrivate = (user: SerializedPrivateUserType): PrivateUserType => ({
+  ...user,
+  createdAt: new Date(user.createdAt),
+  updatedAt: new Date(user.updatedAt),
+});
+
+const toPrivate = (user: RawUserType | PrivateUserType): PrivateUserType => {
+  return z.object(PrivateSchema.shape).parse(user);
 };
+
+const toPublic = (user: RawUserType | PrivateUserType | PublicUserType): PublicUserType => {
+  return z.object(PublicSchema.shape).parse(user);
+};
+
+export const UserSchemas = {
+  raw: RawSchema,
+  private: PrivateSchema,
+  public: PublicSchema,
+  serialized: {
+    raw: SerializedRawSchema,
+    private: SerializedPrivateSchema,
+    public: SerializedPublicSchema,
+  },
+  serializePrivate,
+  serializePublic,
+  deserializePrivate,
+  deserializePublic,
+  toPrivate,
+  toPublic,
+} satisfies SchemasType;

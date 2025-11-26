@@ -8,8 +8,7 @@ import { AuthService } from "./auth.service";
 import { LocalAuthGuard } from "./local-auth.guard";
 import { User } from "./user.decorator";
 import { GetAuthMeResponseDto } from "./dto/get-auth-me.dto";
-import { serializeUser } from "../prisma/dto/user.dto";
-import { type UserModel } from "../prisma/generated/client/models";
+import { type RawUserType, UserSchemas } from "../prisma/dto/user.dto";
 
 @Controller("auth")
 export class AuthController {
@@ -19,8 +18,8 @@ export class AuthController {
   @Public()
   @UseGuards(LocalAuthGuard)
   @ZodResponse({ type: PostAuthLoginResponseDto })
-  async login(@Body() _body: PostAuthLoginBodyDto, @User() user: UserModel) {
-    return { user: serializeUser(user), token: await this.authService.login(user) };
+  async login(@Body() _body: PostAuthLoginBodyDto, @User() user: RawUserType) {
+    return { user: UserSchemas.serializePrivate(user), token: await this.authService.login(user) };
   }
 
   @Post("register")
@@ -35,12 +34,12 @@ export class AuthController {
 
     const token = await this.authService.login(user);
 
-    return { user: serializeUser(user), token };
+    return { user: UserSchemas.serializePrivate(user), token };
   }
 
   @Get("me")
   @ZodResponse({ type: GetAuthMeResponseDto })
-  async me(@User() user: UserModel) {
-    return { user: serializeUser(user) };
+  async me(@User() user: RawUserType) {
+    return { user: UserSchemas.serializePrivate(user) };
   }
 }

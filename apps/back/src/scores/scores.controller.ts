@@ -13,9 +13,9 @@ import {
   GetScoresBeatmapPersonalBestResponseDto,
 } from "./dto/routes/get-scores-beatmap-personal-best.dto";
 import { PostScoresSubmitBodyDto, PostScoresSubmitResponseDto } from "./dto/routes/post-scores-submit.dto";
-import { serializeScore } from "../prisma/dto/score.dto";
+import { ScoreSchemas } from "../prisma/dto/score.dto";
 import { User } from "../auth/user.decorator";
-import { type UserModel } from "../prisma/generated/client/models";
+import { type RawUserType } from "../prisma/dto/user.dto";
 
 @Controller("scores")
 export class ScoresController {
@@ -28,7 +28,7 @@ export class ScoresController {
     @Query() query: GetScoresBeatmapLeaderboardQueryParamsDto,
   ) {
     const leaderboard = await this.scores.getBeatmapLeaderboard(params.beatmapId, query.scoreVersion);
-    return { leaderboard: leaderboard.map((score) => serializeScore(score)) };
+    return { leaderboard: leaderboard.map((score) => ScoreSchemas.serializePublic(score)) };
   }
 
   @Get(":beatmapId/personal-best/:playerId")
@@ -40,16 +40,16 @@ export class ScoresController {
     const result = await this.scores.getBeatmapPersonalBest(params.beatmapId, params.playerId, query.scoreVersion);
     if (!result) throw new HttpException("Personal best not found", HttpStatusCode.NotFound);
 
-    return serializeScore(result);
+    return ScoreSchemas.serializePublic(result);
   }
 
   @Post("submit")
   @ZodResponse({ type: PostScoresSubmitResponseDto })
-  async submitScore(@Body() scoreDto: PostScoresSubmitBodyDto, @User() user: UserModel) {
-    const result = await this.scores.submitScore(scoreDto, user);
+  async submitScore(@Body() body: PostScoresSubmitBodyDto, @User() user: RawUserType) {
+    const result = await this.scores.submitScore(body, user);
     return {
       wasUploaded: result.wasUploaded,
-      score: serializeScore(result.score),
+      score: ScoreSchemas.serializePublic(result.score),
     };
   }
 }

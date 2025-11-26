@@ -1,9 +1,9 @@
 import { createZodDto } from "nestjs-zod";
 import z from "zod";
-import { SerializedScoreSchema } from "../../../prisma/dto/score.dto";
+import { ScoreSchemas } from "../../../prisma/dto/score.dto";
 
 const ParamsSchema = z.strictObject({
-  beatmapId: SerializedScoreSchema.shape.beatmapId,
+  beatmapId: ScoreSchemas.serialized.raw.shape.beatmapId,
 });
 
 const QueryParamsSchema = z.strictObject({
@@ -11,7 +11,7 @@ const QueryParamsSchema = z.strictObject({
 });
 
 const ResponseSchema = z.strictObject({
-  leaderboard: z.array(SerializedScoreSchema),
+  leaderboard: z.array(ScoreSchemas.serialized.public),
 });
 
 export class GetScoresBeatmapLeaderboardParamsDto extends createZodDto(ParamsSchema) {}

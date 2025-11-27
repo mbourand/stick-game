@@ -20,15 +20,15 @@ export const zGetOsuBeatmapsetsSearchResponseDtoOutput = z.object({
 
 export const zGetScoresBeatmapLeaderboardResponseDtoOutput = z.object({
     leaderboard: z.array(z.object({
-        id: z.int().gte(-9007199254740991).lte(9007199254740991),
-        playerId: z.optional(z.union([
+        id: z.int().gte(0).lte(9007199254740991),
+        playerName: z.union([
+            z.string().min(1).max(32),
+            z.null()
+        ]),
+        playerId: z.union([
             z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
             z.null()
-        ])),
-        playerName: z.optional(z.union([
-            z.string(),
-            z.null()
-        ])),
+        ]),
         beatmapId: z.string().min(1).max(32),
         score: z.int().gte(0).lte(9007199254740991),
         maxCombo: z.int().gte(0).lte(9007199254740991),
@@ -39,20 +39,38 @@ export const zGetScoresBeatmapLeaderboardResponseDtoOutput = z.object({
         greatCount: z.int().gte(0).lte(9007199254740991),
         perfectCount: z.int().gte(0).lte(9007199254740991),
         submissionTime: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
-        scoreVersion: z.int().gte(0).lte(9007199254740991)
+        scoreVersion: z.int().gte(0).lte(9007199254740991),
+        player: z.optional(z.union([
+            z.object({
+                id: z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
+                username: z.string().min(3).max(32),
+                email: z.optional(z.unknown()),
+                isEmailVerified: z.optional(z.unknown()),
+                hashedPassword: z.optional(z.unknown()),
+                totalScore: z.int().gte(0).lte(9007199254740991),
+                totalSubmittedScores: z.int().gte(0).lte(9007199254740991),
+                accuracySum: z.number().gte(0),
+                performancePoints: z.number().gte(0),
+                ssCount: z.int().gte(0).lte(9007199254740991),
+                fullComboCount: z.int().gte(0).lte(9007199254740991),
+                createdAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
+                updatedAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
+            }),
+            z.null()
+        ]))
     }))
 });
 
 export const zGetScoresBeatmapPersonalBestResponseDtoOutput = z.object({
-    id: z.int().gte(-9007199254740991).lte(9007199254740991),
-    playerId: z.optional(z.union([
+    id: z.int().gte(0).lte(9007199254740991),
+    playerName: z.union([
+        z.string().min(1).max(32),
+        z.null()
+    ]),
+    playerId: z.union([
         z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
         z.null()
-    ])),
-    playerName: z.optional(z.union([
-        z.string(),
-        z.null()
-    ])),
+    ]),
     beatmapId: z.string().min(1).max(32),
     score: z.int().gte(0).lte(9007199254740991),
     maxCombo: z.int().gte(0).lte(9007199254740991),
@@ -63,7 +81,25 @@ export const zGetScoresBeatmapPersonalBestResponseDtoOutput = z.object({
     greatCount: z.int().gte(0).lte(9007199254740991),
     perfectCount: z.int().gte(0).lte(9007199254740991),
     submissionTime: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
-    scoreVersion: z.int().gte(0).lte(9007199254740991)
+    scoreVersion: z.int().gte(0).lte(9007199254740991),
+    player: z.optional(z.union([
+        z.object({
+            id: z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
+            username: z.string().min(3).max(32),
+            email: z.optional(z.unknown()),
+            isEmailVerified: z.optional(z.unknown()),
+            hashedPassword: z.optional(z.unknown()),
+            totalScore: z.int().gte(0).lte(9007199254740991),
+            totalSubmittedScores: z.int().gte(0).lte(9007199254740991),
+            accuracySum: z.number().gte(0),
+            performancePoints: z.number().gte(0),
+            ssCount: z.int().gte(0).lte(9007199254740991),
+            fullComboCount: z.int().gte(0).lte(9007199254740991),
+            createdAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
+            updatedAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
+        }),
+        z.null()
+    ]))
 });
 
 export const zPostScoresSubmitBodyDto = z.object({
@@ -75,21 +111,39 @@ export const zPostScoresSubmitBodyDto = z.object({
     mehCount: z.int().gte(0).lte(9007199254740991),
     goodCount: z.int().gte(0).lte(9007199254740991),
     greatCount: z.int().gte(0).lte(9007199254740991),
-    perfectCount: z.int().gte(0).lte(9007199254740991)
+    perfectCount: z.int().gte(0).lte(9007199254740991),
+    player: z.optional(z.union([
+        z.object({
+            id: z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
+            username: z.string().min(3).max(32),
+            email: z.email().regex(/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/),
+            isEmailVerified: z.boolean(),
+            hashedPassword: z.string(),
+            totalScore: z.int().gte(0).lte(9007199254740991),
+            totalSubmittedScores: z.int().gte(0).lte(9007199254740991),
+            accuracySum: z.number().gte(0),
+            performancePoints: z.number().gte(0),
+            ssCount: z.int().gte(0).lte(9007199254740991),
+            fullComboCount: z.int().gte(0).lte(9007199254740991),
+            createdAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
+            updatedAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
+        }),
+        z.null()
+    ]))
 });
 
 export const zPostScoresSubmitResponseDtoOutput = z.object({
     wasUploaded: z.boolean(),
     score: z.object({
-        id: z.int().gte(-9007199254740991).lte(9007199254740991),
-        playerId: z.optional(z.union([
+        id: z.int().gte(0).lte(9007199254740991),
+        playerName: z.union([
+            z.string().min(1).max(32),
+            z.null()
+        ]),
+        playerId: z.union([
             z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
             z.null()
-        ])),
-        playerName: z.optional(z.union([
-            z.string(),
-            z.null()
-        ])),
+        ]),
         beatmapId: z.string().min(1).max(32),
         score: z.int().gte(0).lte(9007199254740991),
         maxCombo: z.int().gte(0).lte(9007199254740991),
@@ -100,7 +154,25 @@ export const zPostScoresSubmitResponseDtoOutput = z.object({
         greatCount: z.int().gte(0).lte(9007199254740991),
         perfectCount: z.int().gte(0).lte(9007199254740991),
         submissionTime: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
-        scoreVersion: z.int().gte(0).lte(9007199254740991)
+        scoreVersion: z.int().gte(0).lte(9007199254740991),
+        player: z.optional(z.union([
+            z.object({
+                id: z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
+                username: z.string().min(3).max(32),
+                email: z.optional(z.unknown()),
+                isEmailVerified: z.optional(z.unknown()),
+                hashedPassword: z.optional(z.unknown()),
+                totalScore: z.int().gte(0).lte(9007199254740991),
+                totalSubmittedScores: z.int().gte(0).lte(9007199254740991),
+                accuracySum: z.number().gte(0),
+                performancePoints: z.number().gte(0),
+                ssCount: z.int().gte(0).lte(9007199254740991),
+                fullComboCount: z.int().gte(0).lte(9007199254740991),
+                createdAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
+                updatedAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
+            }),
+            z.null()
+        ]))
     })
 });
 
@@ -112,15 +184,16 @@ export const zPostAuthLoginBodyDto = z.object({
 export const zPostAuthLoginResponseDtoOutput = z.object({
     user: z.object({
         id: z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
-        username: z.string().min(1).max(32),
+        username: z.string().min(3).max(32),
         email: z.email().regex(/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/),
         isEmailVerified: z.boolean(),
+        hashedPassword: z.optional(z.unknown()),
         totalScore: z.int().gte(0).lte(9007199254740991),
         totalSubmittedScores: z.int().gte(0).lte(9007199254740991),
         accuracySum: z.number().gte(0),
-        performancePoints: z.int().gte(0).lte(9007199254740991),
+        performancePoints: z.number().gte(0),
         ssCount: z.int().gte(0).lte(9007199254740991),
-        fullComboCount: z.int().gte(-9007199254740991).lte(9007199254740991),
+        fullComboCount: z.int().gte(0).lte(9007199254740991),
         createdAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
         updatedAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
     }),
@@ -136,15 +209,16 @@ export const zPostAuthRegisterBodyDto = z.object({
 export const zPostAuthRegisterResponseDtoOutput = z.object({
     user: z.object({
         id: z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
-        username: z.string().min(1).max(32),
+        username: z.string().min(3).max(32),
         email: z.email().regex(/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/),
         isEmailVerified: z.boolean(),
+        hashedPassword: z.optional(z.unknown()),
         totalScore: z.int().gte(0).lte(9007199254740991),
         totalSubmittedScores: z.int().gte(0).lte(9007199254740991),
         accuracySum: z.number().gte(0),
-        performancePoints: z.int().gte(0).lte(9007199254740991),
+        performancePoints: z.number().gte(0),
         ssCount: z.int().gte(0).lte(9007199254740991),
-        fullComboCount: z.int().gte(-9007199254740991).lte(9007199254740991),
+        fullComboCount: z.int().gte(0).lte(9007199254740991),
         createdAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
         updatedAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
     }),
@@ -154,15 +228,16 @@ export const zPostAuthRegisterResponseDtoOutput = z.object({
 export const zGetAuthMeResponseDtoOutput = z.object({
     user: z.object({
         id: z.uuid().regex(/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/),
-        username: z.string().min(1).max(32),
+        username: z.string().min(3).max(32),
         email: z.email().regex(/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/),
         isEmailVerified: z.boolean(),
+        hashedPassword: z.optional(z.unknown()),
         totalScore: z.int().gte(0).lte(9007199254740991),
         totalSubmittedScores: z.int().gte(0).lte(9007199254740991),
         accuracySum: z.number().gte(0),
-        performancePoints: z.int().gte(0).lte(9007199254740991),
+        performancePoints: z.number().gte(0),
         ssCount: z.int().gte(0).lte(9007199254740991),
-        fullComboCount: z.int().gte(-9007199254740991).lte(9007199254740991),
+        fullComboCount: z.int().gte(0).lte(9007199254740991),
         createdAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
         updatedAt: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/)
     })

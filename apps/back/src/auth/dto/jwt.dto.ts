@@ -1,6 +1,6 @@
 import z from "zod";
 import { createZodDto } from "nestjs-zod";
-import { UserSchemas } from "../../prisma/dto/user.dto";
+import { UserSchemas } from "../../prisma/schemas/user.schemas";
 
 const JwtPayloadSchema = z.strictObject({
   username: UserSchemas.serialized.raw.shape.username,

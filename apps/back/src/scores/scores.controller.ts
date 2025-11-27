@@ -13,9 +13,9 @@ import {
   GetScoresBeatmapPersonalBestResponseDto,
 } from "./dto/routes/get-scores-beatmap-personal-best.dto";
 import { PostScoresSubmitBodyDto, PostScoresSubmitResponseDto } from "./dto/routes/post-scores-submit.dto";
-import { ScoreSchemas } from "../prisma/dto/score.dto";
+import { ScoreSchemas } from "../prisma/schemas/score.schemas";
 import { User } from "../auth/user.decorator";
-import { type RawUserType } from "../prisma/dto/user.dto";
+import { type RawUserType } from "../prisma/schemas/user.schemas";
 
 @Controller("scores")
 export class ScoresController {

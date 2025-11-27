@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { ScoreCreateInput, ScoreModel } from "../prisma/generated/client/models";
 import { LATEST_SCORE_VERSION } from "./score.constants";
-import { RawUserType } from "../prisma/dto/user.dto";
+import { RawUserType } from "../prisma/schemas/user.schemas";
 
 @Injectable()
 export class ScoresService {

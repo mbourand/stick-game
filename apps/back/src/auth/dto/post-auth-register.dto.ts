@@ -1,6 +1,6 @@
 import { createZodDto } from "nestjs-zod";
 import z from "zod";
-import { UserSchemas } from "../../prisma/dto/user.dto";
+import { UserSchemas } from "../../prisma/schemas/user.schemas";
 
 const BodySchema = z.strictObject({
   username: z.string().min(3).max(30),
@@ -9,7 +9,7 @@ const BodySchema = z.strictObject({
 });
 
 const ResponseSchema = z.strictObject({
-  user: UserSchemas.serialized.public,
+  user: UserSchemas.serialized.private,
   token: z.jwt(),
 });
 

@@ -4,7 +4,7 @@ import { Injectable } from "@nestjs/common";
 import { API_CONFIG } from "../config/api.config";
 import { JwtPayloadType } from "./dto/jwt.dto";
 import { UsersService } from "../users/users.service";
-import { RawUserType } from "../prisma/dto/user.dto";
+import { RawUserType } from "../prisma/schemas/user.schemas";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {

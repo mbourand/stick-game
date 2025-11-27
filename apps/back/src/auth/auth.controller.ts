@@ -8,7 +8,7 @@ import { AuthService } from "./auth.service";
 import { LocalAuthGuard } from "./local-auth.guard";
 import { User } from "./user.decorator";
 import { GetAuthMeResponseDto } from "./dto/get-auth-me.dto";
-import { type RawUserType, UserSchemas } from "../prisma/dto/user.dto";
+import { type RawUserType, UserSchemas } from "../prisma/schemas/user.schemas";
 
 @Controller("auth")
 export class AuthController {

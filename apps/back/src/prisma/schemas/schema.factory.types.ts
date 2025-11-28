@@ -9,6 +9,7 @@ import z from "zod";
 type BaseSchema = z.ZodObject<z.ZodRawShape>;
 
 type BasePrivacyKind = "raw" | "private" | "public";
+type BaseSerializationKind = "serialized" | "deserialized";
 
 type BaseRelationsToInclude<Relations extends Record<string, BaseDatabaseSchemas>> = Partial<
   Record<keyof Relations, BasePrivacyKind>
@@ -51,21 +52,21 @@ type InvalidateKeys<Shape extends z.ZodRawShape, KeysToInvalidate extends keyof 
 type IncludeRelations<
   Schema extends BaseSchema,
   Relations extends Record<string, BaseDatabaseSchemas>,
-  RelationsToInclude extends Partial<Record<keyof Relations, "raw" | "private" | "public">>,
-  SerializationKind extends "serialized" | "deserialized",
+  RelationsToInclude extends Partial<Record<keyof Relations, BasePrivacyKind>>,
+  SerializationKind extends BaseSerializationKind,
 > = z.ZodObject<
   z.util.Extend<
     Schema["shape"],
-    {
-      [K in keyof Relations]: K extends keyof RelationsToInclude
+    { [K in Exclude<keyof Relations, keyof RelationsToInclude>]: z.ZodOptional<z.ZodNever> } & {
+      [K in keyof RelationsToInclude]-?: K extends keyof Relations
         ? SerializationKind extends "serialized"
           ? RelationsToInclude[K] extends keyof Relations[K]["serialized"]
-            ? z.ZodOptional<z.ZodNullable<z.ZodLazy<ReturnType<Relations[K]["serialized"][RelationsToInclude[K]]>>>>
+            ? z.ZodLazy<ReturnType<Relations[K]["serialized"][RelationsToInclude[K]]>>
             : "Error: K is not a key of Relations' serialized schemas"
           : RelationsToInclude[K] extends keyof Relations[K]
-          ? z.ZodOptional<z.ZodNullable<z.ZodLazy<ReturnType<Relations[K][RelationsToInclude[K]]>>>>
-          : "Error: K is not a key of Relations"
-        : z.ZodOptional<z.ZodNever>;
+          ? z.ZodLazy<ReturnType<Relations[K][RelationsToInclude[K]]>>
+          : "Error: K is not a key of Relations value"
+        : "Error: K is not a key of Relations";
     }
   >,
   Schema extends z.ZodObject<any, infer Conf> ? Conf : never
@@ -83,7 +84,7 @@ type Prettify<T> = {
 
 type SchemaGetterFor<
   Schema extends BaseSchema,
-  SerializationKind extends "serialized" | "deserialized",
+  SerializationKind extends BaseSerializationKind,
   Relations extends Record<string, BaseDatabaseSchemas>,
 > = <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(options?: {
   withRelations?: RelationsToInclude;
@@ -93,7 +94,7 @@ type KindConverterFor<
   From,
   To extends BaseSchema,
   Relations extends Record<string, BaseDatabaseSchemas>,
-  SerializationKind extends "serialized" | "deserialized",
+  SerializationKind extends BaseSerializationKind,
 > = <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(
   data: From,
   options?: { withRelations?: RelationsToInclude },
@@ -103,7 +104,7 @@ type SerializerFor<
   From,
   Schema extends BaseSchema,
   Relations extends Record<string, BaseDatabaseSchemas>,
-  SerializationKind extends "serialized" | "deserialized",
+  SerializationKind extends BaseSerializationKind,
 > = <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(
   data: From,
   options?: { withRelations?: RelationsToInclude },

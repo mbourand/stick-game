@@ -87,11 +87,7 @@ type SchemaGetterFor<
   Relations extends Record<string, BaseDatabaseSchemas>,
 > = <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(options?: {
   withRelations?: RelationsToInclude;
-}) => Prettify<
-  keyof RelationsToInclude extends never
-    ? Schema
-    : IncludeRelations<Schema, Relations, RelationsToInclude, SerializationKind>
->;
+}) => Prettify<IncludeRelations<Schema, Relations, RelationsToInclude, SerializationKind>>;
 
 type KindConverterFor<
   From,
@@ -101,9 +97,7 @@ type KindConverterFor<
 > = <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(
   data: From,
   options?: { withRelations?: RelationsToInclude },
-) => keyof RelationsToInclude extends never
-  ? z.infer<To>
-  : z.infer<IncludeRelations<To, Relations, RelationsToInclude, SerializationKind>>;
+) => Prettify<z.infer<IncludeRelations<To, Relations, RelationsToInclude, SerializationKind>>>;
 
 type SerializerFor<
   From,
@@ -113,11 +107,7 @@ type SerializerFor<
 > = <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(
   data: From,
   options?: { withRelations?: RelationsToInclude },
-) => Prettify<
-  keyof RelationsToInclude extends never
-    ? z.infer<Schema>
-    : z.infer<IncludeRelations<Schema, Relations, RelationsToInclude, SerializationKind>>
->;
+) => Prettify<z.infer<IncludeRelations<Schema, Relations, RelationsToInclude, SerializationKind>>>;
 
 /**
  * ===========================================================

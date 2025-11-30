@@ -9,7 +9,7 @@ const BodySchema = z.strictObject({
 });
 
 const ResponseSchema = z.strictObject({
-  user: UserSchemas.serialized.private,
+  user: UserSchemas.serialized.private(),
   token: z.jwt(),
 });
 

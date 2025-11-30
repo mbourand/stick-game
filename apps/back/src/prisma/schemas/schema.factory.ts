@@ -1,64 +1,14 @@
 import z from "zod";
-import { DatabaseSchemasReturnType } from "./schema.factory.types";
+import {
+  BaseDatabaseSchemas,
+  BasePrivacyKind,
+  BaseRelationsToInclude,
+  BaseSchema,
+  BaseSerializationKind,
+  DatabaseSchemasReturnType,
+} from "./schema.factory.types";
 
 const relationSchema = <T extends z.ZodType>(schema: T) => z.lazy(() => schema).nullish();
-
-type BaseSchema = z.ZodObject<z.ZodRawShape>;
-
-type BasePrivacyKind = "raw" | "private" | "public";
-
-type BaseDatabaseSchemas = {
-  raw: (...args: any[]) => BaseSchema;
-  private: (...args: any[]) => BaseSchema;
-  public: (...args: any[]) => BaseSchema;
-  serialized: {
-    raw: (...args: any[]) => BaseSchema;
-    private: (...args: any[]) => BaseSchema;
-    public: (...args: any[]) => BaseSchema;
-  };
-  publicSerializedKeysOnly: (data: any) => any;
-  publicDeserializedKeysOnly: (data: any) => any;
-  privateSerializedKeysOnly: (data: any) => any;
-  privateDeserializedKeysOnly: (data: any) => any;
-  rawSerializedKeysOnly: (data: any) => any;
-  rawDeserializedKeysOnly: (data: any) => any;
-  serializePublic: (data: any, options?: { withRelations?: Record<string, "raw" | "public" | "private"> }) => any;
-  deserializePublic: (data: any, options?: { withRelations?: Record<string, "raw" | "public" | "private"> }) => any;
-  serializePrivate: (data: any, options?: { withRelations?: Record<string, "raw" | "public" | "private"> }) => any;
-  deserializePrivate: (data: any, options?: { withRelations?: Record<string, "raw" | "public" | "private"> }) => any;
-  unrecommended_serializeRaw: (
-    data: any,
-    options?: { withRelations?: Record<string, "raw" | "public" | "private"> },
-  ) => any;
-  deserializeRaw: (data: any, options?: { withRelations?: Record<string, "raw" | "public" | "private"> }) => any;
-};
-
-type Prettify<T> = {
-  [K in keyof T]: T[K];
-} & {};
-
-type IncludeRelations<
-  Schema extends BaseSchema,
-  Relations extends Record<string, BaseDatabaseSchemas>,
-  RelationsToInclude extends Partial<Record<keyof Relations, "raw" | "private" | "public">>,
-  SerializationKind extends "serialized" | "deserialized",
-> = z.ZodObject<
-  z.util.Extend<
-    Schema["shape"],
-    {
-      [K in keyof Relations]: K extends keyof RelationsToInclude
-        ? SerializationKind extends "serialized"
-          ? RelationsToInclude[K] extends keyof Relations[K]["serialized"]
-            ? z.ZodOptional<z.ZodNullable<z.ZodLazy<ReturnType<Relations[K]["serialized"][RelationsToInclude[K]]>>>>
-            : "Error: K is not a key of Relations' serialized schemas"
-          : RelationsToInclude[K] extends keyof Relations[K]
-          ? z.ZodOptional<z.ZodNullable<z.ZodLazy<ReturnType<Relations[K][RelationsToInclude[K]]>>>>
-          : "Error: K is not a key of Relations"
-        : z.ZodOptional<z.ZodNever>;
-    }
-  >,
-  Schema extends z.ZodObject<any, infer Conf> ? Conf : never
->;
 
 export const makeDatabaseSchemas = <
   RawShape extends z.ZodRawShape,
@@ -87,8 +37,6 @@ export const makeDatabaseSchemas = <
   relations: Relations;
   serializationFunctions: SerializationFunctions;
 }): DatabaseSchemasReturnType<RawShape, SerializedRawShape, SensitiveKeys, PrivateKeys, Relations> => {
-  type BaseRelationsToInclude = Partial<Record<keyof Relations, "raw" | "public" | "private">>;
-
   const invalidateKeys = <T extends z.ZodRawShape, K extends keyof T>(schema: z.ZodObject<T>, keys: K[]) => {
     const omitExtension = {} as Record<K, z.ZodOptional<z.ZodNever>>;
     keys.forEach((key) => (omitExtension[key] = z.never().optional()));
@@ -108,14 +56,16 @@ export const makeDatabaseSchemas = <
   type SerializedPrivateSchemaInferred = z.infer<typeof serializedPrivateSchema>;
 
   const includeRelations = (
-    schema: BaseSchema,
+    schema: z.ZodObject<z.ZodRawShape>,
     isSerialized: "serialized" | "deserialized",
-    relationsToInclude: BaseRelationsToInclude,
+    relationsToInclude: BaseRelationsToInclude<Relations>,
+    omitRelationsNotIncluded: boolean = false,
   ) => {
     return schema.extend(
       Object.fromEntries(
         Object.entries(relations).map(([key, relation]) => {
-          if (!(key in relationsToInclude)) return [key, z.never().optional()];
+          if (!(key in relationsToInclude) && !omitRelationsNotIncluded) return [key, z.never().optional()];
+          else if (!(key in relationsToInclude) && omitRelationsNotIncluded) return [key, undefined];
 
           const kind = relationsToInclude[key];
           if (!kind) throw new Error("Relation kind must be specified");
@@ -126,62 +76,45 @@ export const makeDatabaseSchemas = <
     );
   };
 
-  type SchemaOfKind<
-    PrivacyKind extends BasePrivacyKind,
-    SerializationKind extends "serialized" | "deserialized",
-  > = PrivacyKind extends "raw"
-    ? SerializationKind extends "serialized"
-      ? typeof serializedRawSchema
-      : typeof rawSchema
-    : PrivacyKind extends "private"
-    ? SerializationKind extends "serialized"
-      ? typeof serializedPrivateSchema
-      : typeof privateSchema
-    : PrivacyKind extends "public"
-    ? SerializationKind extends "serialized"
-      ? typeof serializedPublicSchema
-      : typeof publicSchema
-    : never;
-
-  const kindConverterFor = <
-    PrivacyKind extends BasePrivacyKind,
-    SerializationKind extends "serialized" | "deserialized",
-  >(
-    kind: PrivacyKind,
-    serializationKind: SerializationKind,
-  ) => {
-    return <RelationsToInclude extends BaseRelationsToInclude = {}>(
+  const kindConverterFor = (kind: BasePrivacyKind, serializationKind: BaseSerializationKind) => {
+    return <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(
       data: any,
       options?: { withRelations?: RelationsToInclude },
-    ): keyof RelationsToInclude extends never
-      ? z.infer<SchemaOfKind<PrivacyKind, SerializationKind>>
-      : z.infer<
-          IncludeRelations<
-            SchemaOfKind<PrivacyKind, SerializationKind>,
-            Relations,
-            RelationsToInclude,
-            SerializationKind
-          >
-        > => {
-      const schema: SchemaOfKind<PrivacyKind, SerializationKind> | null =
+    ) => {
+      const schema =
         kind === "raw"
           ? serializationKind === "serialized"
-            ? (serializedRawSchema as SchemaOfKind<PrivacyKind, SerializationKind>)
-            : (rawSchema as SchemaOfKind<PrivacyKind, SerializationKind>)
+            ? serializedRawSchema
+            : rawSchema
           : kind === "private"
           ? serializationKind === "serialized"
-            ? (serializedPrivateSchema as SchemaOfKind<PrivacyKind, SerializationKind>)
-            : (privateSchema as SchemaOfKind<PrivacyKind, SerializationKind>)
+            ? serializedPrivateSchema
+            : privateSchema
           : kind === "public"
           ? serializationKind === "serialized"
-            ? (serializedPublicSchema as SchemaOfKind<PrivacyKind, SerializationKind>)
-            : (publicSchema as SchemaOfKind<PrivacyKind, SerializationKind>)
+            ? serializedPublicSchema
+            : publicSchema
           : null;
       if (!schema) throw new Error("Invalid kind: " + kind);
 
-      const baseResultWithoutRelations = schema.strip().parse(data);
-      if (!options?.withRelations) return baseResultWithoutRelations as any;
-      return includeRelations(schema, serializationKind, options.withRelations).strip().parse(data) as any;
+      const omitKeys = (schema: z.ZodObject<z.ZodRawShape>) => {
+        let newSchema = schema;
+
+        const shouldOmitSensitiveKeys = kind === "private" || kind === "public";
+        if (shouldOmitSensitiveKeys)
+          newSchema = newSchema.omit({ ...Object.fromEntries(sensitiveKeys.map((key) => [key, true])) });
+
+        const shouldOmitPrivateKeys = kind === "public";
+        if (shouldOmitPrivateKeys)
+          newSchema = newSchema.omit({ ...Object.fromEntries(privateKeys.map((key) => [key, true])) });
+
+        return newSchema;
+      };
+
+      const newSchema = omitKeys(schema);
+
+      if (!options?.withRelations) return newSchema.strip().parse(data) as any;
+      return includeRelations(newSchema, serializationKind, options.withRelations, true).strip().parse(data) as any;
     };
   };
 
@@ -222,17 +155,11 @@ export const makeDatabaseSchemas = <
     return serializedData;
   };
 
-  type SerializerReturnType<Schema extends BaseSchema, RelationsToInclude extends BaseRelationsToInclude> = Prettify<
-    keyof RelationsToInclude extends never
-      ? z.infer<Schema>
-      : IncludeRelations<Schema, Relations, RelationsToInclude, "serialized">
-  >;
-
   const schemaGetterFor = <Schema extends BaseSchema, SerializationKind extends "serialized" | "deserialized">(
     schema: Schema,
     serializationKind: SerializationKind,
   ) => {
-    return <RelationsToInclude extends BaseRelationsToInclude = {}>(options?: {
+    return <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(options?: {
       withRelations?: RelationsToInclude;
     }) => {
       if (!options?.withRelations) return schema.strict();
@@ -240,44 +167,35 @@ export const makeDatabaseSchemas = <
     };
   };
 
-  const serializePublic = <RelationsToInclude extends BaseRelationsToInclude = {}>(
+  const serializePublic = <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(
     data: PublicSchemaInferred,
     options?: { withRelations?: RelationsToInclude },
-  ): SerializerReturnType<typeof serializedPublicSchema, RelationsToInclude> =>
-    applyTransformations(publicDeserializedKeysOnly(data, options), "encode", "public");
+  ) => applyTransformations(publicDeserializedKeysOnly(data, options), "encode", "public");
 
-  const deserializePublic = <RelationsToInclude extends BaseRelationsToInclude = {}>(
+  const deserializePublic = <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(
     data: SerializedPublicSchemaInferred,
     options?: { withRelations?: RelationsToInclude },
-  ): SerializerReturnType<typeof publicSchema, RelationsToInclude> =>
-    applyTransformations(publicSerializedKeysOnly(data, options), "decode", "public");
+  ) => applyTransformations(publicSerializedKeysOnly(data, options), "decode", "public");
 
-  const serializePrivate = <RelationsToInclude extends BaseRelationsToInclude = {}>(
+  const serializePrivate = <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(
     data: PrivateSchemaInferred,
     options?: { withRelations?: RelationsToInclude },
-  ): SerializerReturnType<typeof serializedPrivateSchema, RelationsToInclude> =>
-    applyTransformations(privateDeserializedKeysOnly(data, options), "encode", "private");
+  ) => applyTransformations(privateDeserializedKeysOnly(data, options), "encode", "private");
 
-  const deserializePrivate = <RelationsToInclude extends BaseRelationsToInclude = {}>(
+  const deserializePrivate = <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(
     data: SerializedPrivateSchemaInferred,
     options?: { withRelations?: RelationsToInclude },
-  ): SerializerReturnType<typeof privateSchema, RelationsToInclude> =>
-    applyTransformations(privateSerializedKeysOnly(data, options), "decode", "private");
+  ) => applyTransformations(privateSerializedKeysOnly(data, options), "decode", "private");
 
-  const unrecommended_serializeRaw = <RelationsToInclude extends BaseRelationsToInclude = {}>(
+  const unrecommended_serializeRaw = <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(
     data: RawSchemaInferred,
     options?: { withRelations?: RelationsToInclude },
-  ): SerializerReturnType<typeof serializedRawSchema, RelationsToInclude> =>
-    applyTransformations(rawDeserializedKeysOnly(data, options), "encode", "raw");
+  ) => applyTransformations(rawDeserializedKeysOnly(data, options), "encode", "raw");
 
-  const deserializeRaw = <
-    Data extends SerializedRawSchemaInferred,
-    RelationsToInclude extends BaseRelationsToInclude = {},
-  >(
-    data: Data,
+  const deserializeRaw = <RelationsToInclude extends BaseRelationsToInclude<Relations> = {}>(
+    data: SerializedRawSchemaInferred,
     options?: { withRelations?: RelationsToInclude },
-  ): SerializerReturnType<typeof rawSchema, RelationsToInclude> =>
-    applyTransformations(rawSerializedKeysOnly(data, options), "decode", "raw");
+  ) => applyTransformations(rawSerializedKeysOnly(data, options), "decode", "raw");
 
   return {
     raw: schemaGetterFor(rawSchema, "deserialized"),

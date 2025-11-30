@@ -1,6 +1,7 @@
 import z from "zod";
 import { UserSchemas } from "./user.schemas";
 import { makeDatabaseSchemas } from "./schema.factory";
+import { ScoreModel } from "../generated/client/models";
 
 const RawSchema = z.strictObject({
   id: z.number().int().nonnegative(),
@@ -17,7 +18,7 @@ const RawSchema = z.strictObject({
   perfectCount: z.number().int().nonnegative(),
   submissionTime: z.date(),
   scoreVersion: z.number().int().nonnegative(),
-});
+}) satisfies z.ZodType<ScoreModel>;
 
 const SerializedRawSchema = RawSchema.extend({
   submissionTime: z.iso.datetime(),
@@ -34,9 +35,16 @@ export const ScoreSchemas = makeDatabaseSchemas({
   },
 });
 
-export type RawScoreType = z.infer<typeof RawSchema>;
-export type SerializedScoreType = z.infer<typeof SerializedRawSchema>;
-export type PrivateScoreType = z.infer<ReturnType<typeof ScoreSchemas.private>>;
-export type SerializedPrivateScoreType = z.infer<ReturnType<typeof ScoreSchemas.serialized.private>>;
-export type PublicScoreType = z.infer<ReturnType<typeof ScoreSchemas.public>>;
-export type SerializedPublicScoreType = z.infer<ReturnType<typeof ScoreSchemas.serialized.public>>;
+const _RawRet = ScoreSchemas.raw();
+const _SerializedRawRet = ScoreSchemas.serialized.raw();
+const _PrivateRet = ScoreSchemas.private();
+const _SerializedPrivateRet = ScoreSchemas.serialized.private();
+const _PublicRet = ScoreSchemas.public();
+const _SerializedPublicRet = ScoreSchemas.serialized.public();
+
+export type RawScoreType = z.infer<typeof _RawRet>;
+export type SerializedScoreType = z.infer<typeof _SerializedRawRet>;
+export type PrivateScoreType = z.infer<typeof _PrivateRet>;
+export type SerializedPrivateScoreType = z.infer<typeof _SerializedPrivateRet>;
+export type PublicScoreType = z.infer<typeof _PublicRet>;
+export type SerializedPublicScoreType = z.infer<typeof _SerializedPublicRet>;

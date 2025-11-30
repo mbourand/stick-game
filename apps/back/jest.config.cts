@@ -15,5 +15,6 @@ export default {
     "^.+\\.[tj]s$": ["@swc/jest", swcJestConfig],
   },
   moduleFileExtensions: ["ts", "js", "html"],
+  testPathIgnorePatterns: [".types.test.ts"],
   coverageDirectory: "test-output/jest/coverage",
 };

@@ -1,5 +1,6 @@
 import z from "zod";
 import { makeDatabaseSchemas } from "./schema.factory";
+import { UserModel } from "../generated/client/models";
 
 const RawSchema = z.strictObject({
   id: z.uuid(),
@@ -15,7 +16,7 @@ const RawSchema = z.strictObject({
   fullComboCount: z.number().int().nonnegative(),
   createdAt: z.date(),
   updatedAt: z.date(),
-});
+}) satisfies z.ZodType<UserModel>;
 
 const SerializedRawSchema = RawSchema.extend({
   createdAt: z.iso.datetime(),
@@ -34,8 +35,8 @@ export const UserSchemas = makeDatabaseSchemas({
   },
 });
 
-export type RawUserType = z.infer<typeof RawSchema>;
-export type SerializedUserType = z.infer<typeof SerializedRawSchema>;
+export type RawUserType = z.infer<ReturnType<typeof UserSchemas.raw>>;
+export type SerializedUserType = z.infer<ReturnType<typeof UserSchemas.serialized.raw>>;
 export type PrivateUserType = z.infer<ReturnType<typeof UserSchemas.private>>;
 export type SerializedPrivateUserType = z.infer<ReturnType<typeof UserSchemas.serialized.private>>;
 export type PublicUserType = z.infer<ReturnType<typeof UserSchemas.public>>;

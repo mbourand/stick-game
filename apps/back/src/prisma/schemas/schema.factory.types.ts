@@ -6,16 +6,16 @@ import z from "zod";
  * ===========================================================
  */
 
-type BaseSchema = z.ZodObject<z.ZodRawShape>;
+export type BaseSchema = z.ZodObject<z.ZodRawShape>;
 
-type BasePrivacyKind = "raw" | "private" | "public";
-type BaseSerializationKind = "serialized" | "deserialized";
+export type BasePrivacyKind = "raw" | "private" | "public";
+export type BaseSerializationKind = "serialized" | "deserialized";
 
-type BaseRelationsToInclude<Relations extends Record<string, BaseDatabaseSchemas>> = Partial<
+export type BaseRelationsToInclude<Relations extends Record<string, BaseDatabaseSchemas>> = Partial<
   Record<keyof Relations, BasePrivacyKind>
 >;
 
-type BaseDatabaseSchemas = {
+export type BaseDatabaseSchemas = {
   raw: (...args: any[]) => BaseSchema;
   private: (...args: any[]) => BaseSchema;
   public: (...args: any[]) => BaseSchema;
@@ -57,16 +57,16 @@ type IncludeRelations<
 > = z.ZodObject<
   z.util.Extend<
     Schema["shape"],
-    { [K in Exclude<keyof Relations, keyof RelationsToInclude>]: z.ZodOptional<z.ZodNever> } & {
-      [K in keyof RelationsToInclude]-?: K extends keyof Relations
+    {
+      [K in keyof Relations]-?: K extends keyof RelationsToInclude
         ? SerializationKind extends "serialized"
           ? RelationsToInclude[K] extends keyof Relations[K]["serialized"]
             ? z.ZodLazy<ReturnType<Relations[K]["serialized"][RelationsToInclude[K]]>>
             : "Error: K is not a key of Relations' serialized schemas"
           : RelationsToInclude[K] extends keyof Relations[K]
           ? z.ZodLazy<ReturnType<Relations[K][RelationsToInclude[K]]>>
-          : "Error: K is not a key of Relations value"
-        : "Error: K is not a key of Relations";
+          : `Error: K is not a key of Relations value`
+        : z.ZodOptional<z.ZodNever>;
     }
   >,
   Schema extends z.ZodObject<any, infer Conf> ? Conf : never
@@ -172,19 +172,19 @@ export type DatabaseSchemasReturnType<
     "serialized"
   >;
   deserializePublic: SerializerFor<
-    z.infer<z.ZodObject<InvalidateKeys<SerializedRawShape, SensitiveKeys | PrivateKeys>>>,
+    z.infer<z.ZodObject<Omit<SerializedRawShape, SensitiveKeys | PrivateKeys>>>,
     z.ZodObject<InvalidateKeys<RawShape, SensitiveKeys | PrivateKeys>>,
     Relations,
     "deserialized"
   >;
   serializePrivate: SerializerFor<
-    z.infer<z.ZodObject<InvalidateKeys<RawShape, SensitiveKeys>>>,
+    z.infer<z.ZodObject<Omit<RawShape, SensitiveKeys>>>,
     z.ZodObject<InvalidateKeys<SerializedRawShape, SensitiveKeys>>,
     Relations,
     "serialized"
   >;
   deserializePrivate: SerializerFor<
-    z.infer<z.ZodObject<InvalidateKeys<SerializedRawShape, SensitiveKeys>>>,
+    z.infer<z.ZodObject<Omit<SerializedRawShape, SensitiveKeys>>>,
     z.ZodObject<InvalidateKeys<RawShape, SensitiveKeys>>,
     Relations,
     "deserialized"

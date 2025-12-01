@@ -4,6 +4,7 @@ import type { NoteReachedEndOfLifeEventType } from "./impl/NoteReachedEndOfLifeE
 import type { NoteShouldSpawnEventType } from "./impl/NoteShouldSpawnEvent";
 import type { SettingChangedEventType } from "./impl/SettingChangedEventType";
 import { BeatmapEndedEventType } from "@/modules/game/events/impl/BeatmapEndedEvent";
+import { IntroSkipRequestedEventType } from "@/modules/game/events/impl/IntroSkipRequestedEvent";
 
 type EventType =
   | "onNoteWasJudged"
@@ -11,7 +12,8 @@ type EventType =
   | "onNoteReachedEndOfLife"
   | "onNoteHoldTick"
   | "onSettingChanged"
-  | "onBeatmapEnded";
+  | "onBeatmapEnded"
+  | "onIntroSkipRequested";
 
 type EventHandlers = {
   onNoteWasJudged: (e: NoteWasJudgedEventType) => void;
@@ -20,6 +22,7 @@ type EventHandlers = {
   onNoteHoldTick: (e: NoteHoldTickEventType) => void;
   onSettingChanged: (e: SettingChangedEventType) => void;
   onBeatmapEnded: (e: BeatmapEndedEventType) => void;
+  onIntroSkipRequested: (e: IntroSkipRequestedEventType) => void;
 };
 
 type EventHandlersArray = {

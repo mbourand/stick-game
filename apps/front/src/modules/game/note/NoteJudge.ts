@@ -1,5 +1,5 @@
 import type { Gamepad } from "../../gamepad/Gamepad";
-import { isHittingNote } from "../hooks/hit-check";
+import { isHittingNote } from "../judge/hit-check";
 import { JudgmentKind } from "../judge/constants";
 import type { Judge } from "../judge/Judge";
 import type { HoldNote } from "./HoldNote";

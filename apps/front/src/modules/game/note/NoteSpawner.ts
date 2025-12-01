@@ -57,4 +57,14 @@ export class NoteSpawner {
       }
     }
   }
+
+  public goToTime(targetTime: number) {
+    this.elapsedTime = targetTime;
+    this.lastNoteIndex = this.parsedNotes.findIndex((note) => note.hitTime > targetTime) - 1;
+    if (this.lastNoteIndex < -1) this.lastNoteIndex = -1;
+    this.hasFinished = this.lastNoteIndex >= this.parsedNotes.length - 1;
+    this.elapsedTimeSinceLastNoteSpawn =
+      this.elapsedTime - (this.parsedNotes[this.lastNoteIndex].hitTime - this.scrollDuration);
+    this.update(0);
+  }
 }

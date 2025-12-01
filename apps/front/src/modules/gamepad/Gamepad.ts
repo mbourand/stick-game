@@ -1,20 +1,29 @@
-import { GamepadAxisKind, type GamepadAxisMapping } from "./mapping/types";
+import {
+  GamepadAxisKind,
+  GamepadAxisMappingType,
+  GamepadButtonKind,
+  GamepadButtonMappingType,
+  GamepadMappingType,
+} from "./mapping/types";
 
 export class Gamepad {
-  private mapping: Record<GamepadAxisKind, GamepadAxisMapping>;
+  private axisMapping: GamepadAxisMappingType;
+  private buttonMapping: GamepadButtonMappingType;
 
-  constructor(mapping: Record<GamepadAxisKind, GamepadAxisMapping>) {
-    this.mapping = mapping;
+  constructor(mapping: GamepadMappingType) {
+    this.axisMapping = mapping.axisMapping;
+    this.buttonMapping = mapping.buttonMapping;
   }
 
-  public setMapping(mapping: Record<GamepadAxisKind, GamepadAxisMapping>) {
-    this.mapping = mapping;
+  public setMapping(mapping: GamepadMappingType) {
+    this.axisMapping = mapping.axisMapping;
+    this.buttonMapping = mapping.buttonMapping;
   }
 
   public getAxisValue(axisKind: GamepadAxisKind, sensitivity = 1, deadzone = 0.02): number {
     const gamepad = navigator.getGamepads()[0];
     if (!gamepad) return 0;
-    const axisMapping = this.mapping[axisKind];
+    const axisMapping = this.axisMapping[axisKind];
 
     const otherStickAxisKind = (() => {
       switch (axisKind) {
@@ -29,7 +38,7 @@ export class Gamepad {
       }
     })();
 
-    const otherAxisMapping = this.mapping[otherStickAxisKind];
+    const otherAxisMapping = this.axisMapping[otherStickAxisKind];
 
     const value = (gamepad.axes[axisMapping.index] || 0) * sensitivity;
     const otherValue = gamepad.axes[otherAxisMapping.index] || 0;
@@ -52,5 +61,12 @@ export class Gamepad {
     const normalizedY = length > 1 ? axisY / length : axisY;
 
     return { x: normalizedX, y: normalizedY };
+  }
+
+  public isButtonPressed(buttonKind: GamepadButtonKind): boolean {
+    const gamepad = navigator.getGamepads()[0];
+    if (!gamepad) return false;
+    const buttonMapping = this.buttonMapping[buttonKind];
+    return gamepad.buttons[buttonMapping.index]?.pressed ?? false;
   }
 }

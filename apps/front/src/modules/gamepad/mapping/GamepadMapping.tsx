@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "../../../components/Modal";
-import { GamepadAxisKind, type GamepadAxisMapping } from "./types";
+import {
+  GamepadAxisKind,
+  GamepadAxisMappingType,
+  GamepadButtonKind,
+  GamepadButtonMappingType,
+  GamepadMappingType,
+} from "./types";
 
 const detectMovedAxis = (threshold: number, expectNegative: boolean): { index: number; inverted: boolean } | null => {
   const gamepad = navigator.getGamepads()[0];
@@ -17,12 +23,20 @@ const detectMovedAxis = (threshold: number, expectNegative: boolean): { index: n
   return null;
 };
 
+const detectPressedButton = (): { index: number } | null => {
+  const gamepad = navigator.getGamepads()[0];
+  const pressedIndex = gamepad?.buttons.findIndex((button) => button.pressed);
+
+  return pressedIndex == null ? null : { index: pressedIndex };
+};
+
 type GamepadMappingProps = {
-  onCompleted: (mapping: Record<GamepadAxisKind, GamepadAxisMapping>) => void;
+  onCompleted: (mapping: GamepadMappingType) => void;
 };
 
 export const GamepadMapping = ({ onCompleted }: GamepadMappingProps) => {
-  const detectedAxis = useRef<Partial<Record<GamepadAxisKind, GamepadAxisMapping>>>({});
+  const detectedAxis = useRef<Partial<GamepadAxisMappingType>>({});
+  const detectedButtons = useRef<Partial<GamepadButtonMappingType>>({});
 
   const MAPPING_STEPS = [
     {
@@ -93,6 +107,42 @@ export const GamepadMapping = ({ onCompleted }: GamepadMappingProps) => {
         return true;
       },
     },
+    {
+      category: "Buttons",
+      description: "Press your left stick",
+      update: () => {
+        const pressedButton = detectPressedButton();
+        const wasAlreadyMapped = Object.values(detectedButtons.current || {}).some(
+          (mapped) => mapped.index === pressedButton?.index,
+        );
+        if (!pressedButton || wasAlreadyMapped) return false;
+
+        detectedButtons.current = {
+          ...detectedButtons.current,
+          [GamepadButtonKind.LeftStickClick]: { ...pressedButton, kind: GamepadButtonKind.LeftStickClick },
+        };
+
+        return true;
+      },
+    },
+    {
+      category: "Buttons",
+      description: "Press your right stick",
+      update: () => {
+        const pressedButton = detectPressedButton();
+        const wasAlreadyMapped = Object.values(detectedButtons.current || {}).some(
+          (mapped) => mapped.index === pressedButton?.index,
+        );
+        if (!pressedButton || wasAlreadyMapped) return false;
+
+        detectedButtons.current = {
+          ...detectedButtons.current,
+          [GamepadButtonKind.RightStickClick]: { ...pressedButton, kind: GamepadButtonKind.RightStickClick },
+        };
+
+        return true;
+      },
+    },
   ];
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -103,7 +153,10 @@ export const GamepadMapping = ({ onCompleted }: GamepadMappingProps) => {
       if (currentStep.update()) {
         setCurrentStepIndex((prev) => Math.min(prev + 1, MAPPING_STEPS.length - 1));
         if (currentStepIndex === MAPPING_STEPS.length - 1) {
-          onCompleted(detectedAxis.current as Record<GamepadAxisKind, GamepadAxisMapping>);
+          onCompleted({
+            axisMapping: detectedAxis.current as GamepadAxisMappingType,
+            buttonMapping: detectedButtons.current as GamepadButtonMappingType,
+          });
           return;
         }
       }

@@ -11,7 +11,7 @@ import type { NoteWasJudgedEventType } from "../../events/impl/NoteWasJudgedEven
 import { CircleAudioVisualizer } from "../../flair/CircleAudioVisualizer";
 import { NoteHitFlair } from "../../flair/NoteHitFlair";
 import { NoteHitGlowFlair } from "../../flair/NoteHitGlowFlair";
-import { isHittingNote } from "../../hooks/hit-check";
+import { isHittingNote } from "../../judge/hit-check";
 import { JudgmentKind } from "../../judge/constants";
 import { HoldNote } from "../../note/HoldNote";
 import { BaseNote, Note } from "../../note/Note";
@@ -25,6 +25,8 @@ import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/qu
 import { browserQueryClient } from "@/components/QueryProvider";
 import { submitScore } from "@/modules/score/submit-score";
 import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
+import { IntroSkipper } from "@/modules/game/scenes/Gameplay/IntroSkipper";
+import { IntroSkipRequestedEventType } from "@/modules/game/events/impl/IntroSkipRequestedEvent";
 
 export class GameplayScene extends Scene {
   private eventManager = new EventManager();
@@ -44,10 +46,14 @@ export class GameplayScene extends Scene {
   private noteHitFlairs: Set<NoteHitFlair> = new Set();
   private noteHitGlowFlairs: Set<NoteHitGlowFlair> = new Set();
   private gamepad: Gamepad;
+  private introSkipper: IntroSkipper;
   private beatmapStarted = false;
+
+  private elapsedTime;
 
   constructor(sceneManager: SceneManager, parsedMap: ParsedMap) {
     super(sceneManager);
+    this.elapsedTime = 0;
     this.parsedMap = parsedMap;
     this.settings = Settings.getSettings();
     this.noteSpawner = new NoteSpawner(this.parsedMap.notes, this.eventManager, this.settings.scrollDuration);
@@ -55,6 +61,7 @@ export class GameplayScene extends Scene {
     this.scoreCounter = new ScoreCounter(
       this.parsedMap.notes.length + this.parsedMap.notes.filter((n) => n.isHold).length,
     );
+    this.introSkipper = new IntroSkipper(this.parsedMap.notes[0].hitTime, this.gamepad, this.eventManager);
   }
 
   public async onEntered() {
@@ -65,15 +72,15 @@ export class GameplayScene extends Scene {
       await this.loadBackgroundImage(),
     ]);
 
-    const loadAudio = () => {
+    const playAudio = () => {
       const audioSource = AudioManager.playMusic("beatmap_audio", buffer, this.settings.volume);
       this.audioVisualizer.connectSource(audioSource);
     };
 
     if (this.noteSpawner.getStartTime() < 0) {
-      setTimeout(loadAudio, this.noteSpawner.getStartTime() * -1);
+      setTimeout(playAudio, this.noteSpawner.getStartTime() * -1);
     } else {
-      loadAudio();
+      playAudio();
     }
 
     this.beatmapStarted = true;
@@ -92,8 +99,10 @@ export class GameplayScene extends Scene {
 
   public update(deltaTime: number): void {
     if (!this.beatmapStarted) return;
+    this.elapsedTime += deltaTime;
+    this.introSkipper.update(this.elapsedTime);
     this.audioVisualizer.update(deltaTime);
-    this.updateNotes(deltaTime);
+    this.updateNotes(this.elapsedTime);
   }
 
   public render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
@@ -212,6 +221,13 @@ export class GameplayScene extends Scene {
       glowFlair.update(deltaTime);
       if (glowFlair.isFinished()) this.noteHitGlowFlairs.delete(glowFlair);
     }
+  }
+
+  public goToTime(targetTime: number) {
+    AudioManager.setPlaybackTimeById("beatmap_audio", targetTime);
+    this.elapsedTime = targetTime;
+    this.noteSpawner.goToTime(targetTime);
+    this.notes.clear();
   }
 
   private drawStickDot(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
@@ -404,8 +420,18 @@ export class GameplayScene extends Scene {
     }
   }
 
+  private onIntroSkipRequested(event: IntroSkipRequestedEventType) {
+    this.goToTime(event.targetTime);
+  }
+
   private registerEvents() {
     console.log("Registering game events...");
+
+    const offIntroSkipRequested = this.eventManager.on("onIntroSkipRequested", (...args) =>
+      this.onIntroSkipRequested(...args),
+    );
+    this.offFunctions.push(offIntroSkipRequested);
+
     const offNoteReachedEdge = this.eventManager.on("onNoteWasJudged", (...args) => this.onNoteWasJudged(...args));
     this.offFunctions.push(offNoteReachedEdge);
 

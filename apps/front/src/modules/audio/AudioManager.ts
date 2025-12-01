@@ -93,4 +93,18 @@ export class AudioManager {
     const entry = this.getInstance().playingSources.get(id);
     if (entry) entry.gainNode.gain.value = volume;
   }
+
+  public static setPlaybackTimeById(id: string, time: number) {
+    const entry = this.getInstance().playingSources.get(id);
+    if (entry) {
+      const context = this.getInstance().musicContext;
+      const newSource = context.createBufferSource();
+      newSource.buffer = entry.source.buffer;
+      newSource.connect(entry.gainNode);
+      const currentTime = context.currentTime;
+      entry.source.stop();
+      newSource.start(currentTime, time);
+      this.getInstance().playingSources.set(id, { source: newSource, gainNode: entry.gainNode });
+    }
+  }
 }

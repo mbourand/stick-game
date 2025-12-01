@@ -11,4 +11,21 @@ export type GamepadAxisMapping = {
   inverted: boolean;
 };
 
-export type GamepadMappingType = Record<GamepadAxisKind, GamepadAxisMapping>;
+export type GamepadAxisMappingType = Record<GamepadAxisKind, GamepadAxisMapping>;
+
+export enum GamepadButtonKind {
+  LeftStickClick = "LeftStickClick",
+  RightStickClick = "RightStickClick",
+}
+
+export type GamepadButtonMapping = {
+  kind: GamepadButtonKind;
+  index: number;
+};
+
+export type GamepadButtonMappingType = Record<GamepadButtonKind, GamepadButtonMapping>;
+
+export type GamepadMappingType = {
+  axisMapping: GamepadAxisMappingType;
+  buttonMapping: GamepadButtonMappingType;
+};

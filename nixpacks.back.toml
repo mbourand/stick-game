@@ -5,4 +5,4 @@ cmds = ["npm run back:build:production"]
 cmd = "npm run back:start:production"
 
 [variables]
-NIXPACKS_NODE_VERSION = "20"
+NIXPACKS_NODE_VERSION = "22"

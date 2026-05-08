@@ -58,20 +58,20 @@ export const ClientSideGame = () => {
   useEffect(() => {
     if (wasMappingDone) return;
 
-    const intervalId = setInterval(() => {
-      const gamepad = navigator.getGamepads()[0];
-      if (!gamepad) return;
+    // const intervalId = setInterval(() => {
+    //   const gamepad = navigator.getGamepads()[0];
+    //   if (!gamepad) return;
 
-      if (gamepad.mapping === "standard") {
-        setWasMappingDone(true);
-        return;
-      }
+    //   if (gamepad.mapping === "standard") {
+    //     setWasMappingDone(true);
+    //     return;
+    //   }
 
-      console.warn("Non-standard gamepad detected. Please configure your gamepad mapping.");
-      setIsGamepadMappingVisible(true);
-    }, 200);
+    //   console.warn("Non-standard gamepad detected. Please configure your gamepad mapping.");
+    //   setIsGamepadMappingVisible(true);
+    // }, 200);
 
-    return () => clearInterval(intervalId);
+    // return () => clearInterval(intervalId);
   }, [wasMappingDone]);
 
   return (

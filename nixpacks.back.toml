@@ -1,0 +1,8 @@
+[phases.build]
+cmds = ["npm run back:build:production"]
+
+[start]
+cmd = "npm run back:start:production"
+
+[variables]
+NIXPACKS_NODE_VERSION = "20"

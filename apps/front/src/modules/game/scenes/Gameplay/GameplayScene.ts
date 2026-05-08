@@ -51,7 +51,7 @@ export class GameplayScene extends Scene {
     this.parsedMap = parsedMap;
     this.settings = Settings.getSettings();
     this.noteSpawner = new NoteSpawner(this.parsedMap.notes, this.eventManager, this.settings.scrollDuration);
-    this.gamepad = new Gamepad(this.settings.gamepadMapping);
+    this.gamepad = new Gamepad(this.settings.selectedGamepadIndex);
     this.scoreCounter = new ScoreCounter(
       this.parsedMap.notes.length + this.parsedMap.notes.filter((n) => n.isHold).length,
     );
@@ -426,8 +426,8 @@ export class GameplayScene extends Scene {
     const offSettingChanged = Settings.getEventManager().on("onSettingChanged", (e) => {
       if (e.key === "volume") {
         AudioManager.setVolumeById("beatmap_audio", Settings.getSettings().volume);
-      } else if (e.key === "gamepadMapping") {
-        this.gamepad.setMapping(e.value as SettingsListType["gamepadMapping"]);
+      } else if (e.key === "selectedGamepadIndex") {
+        this.gamepad.setSelectedIndex(e.value as SettingsListType["selectedGamepadIndex"]);
       } else if (e.key === "scrollDuration") {
         this.settings.scrollDuration = Settings.getSettings().scrollDuration;
         this.noteSpawner.setScrollDuration(this.settings.scrollDuration);

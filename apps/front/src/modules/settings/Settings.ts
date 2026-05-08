@@ -1,24 +1,22 @@
 import { EventManager } from "../game/events/EventManager";
 import { SettingChangedEvent } from "../game/events/impl/SettingChangedEventType";
-import { DEFAULT_MAPPING } from "../gamepad/mapping/constants";
-import type { GamepadMappingType } from "../gamepad/mapping/types";
 
 export type SettingsListType = {
   volume: number;
   backgroundBrightness: number;
   backgroundBlurriness: number;
-  gamepadMapping: GamepadMappingType;
   scrollDuration: number;
   playerName: string;
+  selectedGamepadIndex: number | null;
 };
 
 export const DEFAULT_SETTINGS: SettingsListType = {
   volume: 0.2,
   backgroundBrightness: 0.15,
   backgroundBlurriness: 4,
-  gamepadMapping: DEFAULT_MAPPING,
   scrollDuration: 850,
   playerName: "Guest",
+  selectedGamepadIndex: null,
 };
 
 export class Settings {

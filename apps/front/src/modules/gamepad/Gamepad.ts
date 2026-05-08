@@ -1,56 +1,37 @@
-import { GamepadAxisKind, type GamepadAxisMapping } from "./mapping/types";
+const LEFT_STICK_X_INDEX = 0;
+const LEFT_STICK_Y_INDEX = 1;
+const RIGHT_STICK_X_INDEX = 2;
+const RIGHT_STICK_Y_INDEX = 3;
+const STICK_DEADZONE = 0.02;
 
 export class Gamepad {
-  private mapping: Record<GamepadAxisKind, GamepadAxisMapping>;
+  private selectedIndex: number | null;
 
-  constructor(mapping: Record<GamepadAxisKind, GamepadAxisMapping>) {
-    this.mapping = mapping;
+  constructor(selectedIndex: number | null = null) {
+    this.selectedIndex = selectedIndex;
   }
 
-  public setMapping(mapping: Record<GamepadAxisKind, GamepadAxisMapping>) {
-    this.mapping = mapping;
-  }
-
-  public getAxisValue(axisKind: GamepadAxisKind, sensitivity = 1, deadzone = 0.02): number {
-    const gamepad = navigator.getGamepads()[0];
-    if (!gamepad) return 0;
-    const axisMapping = this.mapping[axisKind];
-
-    const otherStickAxisKind = (() => {
-      switch (axisKind) {
-        case GamepadAxisKind.LeftStickX:
-          return GamepadAxisKind.LeftStickY;
-        case GamepadAxisKind.LeftStickY:
-          return GamepadAxisKind.LeftStickX;
-        case GamepadAxisKind.RightStickX:
-          return GamepadAxisKind.RightStickY;
-        case GamepadAxisKind.RightStickY:
-          return GamepadAxisKind.RightStickX;
-      }
-    })();
-
-    const otherAxisMapping = this.mapping[otherStickAxisKind];
-
-    const value = (gamepad.axes[axisMapping.index] || 0) * sensitivity;
-    const otherValue = gamepad.axes[otherAxisMapping.index] || 0;
-
-    const isLockedInDeadzone = value * value + otherValue * otherValue < deadzone ** 2;
-
-    if (isLockedInDeadzone) return 0;
-    return axisMapping.inverted ? -value : value;
+  public setSelectedIndex(selectedIndex: number | null) {
+    this.selectedIndex = selectedIndex;
   }
 
   public getClampedStickPosition(stick: "left" | "right"): { x: number; y: number } {
-    const stickXKind = stick === "left" ? GamepadAxisKind.LeftStickX : GamepadAxisKind.RightStickX;
-    const stickYKind = stick === "left" ? GamepadAxisKind.LeftStickY : GamepadAxisKind.RightStickY;
+    const pad = this.findGamepad();
+    if (!pad) return { x: 0, y: 0 };
 
-    const axisX = this.getAxisValue(stickXKind);
-    const axisY = this.getAxisValue(stickYKind);
+    const xIndex = stick === "left" ? LEFT_STICK_X_INDEX : RIGHT_STICK_X_INDEX;
+    const yIndex = stick === "left" ? LEFT_STICK_Y_INDEX : RIGHT_STICK_Y_INDEX;
+    const x = pad.axes[xIndex] ?? 0;
+    const y = pad.axes[yIndex] ?? 0;
 
-    const length = Math.sqrt(axisX * axisX + axisY * axisY);
-    const normalizedX = length > 1 ? axisX / length : axisX;
-    const normalizedY = length > 1 ? axisY / length : axisY;
+    if (x * x + y * y < STICK_DEADZONE * STICK_DEADZONE) return { x: 0, y: 0 };
 
-    return { x: normalizedX, y: normalizedY };
+    const length = Math.sqrt(x * x + y * y);
+    return length > 1 ? { x: x / length, y: y / length } : { x, y };
+  }
+
+  private findGamepad() {
+    if (this.selectedIndex === null) return null;
+    return navigator.getGamepads()[this.selectedIndex] ?? null;
   }
 }

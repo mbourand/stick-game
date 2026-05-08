@@ -1,10 +1,61 @@
 "use client";
 
 import { GameCanvas } from "@/modules/game/components/GameCanvas";
-import { GamepadMapping } from "@/modules/gamepad/mapping/GamepadMapping";
 import { Settings } from "@/modules/settings/Settings";
 import { debounce } from "@/modules/utils/debounce";
 import { useEffect, useMemo, useState } from "react";
+
+const GamepadSelector = () => {
+  const [pads, setPads] = useState<{ index: number; id: string }[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(
+    Settings.getSettings().selectedGamepadIndex,
+  );
+
+  useEffect(() => {
+    const refresh = () => {
+      const detected: { index: number; id: string }[] = [];
+      for (const pad of navigator.getGamepads()) {
+        if (pad) detected.push({ index: pad.index, id: pad.id });
+      }
+      setPads(detected);
+    };
+    refresh();
+    window.addEventListener("gamepadconnected", refresh);
+    window.addEventListener("gamepaddisconnected", refresh);
+    const intervalId = setInterval(refresh, 1000);
+    return () => {
+      window.removeEventListener("gamepadconnected", refresh);
+      window.removeEventListener("gamepaddisconnected", refresh);
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  const onChange = (value: string) => {
+    const index = Number(value);
+    setSelectedIndex(index);
+    Settings.set("selectedGamepadIndex", index);
+  };
+
+  return (
+    <>
+      <span className="text-white text-sm whitespace-nowrap">Gamepad:</span>
+      <select
+        className="w-[160px] text-sm"
+        value={selectedIndex ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="" disabled hidden>
+          Select a gamepad...
+        </option>
+        {pads.map((pad) => (
+          <option key={pad.index} value={pad.index}>
+            {pad.index}: {pad.id}
+          </option>
+        ))}
+      </select>
+    </>
+  );
+};
 
 const SettingSlider = ({
   name,
@@ -52,28 +103,6 @@ const SettingSlider = ({
 };
 
 export const ClientSideGame = () => {
-  const [wasMappingDone, setWasMappingDone] = useState(false);
-  const [isGamepadMappingVisible, setIsGamepadMappingVisible] = useState(false);
-
-  useEffect(() => {
-    if (wasMappingDone) return;
-
-    // const intervalId = setInterval(() => {
-    //   const gamepad = navigator.getGamepads()[0];
-    //   if (!gamepad) return;
-
-    //   if (gamepad.mapping === "standard") {
-    //     setWasMappingDone(true);
-    //     return;
-    //   }
-
-    //   console.warn("Non-standard gamepad detected. Please configure your gamepad mapping.");
-    //   setIsGamepadMappingVisible(true);
-    // }, 200);
-
-    // return () => clearInterval(intervalId);
-  }, [wasMappingDone]);
-
   return (
     <>
       <GameCanvas />
@@ -121,16 +150,8 @@ export const ClientSideGame = () => {
             Settings.set("backgroundBrightness", value / 100);
           }}
         />
+        <GamepadSelector />
       </div>
-      {isGamepadMappingVisible && (
-        <GamepadMapping
-          onCompleted={(mapping) => {
-            setIsGamepadMappingVisible(false);
-            setWasMappingDone(true);
-            Settings.set("gamepadMapping", mapping);
-          }}
-        />
-      )}
     </>
   );
 };

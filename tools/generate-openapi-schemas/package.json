@@ -2,61 +2,14 @@
   "name": "@tau/generate-openapi-schemas",
   "version": "0.0.1",
   "private": true,
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "scripts": {
-    "openapi-ts": "openapi-ts"
-  },
-  "exports": {
-    "./package.json": "./package.json",
-    ".": {
-      "@tau/source": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
-  },
-  "nx": {
-    "targets": {
-      "build": {
-        "executor": "@nx/js:tsc",
-        "outputs": [
-          "{options.outputPath}"
-        ],
-        "options": {
-          "outputPath": "tools/generate-openapi-schemas/dist",
-          "main": "tools/generate-openapi-schemas/src/index.ts",
-          "tsConfig": "tools/generate-openapi-schemas/tsconfig.lib.json",
-          "rootDir": "tools/generate-openapi-schemas/src",
-          "generatePackageJson": false,
-          "assets": [
-            {
-              "input": "./tools/generate-openapi-schemas/src",
-              "glob": "**/!(*.ts)",
-              "output": "."
-            },
-            {
-              "input": "./tools/generate-openapi-schemas/src",
-              "glob": "**/*.d.ts",
-              "output": "."
-            }
-          ]
-        }
-      }
-    }
+  "type": "module",
+  "bin": {
+    "generate-openapi-schemas": "./bin.mjs"
   },
   "dependencies": {
-    "@nx/devkit": "22.0.2",
-    "tslib": "^2.3.0"
+    "@hey-api/openapi-ts": "^0.97.3"
   },
-  "executors": "./executors.json",
   "files": [
-    "dist",
-    "!**/*.tsbuildinfo",
-    "executors.json"
-  ],
-  "devDependencies": {
-    "@hey-api/openapi-ts": "^0.86.12"
-  }
+    "bin.mjs"
+  ]
 }

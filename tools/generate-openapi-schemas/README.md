@@ -1,11 +1,12 @@
 # generate-openapi-schemas
 
-This library was generated with [Nx](https://nx.dev).
+CLI for generating Zod schemas from an OpenAPI spec via `@hey-api/openapi-ts`.
 
-## Building
+## Usage
 
-Run `nx build generate-openapi-schemas` to build the library.
+```bash
+pnpm exec generate-openapi-schemas --input ./openapi.json --output ./src/lib
+```
 
-## Running unit tests
-
-Run `nx test generate-openapi-schemas` to execute the unit tests via [Jest](https://jestjs.io).
+Each schemas package (`@tau/back-schemas`, `@tau/osu-schemas`) exposes a `generate`
+script that wraps this CLI.

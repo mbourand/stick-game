@@ -7,10 +7,6 @@ const createJestConfig = nextJest({
 
 const config: Config = {
   displayName: "@tau/front",
-  preset: "../../jest.preset.js",
-  transform: {
-    "^(?!.*\\.(js|jsx|ts|tsx|css|json)$)": "@nx/react/plugins/jest",
-  },
   moduleFileExtensions: ["ts", "tsx", "js", "jsx"],
   coverageDirectory: "../../coverage/apps/front",
   testEnvironment: "jsdom",

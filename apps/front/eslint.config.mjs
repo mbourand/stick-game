@@ -3,7 +3,6 @@ import { dirname } from "path";
 import { fileURLToPath } from "url";
 import js from "@eslint/js";
 import { fixupConfigRules } from "@eslint/compat";
-import nx from "@nx/eslint-plugin";
 import baseConfig from "../../eslint.config.mjs";
 import pluginQuery from "@tanstack/eslint-plugin-query";
 
@@ -13,11 +12,10 @@ const compat = new FlatCompat({
 });
 
 export default [
+  ...baseConfig,
   ...fixupConfigRules(compat.extends("next")),
   ...fixupConfigRules(compat.extends("next/core-web-vitals")),
-  ...baseConfig,
   ...pluginQuery.configs["flat/recommended"],
-  ...nx.configs["flat/react-typescript"],
   {
     ignores: [".next/**/*", "**/out-tsc"],
   },

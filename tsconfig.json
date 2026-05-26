@@ -3,26 +3,11 @@
   "compileOnSave": false,
   "files": [],
   "references": [
-    {
-      "path": "./apps/front-e2e"
-    },
-    {
-      "path": "./apps/front"
-    },
-    {
-      "path": "./apps/back-e2e"
-    },
-    {
-      "path": "./apps/back"
-    },
-    {
-      "path": "./packages/api-schemas/back-schemas"
-    },
-    {
-      "path": "./packages/api-schemas/osu-schemas"
-    },
-    {
-      "path": "./tools/generate-openapi-schemas"
-    }
+    { "path": "./apps/front-e2e" },
+    { "path": "./apps/front" },
+    { "path": "./apps/back-e2e" },
+    { "path": "./apps/back" },
+    { "path": "./packages/api-schemas/back-schemas" },
+    { "path": "./packages/api-schemas/osu-schemas" }
   ]
 }

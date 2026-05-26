@@ -1,3 +1,6 @@
 # back-schemas
 
-This library was generated with [Nx](https://nx.dev).
+Zod schemas generated from the backend's OpenAPI spec.
+
+Regenerate with `pnpm --filter @tau/back-schemas run generate` after the back's
+`openapi.json` changes.

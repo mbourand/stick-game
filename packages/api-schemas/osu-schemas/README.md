@@ -1,3 +1,6 @@
 # osu-schemas
 
-This library was generated with [Nx](https://nx.dev).
+Zod schemas generated from osu!'s OpenAPI spec.
+
+Regenerate with `pnpm --filter @tau/osu-schemas run generate` after updating
+`openapi.yml`.

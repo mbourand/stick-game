@@ -1,8 +1,10 @@
+# Nixpacks auto-detects pnpm from `packageManager` in package.json and
+# pnpm-lock.yaml, runs `pnpm install --frozen-lockfile`, then this build cmd.
 [phases.build]
-cmds = ["npm run front:build:production"]
+cmds = ["pnpm front:build:production"]
 
 [start]
-cmd = "npm run front:start:production"
+cmd = "pnpm front:start:production"
 
 [variables]
 NIXPACKS_NODE_VERSION = "22"

@@ -40,7 +40,7 @@ const GamepadSelector = () => {
     <>
       <span className="text-white text-sm whitespace-nowrap">Gamepad:</span>
       <select
-        className="w-[160px] text-sm"
+        className="w-[160px] text-sm bg-white text-black"
         value={selectedIndex ?? ""}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -110,7 +110,7 @@ export const ClientSideGame = () => {
         <span className="text-white text-sm whitespace-nowrap">Player Name:</span>
         <input
           type="text"
-          className="w-[125px]"
+          className="w-[125px] bg-white text-black"
           defaultValue={Settings.getSettings().playerName}
           onChange={(e) => Settings.set("playerName", e.target.value)}
         />

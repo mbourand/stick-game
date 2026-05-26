@@ -2,18 +2,32 @@
   "name": "@tau/front",
   "version": "0.0.1",
   "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint",
+    "test": "jest --passWithNoTests"
+  },
   "dependencies": {
-    "@tanstack/react-query": "^5.90.6",
-    "dexie": "^4.2.1",
-    "dexie-react-hooks": "^4.2.0",
+    "@tanstack/react-query": "^5.100.14",
+    "@tau/back-schemas": "workspace:*",
+    "dexie": "^4.4.2",
+    "dexie-react-hooks": "^4.4.0",
     "jszip": "^3.10.1",
-    "next": "~15.5.8",
+    "next": "^15.5.18",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "tailwind-merge": "^3.4.0",
-    "zod": "^4.1.12"
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tanstack/eslint-plugin-query": "^5.91.2"
+    "@tailwindcss/postcss": "^4.3.0",
+    "@tanstack/eslint-plugin-query": "^5.91.2",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.0"
   }
 }

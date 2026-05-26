@@ -2,9 +2,11 @@
   "name": "@tau/front-e2e",
   "version": "0.0.1",
   "private": true,
-  "nx": {
-    "implicitDependencies": [
-      "@tau/front"
-    ]
+  "scripts": {
+    "e2e": "playwright test",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
   }
 }

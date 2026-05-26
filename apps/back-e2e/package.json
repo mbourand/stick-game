@@ -2,25 +2,16 @@
   "name": "@tau/back-e2e",
   "version": "0.0.1",
   "private": true,
-  "nx": {
-    "implicitDependencies": [
-      "@tau/back"
-    ],
-    "targets": {
-      "e2e": {
-        "executor": "@nx/jest:jest",
-        "outputs": [
-          "{projectRoot}/test-output/jest/coverage"
-        ],
-        "options": {
-          "jestConfig": "apps/back-e2e/jest.config.ts",
-          "passWithNoTests": true
-        },
-        "dependsOn": [
-          "@tau/back:build",
-          "@tau/back:serve"
-        ]
-      }
-    }
+  "scripts": {
+    "e2e": "jest --passWithNoTests",
+    "typecheck": "tsc -b",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@swc/core": "^1.15.40",
+    "@swc/jest": "^0.2.39",
+    "axios": "^1.13.1",
+    "kill-port": "^2.0.1",
+    "wait-port": "^1.1.0"
   }
 }

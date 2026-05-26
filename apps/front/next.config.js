@@ -1,23 +1,24 @@
-//@ts-check
+// @ts-check
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { composePlugins, withNx } = require("@nx/next");
-
-/**
- * @type {import('@nx/next/plugins/with-nx').WithNxOptions}
- **/
+/** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Use this to set Nx-specific options
-  // See: https://nx.dev/recipes/next/next-config-setup
-  nx: {},
+  transpilePackages: ["@tau/back-schemas"],
+  eslint: {
+    // Lint runs as a separate task (`pnpm lint`); avoid blocking `next build`.
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [{ hostname: "assets.ppy.sh", protocol: "https" }],
   },
+  webpack: (config) => {
+    // Allow ".js" specifier in TS sources of workspace packages to resolve to ".ts" / ".tsx".
+    config.resolve.extensionAlias = {
+      ...(config.resolve.extensionAlias ?? {}),
+      ".js": [".ts", ".tsx", ".js"],
+      ".mjs": [".mts", ".mjs"],
+    };
+    return config;
+  },
 };
 
-const plugins = [
-  // Add more Next.js plugins to this list if needed.
-  withNx,
-];
-
-module.exports = composePlugins(...plugins)(nextConfig);
+module.exports = nextConfig;

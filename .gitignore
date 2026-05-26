@@ -38,10 +38,7 @@ testem.log
 .DS_Store
 Thumbs.db
 
-.nx/cache
-.nx/workspace-data
-.cursor/rules/nx-rules.mdc
-.github/instructions/nx.instructions.md
+.turbo
 
 # Next.js
 .next

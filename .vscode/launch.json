@@ -4,9 +4,9 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug @tau/back with Nx",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["nx", "serve", "@tau/back"],
+      "name": "Debug @tau/back",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@tau/back", "run", "dev"],
       "env": {
         "NODE_OPTIONS": "--inspect=9229"
       },

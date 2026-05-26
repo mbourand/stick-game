@@ -1,0 +1,52 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "stream",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.spec.ts",
+        "!**/*.test.ts",
+        "!**/test-output/**",
+        "!**/eslint.config.*",
+        "!**/jest.config.*",
+        "!**/tsconfig.spec.json"
+      ],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**",
+        "src/lib/zod.gen.ts"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": ["**/*.tsbuildinfo"]
+    },
+    "lint": {
+      "dependsOn": [],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": ["test-output/**", "coverage/**"]
+    },
+    "generate": {
+      "cache": false
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "start": {
+      "cache": false,
+      "persistent": true,
+      "dependsOn": ["build"]
+    },
+    "e2e": {
+      "cache": false,
+      "dependsOn": ["^build"]
+    }
+  }
+}

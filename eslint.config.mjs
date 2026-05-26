@@ -1,43 +1,39 @@
-import nx from "@nx/eslint-plugin";
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
+import prettierConfig from "eslint-config-prettier";
+import jsoncParser from "jsonc-eslint-parser";
 
 export default [
   {
-    files: ["**/*.json"],
-    // Override or add rules here
-    rules: {},
-    languageOptions: {
-      parser: await import("jsonc-eslint-parser"),
-    },
+    ignores: [
+      "**/dist/**",
+      "**/.next/**",
+      "**/out-tsc/**",
+      "**/node_modules/**",
+      "**/coverage/**",
+      "**/test-output/**",
+      "**/.turbo/**",
+      "**/src/prisma/generated/**",
+      "**/src/lib/zod.gen.ts",
+    ],
   },
-  ...nx.configs["flat/base"],
-  ...nx.configs["flat/typescript"],
-  ...nx.configs["flat/javascript"],
-  {
-    ignores: ["**/dist"],
-  },
-  {
-    files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
-    rules: {
-      "@nx/enforce-module-boundaries": [
-        "error",
-        {
-          enforceBuildableLibDependency: true,
-          allow: ["^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$"],
-          depConstraints: [
-            {
-              sourceTag: "*",
-              onlyDependOnLibsWithTags: ["*"],
-            },
-          ],
-        },
-      ],
-    },
-  },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
   {
     files: ["**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts", "**/*.js", "**/*.jsx", "**/*.cjs", "**/*.mjs"],
-    // Override or add rules here
     rules: {
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
     },
   },
+  {
+    files: ["**/*.json", "**/*.jsonc"],
+    languageOptions: {
+      parser: jsoncParser,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-expressions": "off",
+      "no-unused-expressions": "off",
+    },
+  },
+  prettierConfig,
 ];

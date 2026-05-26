@@ -1,15 +1,22 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node10",
+    "esModuleInterop": true,
+    "emitDeclarationOnly": false,
+    "declaration": false,
+    "declarationMap": false,
+    "composite": false,
+    "noEmitOnError": false,
     "outDir": "dist",
-    "module": "nodenext",
-    "types": ["node"],
     "rootDir": "src",
-    "moduleResolution": "nodenext",
+    "types": ["node"],
     "tsBuildInfoFile": "dist/tsconfig.app.tsbuildinfo",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "target": "es2021"
+    "target": "es2021",
+    "noUnusedLocals": false
   },
   "include": ["src/**/*.ts"],
   "exclude": [

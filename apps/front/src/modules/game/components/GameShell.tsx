@@ -2,14 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Game } from "../Game";
-import { FrameDriverContext } from "../frame/FrameDriverContext";
+import { Engine } from "../engine/Engine";
+import { EngineContext } from "../engine/EngineContext";
+import { MainMenuScene } from "../scenes/MainMenu/MainMenuScene";
 import { useTopScene } from "../scenes/useScene";
 
 export const GameShell = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rafIdRef = useRef<number | null>(null);
-  const [game, setGame] = useState<Game | null>(null);
+  const [engine, setEngine] = useState<Engine | null>(null);
 
   const onResize = useCallback(() => {
     if (!canvasRef.current) return;
@@ -27,40 +27,28 @@ export const GameShell = () => {
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    let cancelled = false;
-
-    const afterTick = () => {
-      if (cancelled) return;
-      rafIdRef.current = requestAnimationFrame(instance.tick.bind(instance));
-    };
-
-    const instance = new Game(afterTick);
-
-    void instance.start(canvasRef.current).then(() => {
-      if (cancelled) return;
-      setGame(instance);
-      instance.tick();
-    });
+    const instance = new Engine();
+    instance.start(canvasRef.current);
+    instance.getSceneManager().pushScene(new MainMenuScene(instance));
+    setEngine(instance);
 
     return () => {
-      cancelled = true;
-      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
-      instance.destroy();
+      instance.stop();
     };
   }, []);
 
   return (
-    <FrameDriverContext.Provider value={game?.getFrameDriver() ?? null}>
+    <EngineContext.Provider value={engine}>
       <canvas ref={canvasRef} />
       <div className="absolute inset-0 pointer-events-none">
-        {game && <SceneUIOverlay game={game} />}
+        {engine && <SceneUIOverlay engine={engine} />}
       </div>
-    </FrameDriverContext.Provider>
+    </EngineContext.Provider>
   );
 };
 
-const SceneUIOverlay = ({ game }: { game: Game }) => {
-  const scene = useTopScene(game.getSceneManager());
+const SceneUIOverlay = ({ engine }: { engine: Engine }) => {
+  const scene = useTopScene(engine.getSceneManager());
   const UI = scene?.UI ?? null;
 
   return (

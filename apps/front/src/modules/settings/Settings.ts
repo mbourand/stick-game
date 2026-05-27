@@ -1,5 +1,5 @@
-import { EventManager } from "../game/events/EventManager";
-import { SettingChangedEvent } from "../game/events/impl/SettingChangedEventType";
+import { EventEmitter } from "../utils/EventEmitter";
+import { SettingChangedEvent, type SettingChangedEventType } from "./SettingChangedEvent";
 
 export type SettingsListType = {
   volume: number;
@@ -19,33 +19,46 @@ export const DEFAULT_SETTINGS: SettingsListType = {
   selectedGamepadIndex: null,
 };
 
+type SettingsEvents = {
+  onSettingChanged: (e: SettingChangedEventType) => void;
+};
+
+const STORAGE_KEY = "settings";
+
 export class Settings {
-  private static settings = Settings.loadSettings();
+  public readonly events = new EventEmitter<SettingsEvents>();
 
-  private static eventManager = new EventManager();
+  private values: SettingsListType;
 
-  public static getSettings(): SettingsListType {
-    return structuredClone(Settings.settings);
+  constructor(initial?: SettingsListType) {
+    this.values = initial ?? Settings.loadFromStorage();
   }
 
-  public static set<K extends keyof SettingsListType>(key: K, value: SettingsListType[K]) {
+  public get(): SettingsListType {
+    return structuredClone(this.values);
+  }
+
+  public set<K extends keyof SettingsListType>(key: K, value: SettingsListType[K]) {
     console.log(`Setting changed: ${key} =`, value);
-    Settings.settings[key] = value;
-    Settings.eventManager.emit("onSettingChanged", SettingChangedEvent(key, value));
-    localStorage.setItem("settings", JSON.stringify(Settings.settings));
+    this.values[key] = value;
+    this.events.emit("onSettingChanged", SettingChangedEvent(key, value));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.values));
+    } catch {
+      // ignore quota / private-mode failures
+    }
   }
 
-  public static loadSettings() {
-    const savedSettings = localStorage.getItem("settings");
-    if (!savedSettings) return DEFAULT_SETTINGS;
+  private static loadFromStorage(): SettingsListType {
+    if (typeof localStorage === "undefined") return DEFAULT_SETTINGS;
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return DEFAULT_SETTINGS;
     try {
-      return JSON.parse(savedSettings) as SettingsListType;
+      return { ...DEFAULT_SETTINGS, ...(JSON.parse(saved) as Partial<SettingsListType>) };
     } catch {
       return DEFAULT_SETTINGS;
     }
   }
-
-  public static getEventManager() {
-    return Settings.eventManager;
-  }
 }
+
+export const settings = new Settings();

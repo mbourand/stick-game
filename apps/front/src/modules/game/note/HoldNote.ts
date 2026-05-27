@@ -1,8 +1,11 @@
-import type { Gamepad } from "../../gamepad/Gamepad";
-import type { EventManager } from "../events/EventManager";
+import type { EventEmitter } from "../../utils/EventEmitter";
+import type { BeatmapClock } from "../engine/BeatmapClock";
+import type { TickContext } from "../engine/TickContext";
+import type { GameplayEvents } from "../events/gameplayEvents";
 import { NoteHoldTickEvent } from "../events/impl/NoteHoldTickEvent";
 import { NoteReachedEndOfLifeEvent } from "../events/impl/NoteReachedEndOfLifeEvent";
 import { NoteWasJudgedEvent } from "../events/impl/NoteWasJudgedEvent";
+import type { InputSystem } from "../input/InputSystem";
 import { DEFAULT_JUDGE } from "../judge/Judge";
 import { BaseNote, Note } from "./Note";
 import { NoteColor } from "./NoteColor";
@@ -13,22 +16,23 @@ class HoldNoteTail extends Note {
   private parentNote: HoldNote;
 
   constructor(
-    eventManager: EventManager,
-    timeToReachEdge: number,
+    eventManager: EventEmitter<GameplayEvents>,
+    hitTime: number,
+    scrollDuration: number,
+    clock: BeatmapClock,
     circleRadius: number,
     color: NoteColor,
     angle: number,
     angleSpan: number,
-    gamepad: Gamepad,
+    inputSystem: InputSystem,
     parentNote: HoldNote,
   ) {
-    super(eventManager, timeToReachEdge, circleRadius, color, angle, angleSpan, gamepad);
+    super(eventManager, hitTime, scrollDuration, clock, circleRadius, color, angle, angleSpan, inputSystem);
     this.parentNote = parentNote;
   }
 
-  public override update(deltaTime: number): void {
+  public override update(_tick: TickContext): void {
     if (!this.isActive) return;
-    this.elapsedTime += deltaTime;
     this.noteJudge.update();
 
     if (this.noteJudge.isJudgementComplete() && !this.wasTailJudgementEventEmitted) {
@@ -45,20 +49,21 @@ class HoldNoteTail extends Note {
 }
 
 export class HoldNote extends BaseNote {
-  private eventManager: EventManager;
+  private eventManager: EventEmitter<GameplayEvents>;
+  private clock: BeatmapClock;
   private circleRadius: number;
   private color: NoteColor;
   private angle: number;
   private angleSpan: number;
-  private elapsedTime: number;
   private isActive: boolean;
 
+  private hitTime: number;
+  private scrollDuration: number;
   private holdDuration: number;
   private holdTicksHitTimes: number[];
   private currentHoldTickIndex: number;
 
   private headNoteJudge: NoteJudge;
-  private timeToReachEdge: number;
   private wasHeadJudgementEventEmitted: boolean;
 
   private tailNote: HoldNoteTail;
@@ -69,49 +74,60 @@ export class HoldNote extends BaseNote {
   };
 
   constructor(
-    eventManager: EventManager,
-    timeToReachEdge: number,
+    eventManager: EventEmitter<GameplayEvents>,
+    hitTime: number,
+    scrollDuration: number,
+    clock: BeatmapClock,
     circleRadius: number,
     color: NoteColor,
     angle: number,
     angleSpan: number,
     holdDuration: number,
-    gamepad: Gamepad,
+    inputSystem: InputSystem,
     holdTicksHitTimes: number[],
   ) {
     super();
     this.eventManager = eventManager;
-    this.timeToReachEdge = timeToReachEdge;
+    this.hitTime = hitTime;
+    this.scrollDuration = scrollDuration;
+    this.clock = clock;
     this.circleRadius = circleRadius;
     this.color = color;
     this.angle = angle;
     this.angleSpan = angleSpan;
     this.holdDuration = holdDuration;
-    this.elapsedTime = 0;
     this.wasHeadJudgementEventEmitted = false;
-    this.headNoteJudge = new NoteJudge(this, DEFAULT_JUDGE, gamepad);
+    this.headNoteJudge = new NoteJudge(this, DEFAULT_JUDGE, inputSystem);
     this.isActive = true;
     this.holdTicksHitTimes = holdTicksHitTimes;
     this.currentHoldTickIndex = 0;
 
     this.tailNote = new HoldNoteTail(
       this.eventManager,
-      this.timeToReachEdge + this.holdDuration,
+      this.hitTime + this.holdDuration,
+      this.scrollDuration,
+      this.clock,
       this.circleRadius,
       this.color,
       this.angle,
       this.angleSpan,
-      gamepad,
+      inputSystem,
       this,
     );
   }
 
-  public getLifeTime() {
-    return this.timeToReachEdge + this.holdDuration + DEFAULT_JUDGE.getLargestWindow();
+  private getEndOfLifeTime() {
+    return this.hitTime + this.holdDuration + DEFAULT_JUDGE.getLargestWindow();
   }
 
-  public getProgressionTowardsEdge() {
-    return Math.min(this.elapsedTime / this.timeToReachEdge, 1);
+  private getHeadProgress() {
+    const remaining = this.hitTime - this.clock.now();
+    return Math.min(Math.max(1 - remaining / this.scrollDuration, 0), 1);
+  }
+
+  private getTailProgress() {
+    const remaining = this.hitTime + this.holdDuration - this.clock.now();
+    return Math.min(Math.max(1 - remaining / this.scrollDuration, 0), 1);
   }
 
   public hasRemainingHoldTicks() {
@@ -122,15 +138,15 @@ export class HoldNote extends BaseNote {
     return this.holdTicksHitTimes.length + (options?.includeTail ? 1 : 0);
   }
 
-  public update(deltaTime: number): void {
+  public update(tick: TickContext): void {
     if (!this.isActive) return;
 
-    this.elapsedTime += deltaTime;
+    const now = this.clock.now();
 
     this.headNoteJudge.update();
-    this.tailNote.update(deltaTime);
+    this.tailNote.update(tick);
 
-    if (this.hasRemainingHoldTicks() && this.elapsedTime >= this.holdTicksHitTimes[this.currentHoldTickIndex]) {
+    while (this.hasRemainingHoldTicks() && now >= this.holdTicksHitTimes[this.currentHoldTickIndex]) {
       this.eventManager.emit("onNoteHoldTick", NoteHoldTickEvent(this));
       this.currentHoldTickIndex += 1;
     }
@@ -141,13 +157,17 @@ export class HoldNote extends BaseNote {
     }
 
     const reachedEndOfLife =
-      this.elapsedTime >= this.getLifeTime() &&
+      now >= this.getEndOfLifeTime() &&
       this.wasHeadJudgementEventEmitted &&
       this.tailNote.wasJudgementEventEmitted();
     if (reachedEndOfLife) {
       this.eventManager.emit("onNoteReachedEndOfLife", NoteReachedEndOfLifeEvent(this));
       this.isActive = false;
     }
+  }
+
+  public isAlive(): boolean {
+    return this.isActive;
   }
 
   public getStartAngle() {
@@ -159,8 +179,7 @@ export class HoldNote extends BaseNote {
   }
 
   private drawNoteHead(ctx: CanvasRenderingContext2D) {
-    const progress = this.getProgressionTowardsEdge();
-    const radius = this.circleRadius * progress;
+    const radius = this.circleRadius * this.getHeadProgress();
     ctx.strokeStyle = this.color;
     ctx.lineWidth = 10;
     ctx.beginPath();
@@ -169,12 +188,8 @@ export class HoldNote extends BaseNote {
   }
 
   private drawHoldBody(ctx: CanvasRenderingContext2D) {
-    const progress = this.getProgressionTowardsEdge();
-    const bodyRadius = this.circleRadius * progress;
-
-    const tailElapsed = this.elapsedTime - this.holdDuration;
-    const tailProgress = Math.min(Math.max(tailElapsed / this.timeToReachEdge, 0), 1);
-    const tailRadius = this.circleRadius * tailProgress;
+    const bodyRadius = this.circleRadius * this.getHeadProgress();
+    const tailRadius = this.circleRadius * this.getTailProgress();
 
     ctx.fillStyle = HoldNote.BODY_COLOR[this.color];
     ctx.beginPath();
@@ -204,14 +219,14 @@ export class HoldNote extends BaseNote {
   }
 
   public getTimeBeforeReachingEdge(): number {
-    return Math.max(this.timeToReachEdge - this.elapsedTime, 0);
+    return Math.max(this.hitTime - this.clock.now(), 0);
   }
 
   public getTimeSinceHittingEdge(): number {
-    return Math.max(this.elapsedTime - this.timeToReachEdge, 0);
+    return Math.max(this.clock.now() - this.hitTime, 0);
   }
 
   public getDistanceFromPerfectTiming(): number {
-    return Math.abs(this.elapsedTime - this.timeToReachEdge);
+    return Math.abs(this.clock.now() - this.hitTime);
   }
 }

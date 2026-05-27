@@ -1,15 +1,13 @@
 "use client";
 
 import { GameShell } from "@/modules/game/components/GameShell";
-import { Settings } from "@/modules/settings/Settings";
+import { settings } from "@/modules/settings/Settings";
 import { debounce } from "@/modules/utils/debounce";
 import { useEffect, useMemo, useState } from "react";
 
 const GamepadSelector = () => {
   const [pads, setPads] = useState<{ index: number; id: string }[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(
-    Settings.getSettings().selectedGamepadIndex,
-  );
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(settings.get().selectedGamepadIndex);
 
   useEffect(() => {
     const refresh = () => {
@@ -33,7 +31,7 @@ const GamepadSelector = () => {
   const onChange = (value: string) => {
     const index = Number(value);
     setSelectedIndex(index);
-    Settings.set("selectedGamepadIndex", index);
+    settings.set("selectedGamepadIndex", index);
   };
 
   return (
@@ -111,43 +109,43 @@ export const ClientSideGame = () => {
         <input
           type="text"
           className="w-[125px] bg-white text-black"
-          defaultValue={Settings.getSettings().playerName}
-          onChange={(e) => Settings.set("playerName", e.target.value)}
+          defaultValue={settings.get().playerName}
+          onChange={(e) => settings.set("playerName", e.target.value)}
         />
         <SettingSlider
           name="Scroll Duration"
-          defaultValue={Settings.getSettings().scrollDuration}
+          defaultValue={settings.get().scrollDuration}
           min={300}
           max={1700}
           onChange={(value) => {
-            Settings.set("scrollDuration", value);
+            settings.set("scrollDuration", value);
           }}
         />
         <SettingSlider
           name="Volume"
-          defaultValue={Settings.getSettings().volume * 100}
+          defaultValue={settings.get().volume * 100}
           min={0}
           max={100}
           onChange={(value) => {
-            Settings.set("volume", value / 100);
+            settings.set("volume", value / 100);
           }}
         />
         <SettingSlider
           name="BG Blur"
-          defaultValue={Settings.getSettings().backgroundBlurriness}
+          defaultValue={settings.get().backgroundBlurriness}
           min={0}
           max={20}
           onChange={(value) => {
-            Settings.set("backgroundBlurriness", value);
+            settings.set("backgroundBlurriness", value);
           }}
         />
         <SettingSlider
           name="BG Brightness"
-          defaultValue={Settings.getSettings().backgroundBrightness * 100}
+          defaultValue={settings.get().backgroundBrightness * 100}
           min={0}
           max={100}
           onChange={(value) => {
-            Settings.set("backgroundBrightness", value / 100);
+            settings.set("backgroundBrightness", value / 100);
           }}
         />
         <GamepadSelector />

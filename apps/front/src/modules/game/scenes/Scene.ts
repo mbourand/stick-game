@@ -9,11 +9,18 @@ export type SceneUIComponent = ComponentType<{ scene: Scene }>;
 
 type SceneState = "inactive" | "active";
 
+type ExitListener = () => void;
+
 export abstract class Scene {
   protected engine: Engine;
 
   private state: SceneState = "inactive";
   private activeDisposers: (() => void)[] = [];
+
+  private exiting = false;
+  private exitPromise: Promise<void> | null = null;
+  private exitResolve: (() => void) | null = null;
+  private exitListeners = new Set<ExitListener>();
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -40,6 +47,54 @@ export abstract class Scene {
   public onEntered(): void | Promise<void> {}
   public onBeforeExit(): void | Promise<void> {}
   public onDestroy(): void | Promise<void> {}
+
+  /**
+   * Called by SceneManager.popScene before the scene is deactivated.
+   * Default: returns immediately. Override and return a Promise to delay the pop
+   * (e.g., to play an exit animation).
+   *
+   * For React-driven exit animations:
+   *
+   *   public override transitionOut(): Promise<void> { return this.beginExit(); }
+   *
+   * Then in the scene's UI, observe `isExiting()` via `subscribeExit` and call
+   * `completeExit()` when the animation finishes.
+   */
+  public transitionOut(): Promise<void> | void {}
+
+  /**
+   * React-driven exit helper. Flips `isExiting` to true, notifies UI subscribers,
+   * and returns a promise resolved by `completeExit()`.
+   */
+  protected beginExit(): Promise<void> {
+    if (this.exitPromise) return this.exitPromise;
+    this.exiting = true;
+    this.notifyExit();
+    this.exitPromise = new Promise<void>((resolve) => {
+      this.exitResolve = resolve;
+    });
+    return this.exitPromise;
+  }
+
+  /** Called by the scene's UI when its exit animation finishes. */
+  public completeExit = (): void => {
+    const resolve = this.exitResolve;
+    this.exitResolve = null;
+    resolve?.();
+  };
+
+  public isExiting = (): boolean => this.exiting;
+
+  public subscribeExit = (listener: ExitListener): (() => void) => {
+    this.exitListeners.add(listener);
+    return () => {
+      this.exitListeners.delete(listener);
+    };
+  };
+
+  private notifyExit() {
+    for (const listener of this.exitListeners) listener();
+  }
 
   public isActive(): boolean {
     return this.state === "active";

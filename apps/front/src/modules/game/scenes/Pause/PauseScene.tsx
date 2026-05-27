@@ -9,4 +9,8 @@ export class PauseScene extends Scene {
     this.onAction("pause", () => this.sceneManager.popScene());
     this.onAction("back", () => this.sceneManager.popScene());
   }
+
+  public override transitionOut(): Promise<void> {
+    return this.beginExit();
+  }
 }

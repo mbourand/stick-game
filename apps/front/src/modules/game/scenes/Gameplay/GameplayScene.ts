@@ -1,6 +1,6 @@
 import { BeatmapEndedEventType } from "@/modules/game/events/impl/BeatmapEndedEvent";
 import { AudioManager } from "../../../audio/AudioManager";
-import { Gamepad } from "../../../gamepad/Gamepad";
+import type { Gamepad } from "../../../gamepad/Gamepad";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { Settings, type SettingsListType } from "../../../settings/Settings";
 import { EventManager } from "../../events/EventManager";
@@ -45,15 +45,13 @@ export class GameplayScene extends Scene {
   private notes: Set<BaseNote> = new Set();
   private noteHitFlairs: Set<NoteHitFlair> = new Set();
   private noteHitGlowFlairs: Set<NoteHitGlowFlair> = new Set();
-  private gamepad: Gamepad;
   private beatmapStarted = false;
 
-  constructor(sceneManager: SceneManager, parsedMap: ParsedMap) {
-    super(sceneManager);
+  constructor(sceneManager: SceneManager, gamepad: Gamepad, parsedMap: ParsedMap) {
+    super(sceneManager, gamepad);
     this.parsedMap = parsedMap;
     this.settings = Settings.getSettings();
     this.noteSpawner = new NoteSpawner(this.parsedMap.notes, this.eventManager, this.settings.scrollDuration);
-    this.gamepad = new Gamepad(this.settings.selectedGamepadIndex);
     this.scoreCounter = new ScoreCounter(
       this.parsedMap.notes.length + this.parsedMap.notes.filter((n) => n.isHold).length,
     );
@@ -420,8 +418,6 @@ export class GameplayScene extends Scene {
     const offSettingChanged = Settings.getEventManager().on("onSettingChanged", (e) => {
       if (e.key === "volume") {
         AudioManager.setVolumeById("beatmap_audio", Settings.getSettings().volume);
-      } else if (e.key === "selectedGamepadIndex") {
-        this.gamepad.setSelectedIndex(e.value as SettingsListType["selectedGamepadIndex"]);
       } else if (e.key === "scrollDuration") {
         this.settings.scrollDuration = Settings.getSettings().scrollDuration;
         this.noteSpawner.setScrollDuration(this.settings.scrollDuration);

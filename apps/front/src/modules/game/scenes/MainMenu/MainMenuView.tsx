@@ -1,43 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Settings } from "@/modules/settings/Settings";
 import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_STROKE_WIDTH } from "../../utils/constants";
 import type { SceneUIComponent } from "../Scene";
+import { BUTTON_HEIGHT_PX, BUTTON_WIDTH_PX, BUTTONS, getButtonYOffsetFromCenter } from "./layout";
 import type { MainMenuScene } from "./MainMenuScene";
 
-type ButtonId = "play" | "edit" | "settings" | "exit";
-
-type RadialButtonConfig = {
-  id: ButtonId;
-  label: string;
-  hint: string;
-};
-
-const BUTTONS: RadialButtonConfig[] = [
-  { id: "play", label: "Play", hint: "Browse and play beatmaps" },
-  { id: "edit", label: "Edit", hint: "Create or edit beatmapsets" },
-  { id: "settings", label: "Settings", hint: "Configure Tau! to suit your preferences" },
-  { id: "exit", label: "Exit", hint: "Exit the game" },
-];
-
 const CIRCLE_DIAMETER = GAME_CIRCLE_DISPLAYED_RADIUS * 2;
-const BUTTON_WIDTH_PX = 500;
-const BUTTON_HEIGHT_PX = 112;
-const BUTTON_Y_GAP_PX = 16;
 
 export const MainMenuView: SceneUIComponent = ({ scene }) => {
   const mainMenuScene = scene as MainMenuScene;
-  const [focused, setFocused] = useState<ButtonId | null>(null);
+  const focused = useSyncExternalStore(
+    mainMenuScene.subscribe,
+    mainMenuScene.getFocused,
+    mainMenuScene.getFocused,
+  );
 
   const playerName = Settings.getSettings().playerName || "Guest";
   const hint = focused ? BUTTONS.find((b) => b.id === focused)?.hint : null;
-
-  const onClick = (id: ButtonId) => {
-    if (id === "play") mainMenuScene.goToBeatmapSelection();
-    else if (id === "settings") mainMenuScene.openSettings();
-  };
 
   return (
     <div className="absolute inset-0 text-white select-none" style={{ fontFamily: "Rostex" }}>
@@ -52,8 +34,7 @@ export const MainMenuView: SceneUIComponent = ({ scene }) => {
         }}
       >
         {BUTTONS.map((button, i) => {
-          const yCenter =
-            GAME_CIRCLE_DISPLAYED_RADIUS + (i - (BUTTONS.length - 1) / 2) * (BUTTON_HEIGHT_PX + BUTTON_Y_GAP_PX);
+          const yCenter = GAME_CIRCLE_DISPLAYED_RADIUS + getButtonYOffsetFromCenter(i);
 
           return (
             <RadialButton
@@ -61,9 +42,11 @@ export const MainMenuView: SceneUIComponent = ({ scene }) => {
               label={button.label}
               yCenter={yCenter}
               isFocused={focused === button.id}
-              onFocus={() => setFocused(button.id)}
-              onBlur={() => setFocused((current) => (current === button.id ? null : current))}
-              onClick={() => onClick(button.id)}
+              onFocus={() => mainMenuScene.setFocused(button.id)}
+              onBlur={() => {
+                if (mainMenuScene.getFocused() === button.id) mainMenuScene.setFocused(null);
+              }}
+              onClick={() => mainMenuScene.activate(button.id)}
             />
           );
         })}

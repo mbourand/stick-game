@@ -1,3 +1,4 @@
+import { Gamepad } from "../gamepad/Gamepad";
 import { FrameDriver } from "./frame/FrameDriver";
 import { MainMenuScene } from "./scenes/MainMenu/MainMenuScene";
 import { SceneManager } from "./scenes/SceneManager";
@@ -12,6 +13,7 @@ export class Game {
 
   private sceneManager = new SceneManager();
   private frameDriver = new FrameDriver();
+  private gamepad = new Gamepad();
 
   constructor(afterTick: () => void) {
     this.started = false;
@@ -23,7 +25,12 @@ export class Game {
     this.canvas = canvas;
     this.started = true;
     this.lastFrameTime = performance.now();
-    this.sceneManager.pushScene(new MainMenuScene(this.sceneManager));
+    this.sceneManager.pushScene(new MainMenuScene(this.sceneManager, this.gamepad));
+  }
+
+  public destroy() {
+    this.started = false;
+    this.gamepad.destroy();
   }
 
   public tick() {
@@ -45,9 +52,14 @@ export class Game {
     return this.frameDriver;
   }
 
+  public getGamepad() {
+    return this.gamepad;
+  }
+
   private update(deltaTime: number) {
     if (!this.canvas || !this.started) return;
 
+    this.gamepad.tick();
     this.sceneManager.update(deltaTime);
     this.frameDriver.tick(deltaTime, this.lastFrameTime);
 

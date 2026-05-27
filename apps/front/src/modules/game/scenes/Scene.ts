@@ -1,13 +1,16 @@
 import type { ComponentType } from "react";
+import type { Gamepad } from "../../gamepad/Gamepad";
 import type { SceneManager } from "./SceneManager";
 
 export type SceneUIComponent = ComponentType<{ scene: Scene }>;
 
 export abstract class Scene {
   protected sceneManager: SceneManager;
+  protected gamepad: Gamepad;
 
-  constructor(sceneManager: SceneManager) {
+  constructor(sceneManager: SceneManager, gamepad: Gamepad) {
     this.sceneManager = sceneManager;
+    this.gamepad = gamepad;
   }
 
   public abstract readonly id: string;

@@ -11,7 +11,7 @@ export class BeatmapSelectionScene extends Scene {
 
   public playMap(selectedMap: ParsedMap) {
     this.lastGameplayScene?.remove();
-    const gameplayScene = new GameplayScene(this.sceneManager, selectedMap);
+    const gameplayScene = new GameplayScene(this.sceneManager, this.gamepad, selectedMap);
     this.sceneManager.pushScene(gameplayScene);
     this.lastGameplayScene = gameplayScene;
   }

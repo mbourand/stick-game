@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Settings } from "@/modules/settings/Settings";
+import { settings } from "@/modules/settings/Settings";
 import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_STROKE_WIDTH } from "../../utils/constants";
 import type { SceneUIComponent } from "../Scene";
 import { BUTTON_HEIGHT_PX, BUTTON_WIDTH_PX, BUTTONS, getButtonYOffsetFromCenter } from "./layout";
@@ -18,7 +18,7 @@ export const MainMenuView: SceneUIComponent = ({ scene }) => {
     mainMenuScene.getFocused,
   );
 
-  const playerName = Settings.getSettings().playerName || "Guest";
+  const playerName = settings.get().playerName || "Guest";
   const hint = focused ? BUTTONS.find((b) => b.id === focused)?.hint : null;
 
   return (
@@ -46,7 +46,7 @@ export const MainMenuView: SceneUIComponent = ({ scene }) => {
               onBlur={() => {
                 if (mainMenuScene.getFocused() === button.id) mainMenuScene.setFocused(null);
               }}
-              onClick={() => mainMenuScene.activate(button.id)}
+              onClick={() => mainMenuScene.activateFocused(button.id)}
             />
           );
         })}

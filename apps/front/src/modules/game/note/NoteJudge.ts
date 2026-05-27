@@ -1,4 +1,4 @@
-import type { Gamepad } from "../../gamepad/Gamepad";
+import type { InputSystem } from "../input/InputSystem";
 import { isHittingNote } from "../hooks/hit-check";
 import { JudgmentKind } from "../judge/constants";
 import type { Judge } from "../judge/Judge";
@@ -12,14 +12,14 @@ export class NoteJudge {
   private bestJudgmentSoFar: JudgmentKind;
   private bestHitTimingOffset: number;
   private hasCompletedJudgement: boolean;
-  private gamepad: Gamepad;
+  private inputSystem: InputSystem;
 
-  constructor(note: Note | HoldNote, judge: Judge, gamepad: Gamepad) {
+  constructor(note: Note | HoldNote, judge: Judge, inputSystem: InputSystem) {
     this.note = note;
     this.judge = judge;
     this.bestJudgmentSoFar = JudgmentKind.Miss;
     this.hasCompletedJudgement = false;
-    this.gamepad = gamepad;
+    this.inputSystem = inputSystem;
     this.bestHitTimingOffset = Infinity;
   }
 
@@ -45,7 +45,7 @@ export class NoteJudge {
     if (isBeforeHitWindow) return;
 
     const stickSide = this.note.getColor() === NoteColor.Red ? "left" : "right";
-    const stickDotPosition = this.gamepad.getClampedStickPosition(stickSide);
+    const stickDotPosition = this.inputSystem.getStick(stickSide);
     if (!isHittingNote(stickDotPosition, this.note)) return;
 
     this.updateJudgement();

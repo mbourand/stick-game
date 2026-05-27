@@ -1,3 +1,4 @@
+import type { TickContext } from "../engine/TickContext";
 import type { Scene } from "./Scene";
 
 type Listener = () => void;
@@ -22,34 +23,40 @@ export class SceneManager {
   };
 
   public pushScene(scene: Scene) {
-    void this.getTopScene()?.onBeforeExit();
+    this.getTopScene()?.deactivate();
     this.sceneStack.push(scene);
-    void scene.onEntered();
+    scene.activate();
     this.emit();
   }
 
   public replaceScene(scene: Scene) {
     const previous = this.sceneStack.pop();
     if (previous) {
-      void previous.onBeforeExit();
+      previous.deactivate();
       void previous.onDestroy();
     }
     this.sceneStack.push(scene);
-    void scene.onEntered();
+    scene.activate();
     this.emit();
   }
 
   public popScene() {
     const previous = this.sceneStack.pop();
     if (!previous) return;
-    void previous.onBeforeExit();
+    previous.deactivate();
     void previous.onDestroy();
-    void this.getTopScene()?.onEntered();
+    this.getTopScene()?.activate();
     this.emit();
   }
 
   public clearScenes() {
-    while (this.sceneStack.length > 0) this.popScene();
+    const top = this.getTopScene();
+    if (top) top.deactivate();
+    for (let i = this.sceneStack.length - 1; i >= 0; i--) {
+      void this.sceneStack[i].onDestroy();
+    }
+    this.sceneStack = [];
+    this.emit();
   }
 
   public removeScene(scene: Scene) {
@@ -57,15 +64,15 @@ export class SceneManager {
     if (index === -1) return;
 
     const wasTop = index === this.sceneStack.length - 1;
-    if (wasTop) void scene.onBeforeExit();
+    if (wasTop) scene.deactivate();
     void scene.onDestroy();
     this.sceneStack.splice(index, 1);
-    if (wasTop) void this.getTopScene()?.onEntered();
+    if (wasTop) this.getTopScene()?.activate();
     this.emit();
   }
 
-  public update(deltaTime: number) {
-    this.getTopScene()?.update(deltaTime);
+  public update(tick: TickContext) {
+    this.getTopScene()?.update(tick);
   }
 
   public render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {

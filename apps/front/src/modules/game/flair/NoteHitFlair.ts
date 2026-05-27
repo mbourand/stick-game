@@ -1,6 +1,8 @@
+import type { Entity } from "../engine/Entity";
+import type { TickContext } from "../engine/TickContext";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../utils/constants";
 
-export class NoteHitFlair {
+export class NoteHitFlair implements Entity {
   private startAngle: number;
   private endAngle: number;
   private elapsedTime: number;
@@ -15,12 +17,12 @@ export class NoteHitFlair {
     this.color = color;
   }
 
-  public update(deltaTime: number) {
-    this.elapsedTime += deltaTime;
+  public update(tick: TickContext) {
+    this.elapsedTime += tick.dt;
   }
 
-  public isFinished(): boolean {
-    return this.elapsedTime >= this.duration;
+  public isAlive(): boolean {
+    return this.elapsedTime < this.duration;
   }
 
   public jumpEasing(progress: number) {
@@ -28,7 +30,7 @@ export class NoteHitFlair {
   }
 
   public render(ctx: CanvasRenderingContext2D) {
-    if (this.isFinished()) return;
+    if (!this.isAlive()) return;
 
     const progress = Math.min(this.elapsedTime / this.duration, 1) * Math.PI;
 

@@ -1,4 +1,4 @@
-import { Settings, type SettingsListType } from "../settings/Settings";
+import type { Settings, SettingsListType } from "../settings/Settings";
 
 const LEFT_STICK_X_INDEX = 0;
 const LEFT_STICK_Y_INDEX = 1;
@@ -35,9 +35,9 @@ export class Gamepad {
   private upHandlers: HandlerMap = new Map();
   private offSettingChanged: () => void;
 
-  constructor() {
-    this.selectedIndex = Settings.getSettings().selectedGamepadIndex;
-    this.offSettingChanged = Settings.getEventManager().on("onSettingChanged", (e) => {
+  constructor(settings: Settings) {
+    this.selectedIndex = settings.get().selectedGamepadIndex;
+    this.offSettingChanged = settings.events.on("onSettingChanged", (e) => {
       if (e.key === "selectedGamepadIndex") {
         this.selectedIndex = e.value as SettingsListType["selectedGamepadIndex"];
         this.previousButtonPressed = [];

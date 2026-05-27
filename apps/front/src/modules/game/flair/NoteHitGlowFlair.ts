@@ -1,6 +1,8 @@
+import type { Entity } from "../engine/Entity";
+import type { TickContext } from "../engine/TickContext";
 import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_STROKE_WIDTH } from "../utils/constants";
 
-export class NoteHitGlowFlair {
+export class NoteHitGlowFlair implements Entity {
   private startAngle: number;
   private endAngle: number;
   private duration: number;
@@ -15,12 +17,12 @@ export class NoteHitGlowFlair {
     this.elapsedTime = 0;
   }
 
-  public isFinished() {
-    return this.elapsedTime >= this.duration;
+  public isAlive(): boolean {
+    return this.elapsedTime < this.duration;
   }
 
-  public update(deltaTime: number) {
-    this.elapsedTime += deltaTime;
+  public update(tick: TickContext) {
+    this.elapsedTime += tick.dt;
   }
 
   public render(ctx: CanvasRenderingContext2D) {

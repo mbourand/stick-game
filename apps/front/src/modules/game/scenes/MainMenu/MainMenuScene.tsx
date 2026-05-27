@@ -1,4 +1,4 @@
-import { GamepadButton } from "../../../gamepad/Gamepad";
+import type { TickContext } from "../../engine/TickContext";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import { BeatmapSelectionScene } from "../BeatmapSelection/BeatmapSelectionScene";
 import { Scene } from "../Scene";
@@ -15,19 +15,11 @@ export class MainMenuScene extends Scene {
 
   private focusedId: ButtonId | null = null;
   private listeners = new Set<Listener>();
-  private offHandlers: (() => void)[] = [];
 
   public override onEntered() {
-    this.offHandlers.push(
-      this.gamepad.onButtonDown(GamepadButton.A, () => {
-        if (this.focusedId !== null) this.activate(this.focusedId);
-      }),
-    );
-  }
-
-  public override onBeforeExit() {
-    this.offHandlers.forEach((off) => off());
-    this.offHandlers = [];
+    this.onAction("confirm", () => {
+      if (this.focusedId !== null) this.activateFocused(this.focusedId);
+    });
   }
 
   public subscribe = (listener: Listener) => {
@@ -45,35 +37,33 @@ export class MainMenuScene extends Scene {
     this.notify();
   }
 
-  public activate(id: ButtonId) {
+  public activateFocused(id: ButtonId) {
     if (id === "play") this.goToBeatmapSelection();
     else if (id === "settings") this.openSettings();
   }
 
   public goToBeatmapSelection() {
-    this.sceneManager.pushScene(new BeatmapSelectionScene(this.sceneManager, this.gamepad));
+    this.sceneManager.pushScene(new BeatmapSelectionScene(this.engine));
   }
 
   public openSettings() {
     // Settings submenu wiring comes next iteration.
   }
 
-  public override update(_deltaTime: number) {
-    const leftStick = this.gamepad.getClampedStickPosition("left");
-    const rightStick = this.gamepad.getClampedStickPosition("right");
+  public override update(_tick: TickContext) {
+    const leftStick = this.getStick("left");
+    const rightStick = this.getStick("right");
 
     const target = this.buttonAimedByStick(leftStick) ?? this.buttonAimedByStick(rightStick);
     if (target !== null) this.setFocused(target);
   }
 
   public override render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
-    if (this.sceneManager.getTopScene() !== this) return;
-
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
-    const leftStick = this.gamepad.getClampedStickPosition("left");
-    const rightStick = this.gamepad.getClampedStickPosition("right");
+    const leftStick = this.getStick("left");
+    const rightStick = this.getStick("right");
 
     this.drawStick(ctx, centerX, centerY, leftStick, "rgba(255, 0, 0, 0.5)", "red");
     this.drawStick(ctx, centerX, centerY, rightStick, "rgba(0, 0, 255, 0.5)", "blue");

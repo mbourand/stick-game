@@ -1,7 +1,8 @@
-import { AudioManager } from "../../audio/AudioManager";
+import type { Entity } from "../engine/Entity";
+import type { TickContext } from "../engine/TickContext";
 import { Clock } from "../utils/Clock";
 
-export class CircleAudioVisualizer {
+export class CircleAudioVisualizer implements Entity {
   private analyser: AnalyserNode;
   private dataArray: Uint8Array;
   private barAmount: number;
@@ -14,8 +15,8 @@ export class CircleAudioVisualizer {
   private maxDataLevelMovingAverageSize = 10;
   private maxDataLevelRecordClock = new Clock(16 / 1000);
 
-  constructor(barAmount: number, radius: number, maxAmplitude: number) {
-    this.analyser = AudioManager.getInstance().musicContext.createAnalyser();
+  constructor(audioContext: AudioContext, barAmount: number, radius: number, maxAmplitude: number) {
+    this.analyser = audioContext.createAnalyser();
     this.analyser.fftSize = 2048;
     const bufferLength = this.analyser.frequencyBinCount;
     this.dataArray = new Uint8Array(bufferLength);
@@ -47,12 +48,12 @@ export class CircleAudioVisualizer {
     }
   }
 
-  public update(deltaTime: number) {
+  public update(tick: TickContext) {
     if (this.analyser.context.state !== "running") return;
 
     let lastDataLevel: number | null = null;
 
-    if (this.maxDataLevelRecordClock.update(deltaTime)) {
+    if (this.maxDataLevelRecordClock.update(tick.dt)) {
       let maxDataLevel = 0;
       for (let i = 0; i < this.barAmount; i++)
         maxDataLevel = Math.max(maxDataLevel, this.dataArray[this.getDataIndexFromBarIndex(i)] / 255);
@@ -75,9 +76,9 @@ export class CircleAudioVisualizer {
       if (this.barAmplitudes[i] === undefined) {
         this.barAmplitudes[i] = amplitude;
       } else if (amplitude > this.barAmplitudes[i]) {
-        this.barAmplitudes[i] = Math.min(this.barAmplitudes[i] + deltaTime * 0.1 * this.maxAmplitude, amplitude);
+        this.barAmplitudes[i] = Math.min(this.barAmplitudes[i] + tick.dt * 0.1 * this.maxAmplitude, amplitude);
       } else {
-        this.barAmplitudes[i] = Math.max(this.barAmplitudes[i] - deltaTime * 0.005 * this.maxAmplitude, 0);
+        this.barAmplitudes[i] = Math.max(this.barAmplitudes[i] - tick.dt * 0.005 * this.maxAmplitude, 0);
       }
 
       lastDataLevel = thisDataLevel;
@@ -85,7 +86,7 @@ export class CircleAudioVisualizer {
   }
 
   public render(ctx: CanvasRenderingContext2D) {
-    // @ts-expect-error zegze
+    // @ts-expect-error type mismatch between Uint8Array<ArrayBufferLike> and Uint8Array<ArrayBuffer>
     this.analyser.getByteFrequencyData(this.dataArray);
 
     const centerX = 0;

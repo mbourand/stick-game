@@ -36,6 +36,7 @@ const BEATMAP_AUDIO_ID = "beatmap_audio";
 
 export class GameplayScene extends Scene {
   public readonly id = "gameplay";
+  public override readonly rendersWhenInactive = true;
 
   private parsedMap: ParsedMap;
   private settings: SettingsListType;

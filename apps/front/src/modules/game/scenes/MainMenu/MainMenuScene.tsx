@@ -1,3 +1,6 @@
+import { StickDotsEntity } from "../../entities/StickDotsEntity";
+import { Container } from "../../engine/Container";
+import type { Engine } from "../../engine/Engine";
 import type { TickContext } from "../../engine/TickContext";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import { BeatmapSelectionScene } from "../BeatmapSelection/BeatmapSelectionScene";
@@ -16,10 +19,21 @@ export class MainMenuScene extends Scene {
   private focusedId: ButtonId | null = null;
   private listeners = new Set<Listener>();
 
+  private root = new Container();
+
+  constructor(engine: Engine) {
+    super(engine);
+    this.root.add(new StickDotsEntity(this.inputSystem));
+  }
+
   public override onEntered() {
     this.onAction("confirm", () => {
       if (this.focusedId !== null) this.activateFocused(this.focusedId);
     });
+  }
+
+  public override onDestroy() {
+    this.root.destroy();
   }
 
   public subscribe = (listener: Listener) => {
@@ -50,48 +64,20 @@ export class MainMenuScene extends Scene {
     // Settings submenu wiring comes next iteration.
   }
 
-  public override update(_tick: TickContext) {
+  public override update(tick: TickContext) {
     const leftStick = this.getStick("left");
     const rightStick = this.getStick("right");
 
     const target = this.buttonAimedByStick(leftStick) ?? this.buttonAimedByStick(rightStick);
     if (target !== null) this.setFocused(target);
+
+    this.root.update(tick);
   }
 
   public override render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-
-    const leftStick = this.getStick("left");
-    const rightStick = this.getStick("right");
-
-    this.drawStick(ctx, centerX, centerY, leftStick, "rgba(255, 0, 0, 0.5)", "red");
-    this.drawStick(ctx, centerX, centerY, rightStick, "rgba(0, 0, 255, 0.5)", "blue");
-  }
-
-  private drawStick(
-    ctx: CanvasRenderingContext2D,
-    centerX: number,
-    centerY: number,
-    stick: { x: number; y: number },
-    lineColor: string,
-    dotColor: string,
-  ) {
-    const tipX = centerX + stick.x * GAME_CIRCLE_DISPLAYED_RADIUS;
-    const tipY = centerY + stick.y * GAME_CIRCLE_DISPLAYED_RADIUS;
-
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    ctx.lineTo(tipX, tipY);
-    ctx.stroke();
-    ctx.closePath();
-
-    ctx.fillStyle = dotColor;
-    ctx.beginPath();
-    ctx.arc(tipX, tipY, 15, 0, Math.PI * 2);
-    ctx.fill();
+    this.root.x = canvas.width / 2;
+    this.root.y = canvas.height / 2;
+    this.root.render(ctx);
   }
 
   private buttonAimedByStick(stick: { x: number; y: number }): ButtonId | null {

@@ -31,6 +31,9 @@ export abstract class Scene {
 
   public readonly UI: SceneUIComponent | null = null;
 
+  /** When false, the scene's render() is skipped while another scene is on top of it. */
+  public readonly rendersWhenInactive: boolean = false;
+
   public update(_tick: TickContext): void {}
   public render(_canvas: HTMLCanvasElement, _context: CanvasRenderingContext2D): void {}
 

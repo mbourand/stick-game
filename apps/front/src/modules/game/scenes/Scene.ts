@@ -1,5 +1,7 @@
+import type { ComponentType } from "react";
 import type { SceneManager } from "./SceneManager";
-import type { ViewModel } from "./ViewModel";
+
+export type SceneUIComponent = ComponentType<{ scene: Scene }>;
 
 export abstract class Scene {
   protected sceneManager: SceneManager;
@@ -8,14 +10,18 @@ export abstract class Scene {
     this.sceneManager = sceneManager;
   }
 
+  public abstract readonly id: string;
+
+  public readonly UI: SceneUIComponent | null = null;
+
+  public update(_deltaTime: number): void {}
+  public render(_canvas: HTMLCanvasElement, _context: CanvasRenderingContext2D): void {}
+
+  public onEntered(): void | Promise<void> {}
+  public onBeforeExit(): void | Promise<void> {}
+  public onDestroy(): void | Promise<void> {}
+
   public remove() {
     this.sceneManager.removeScene(this);
   }
-
-  public abstract update(deltaTime: number): void;
-  public abstract render(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D): void;
-  public abstract getViewModel(): ViewModel | null;
-  public abstract onEntered(): void | Promise<void>;
-  public abstract onBeforeExit(): void | Promise<void>;
-  public abstract onDestroy(): void | Promise<void>;
 }

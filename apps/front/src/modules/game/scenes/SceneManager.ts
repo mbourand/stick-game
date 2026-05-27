@@ -6,6 +6,7 @@ type Listener = () => void;
 export class SceneManager {
   private sceneStack: Scene[] = [];
   private listeners = new Set<Listener>();
+  private isTransitioning = false;
 
   public subscribe = (listener: Listener) => {
     this.listeners.add(listener);
@@ -23,6 +24,7 @@ export class SceneManager {
   };
 
   public pushScene(scene: Scene) {
+    if (this.isTransitioning) return;
     this.getTopScene()?.deactivate();
     this.sceneStack.push(scene);
     scene.activate();
@@ -30,6 +32,7 @@ export class SceneManager {
   }
 
   public replaceScene(scene: Scene) {
+    if (this.isTransitioning) return;
     const previous = this.sceneStack.pop();
     if (previous) {
       previous.deactivate();
@@ -40,13 +43,21 @@ export class SceneManager {
     this.emit();
   }
 
-  public popScene() {
-    const previous = this.sceneStack.pop();
-    if (!previous) return;
-    previous.deactivate();
-    void previous.onDestroy();
-    this.getTopScene()?.activate();
-    this.emit();
+  public async popScene(): Promise<void> {
+    if (this.isTransitioning) return;
+    const top = this.getTopScene();
+    if (!top) return;
+    this.isTransitioning = true;
+    try {
+      await top.transitionOut();
+      this.sceneStack.pop();
+      top.deactivate();
+      void top.onDestroy();
+      this.getTopScene()?.activate();
+      this.emit();
+    } finally {
+      this.isTransitioning = false;
+    }
   }
 
   public clearScenes() {

@@ -76,7 +76,10 @@ export class SceneManager {
   }
 
   public render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
-    for (const scene of this.sceneStack) {
+    const topIndex = this.sceneStack.length - 1;
+    for (let i = 0; i < this.sceneStack.length; i++) {
+      const scene = this.sceneStack[i];
+      if (i !== topIndex && !scene.rendersWhenInactive) continue;
       scene.render(canvas, ctx);
     }
   }

@@ -45,6 +45,7 @@ export const GameShell = () => {
     return () => {
       cancelled = true;
       if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+      instance.destroy();
     };
   }, []);
 

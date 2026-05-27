@@ -1,4 +1,5 @@
-import { BeatmapSelectionModel } from "./scenes/BeatmapSelection/BeatmapSelectionModel";
+import { FrameDriver } from "./frame/FrameDriver";
+import { MainMenuScene } from "./scenes/MainMenu/MainMenuScene";
 import { SceneManager } from "./scenes/SceneManager";
 
 export class Game {
@@ -10,6 +11,7 @@ export class Game {
   private afterTick: () => void;
 
   private sceneManager = new SceneManager();
+  private frameDriver = new FrameDriver();
 
   constructor(afterTick: () => void) {
     this.started = false;
@@ -21,7 +23,7 @@ export class Game {
     this.canvas = canvas;
     this.started = true;
     this.lastFrameTime = performance.now();
-    this.sceneManager.pushScene(new BeatmapSelectionModel(this.sceneManager));
+    this.sceneManager.pushScene(new MainMenuScene(this.sceneManager));
   }
 
   public tick() {
@@ -35,10 +37,19 @@ export class Game {
     this.afterTick();
   }
 
+  public getSceneManager() {
+    return this.sceneManager;
+  }
+
+  public getFrameDriver() {
+    return this.frameDriver;
+  }
+
   private update(deltaTime: number) {
     if (!this.canvas || !this.started) return;
 
     this.sceneManager.update(deltaTime);
+    this.frameDriver.tick(deltaTime, this.lastFrameTime);
 
     const ctx = this.canvas.getContext("2d");
     if (!ctx) return;
@@ -47,9 +58,5 @@ export class Game {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.sceneManager.render(this.canvas, ctx);
-  }
-
-  public getUI() {
-    return this.sceneManager.getViewsComponents();
   }
 }

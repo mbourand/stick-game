@@ -27,6 +27,8 @@ import { submitScore } from "@/modules/score/submit-score";
 import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
 
 export class GameplayScene extends Scene {
+  public readonly id = "gameplay";
+
   private eventManager = new EventManager();
   private scoreCounter: ScoreCounter;
 
@@ -57,7 +59,7 @@ export class GameplayScene extends Scene {
     );
   }
 
-  public async onEntered() {
+  public override async onEntered() {
     this.registerEvents();
 
     const [buffer] = await Promise.all([
@@ -79,24 +81,20 @@ export class GameplayScene extends Scene {
     this.beatmapStarted = true;
   }
 
-  public async onBeforeExit() {
+  public override async onBeforeExit() {
     this.offFunctions.forEach((off) => off());
     this.offFunctions = [];
     AudioManager.stopSoundById("beatmap_audio");
     this.beatmapStarted = false;
   }
 
-  public onDestroy(): void {
-    return;
-  }
-
-  public update(deltaTime: number): void {
+  public override update(deltaTime: number): void {
     if (!this.beatmapStarted) return;
     this.audioVisualizer.update(deltaTime);
     this.updateNotes(deltaTime);
   }
 
-  public render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
+  public override render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
 
@@ -190,10 +188,6 @@ export class GameplayScene extends Scene {
         "blue",
       );
     }
-  }
-
-  public getViewModel() {
-    return null;
   }
 
   private updateNotes(deltaTime: number) {

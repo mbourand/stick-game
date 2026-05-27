@@ -1,6 +1,6 @@
 "use client";
 
-import { GameCanvas } from "@/modules/game/components/GameCanvas";
+import { GameShell } from "@/modules/game/components/GameShell";
 import { Settings } from "@/modules/settings/Settings";
 import { debounce } from "@/modules/utils/debounce";
 import { useEffect, useMemo, useState } from "react";
@@ -105,7 +105,7 @@ const SettingSlider = ({
 export const ClientSideGame = () => {
   return (
     <>
-      <GameCanvas />
+      <GameShell />
       <div className="absolute top-0 right-0 flex flex-row gap-4 items-center z-10">
         <span className="text-white text-sm whitespace-nowrap">Player Name:</span>
         <input

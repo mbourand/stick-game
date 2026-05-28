@@ -39,9 +39,41 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
     [] as V3BeatmapEntity[],
   );
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const filteredBeatmaps = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (q === "") return beatmaps;
+    return beatmaps.filter(
+      (b) =>
+        b.title.toLowerCase().includes(q) ||
+        b.artist.toLowerCase().includes(q) ||
+        b.creator.toLowerCase().includes(q),
+    );
+  }, [beatmaps, searchQuery]);
+
+  // Game is played on a controller, so users won't usually have the search
+  // input focused. Funnel global keystrokes into the query — unless another
+  // input/textarea is already focused (so the input itself still works
+  // normally when clicked).
   useEffect(() => {
-    selectionScene.setBeatmapCount(beatmaps.length);
-  }, [beatmaps, selectionScene]);
+    const handler = (e: KeyboardEvent) => {
+      const active = document.activeElement;
+      if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      if (e.key === "Backspace") {
+        setSearchQuery((q) => q.slice(0, -1));
+        e.preventDefault();
+      } else if (e.key === "Escape") {
+        setSearchQuery("");
+        e.preventDefault();
+      } else if (e.key.length === 1) {
+        setSearchQuery((q) => q + e.key);
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   // LRU cache of blob URLs keyed by beatmap id. Bounded so memory doesn't
   // grow without limit as the user browses, and intentionally NOT cleared on
@@ -79,7 +111,7 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
 
   useEffect(() => {
     selectionScene.setBeatmapResolver(async (index) => {
-      const beatmap = beatmaps[index];
+      const beatmap = filteredBeatmaps[index];
       if (!beatmap) return null;
       try {
         const parsed = convertFromOsu(await beatmap.content.text(), (p) => p);
@@ -94,7 +126,7 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
       }
     });
     return () => selectionScene.setBeatmapResolver(null);
-  }, [beatmaps, resolveMediaUrls, selectionScene]);
+  }, [filteredBeatmaps, resolveMediaUrls, selectionScene]);
 
   const focusedIndex = useSyncExternalStore(
     selectionScene.subscribe,
@@ -105,6 +137,11 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
     selectionScene.subscribe,
     selectionScene.getScrollZone,
     selectionScene.getScrollZone,
+  );
+  const leaderboardTab = useSyncExternalStore(
+    selectionScene.subscribe,
+    selectionScene.getLeaderboardTab,
+    selectionScene.getLeaderboardTab,
   );
 
   // Re-render the virtualization window only when the integer scroll bucket
@@ -117,18 +154,18 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
   });
 
   const { firstIndex, lastIndex } = useMemo(
-    () => getVisibleIndexRange(windowBucket, beatmaps.length),
-    [windowBucket, beatmaps.length],
+    () => getVisibleIndexRange(windowBucket, filteredBeatmaps.length),
+    [windowBucket, filteredBeatmaps.length],
   );
 
   const visible = useMemo(() => {
     const out: { index: number; beatmap: V3BeatmapEntity }[] = [];
     for (let i = firstIndex; i <= lastIndex; i++) {
-      const beatmap = beatmaps[i];
+      const beatmap = filteredBeatmaps[i];
       if (beatmap) out.push({ index: i, beatmap });
     }
     return out;
-  }, [firstIndex, lastIndex, beatmaps]);
+  }, [firstIndex, lastIndex, filteredBeatmaps]);
 
   // Per-frame DOM writes: position + mask each visible button along the curve.
   const listRef = useRef<HTMLDivElement>(null);
@@ -144,23 +181,69 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
     }
   });
 
-  const focusedBeatmap = focusedIndex !== null ? beatmaps[focusedIndex] ?? null : null;
+  const focusedBeatmap = focusedIndex !== null ? filteredBeatmaps[focusedIndex] ?? null : null;
+
+  // Remember the focused beatmap by id across filter changes.
+  const focusedBeatmapIdRef = useRef<string | null>(null);
+
+  // "No match" is when the user has typed a query but it filtered everything
+  // out. We keep the existing preview alive in that case — the user is
+  // mid-search, they don't want their playing track or background torn down.
+  const isNoMatch = filteredBeatmaps.length === 0 && beatmaps.length > 0;
+
+  // Sync count + reconcile focus whenever the filtered list changes. We try
+  // to preserve focus on the same beatmap; if it's no longer in the result
+  // set, snap to the first match. If no focus was ever set (initial mount),
+  // we leave the scene's random-pick alone. If the filter currently matches
+  // nothing, we skip entirely so the previous focus + preview stay put.
+  useEffect(() => {
+    if (isNoMatch) return;
+    selectionScene.setBeatmapCount(filteredBeatmaps.length);
+    if (filteredBeatmaps.length === 0) {
+      selectionScene.setFocused(null);
+      return;
+    }
+    const remembered = focusedBeatmapIdRef.current;
+    if (remembered === null) return;
+    const newIndex = filteredBeatmaps.findIndex((b) => b.idv2 === remembered);
+    const target = newIndex >= 0 ? newIndex : 0;
+    selectionScene.setFocused(target);
+    selectionScene.scrollTo(target);
+  }, [filteredBeatmaps, selectionScene, isNoMatch]);
+
+  // Keep the remembered id in sync with the actual focus. Declared AFTER the
+  // reconciliation so that, on filter changes, reconciliation runs first and
+  // gets to read the prior id before it's overwritten.
+  useEffect(() => {
+    if (focusedIndex === null) return;
+    const beatmap = filteredBeatmaps[focusedIndex];
+    if (beatmap) focusedBeatmapIdRef.current = beatmap.idv2;
+  }, [focusedIndex, filteredBeatmaps]);
+
+  // The beatmap whose audio/background/leaderboard is currently on display.
+  // Sticks to the last non-null focused beatmap — this is what keeps the
+  // preview alive when the filter wipes the list (focusedBeatmap goes null,
+  // but the previewBeatmap from the prior render is held).
+  const [previewBeatmap, setPreviewBeatmap] = useState<V3BeatmapEntity | null>(null);
+  if (focusedBeatmap !== null && focusedBeatmap !== previewBeatmap) {
+    setPreviewBeatmap(focusedBeatmap);
+  }
 
   useEffect(() => {
-    if (!focusedBeatmap) {
+    if (!previewBeatmap) {
       selectionScene.setFocusedBeatmapMedia(null);
       return;
     }
     let cancelled = false;
     void (async () => {
-      const urls = await resolveMediaUrls(focusedBeatmap);
+      const urls = await resolveMediaUrls(previewBeatmap);
       if (cancelled || !urls) return;
       selectionScene.setFocusedBeatmapMedia(urls);
     })();
     return () => {
       cancelled = true;
     };
-  }, [focusedBeatmap, resolveMediaUrls, selectionScene]);
+  }, [previewBeatmap, resolveMediaUrls, selectionScene]);
 
   const [isDownloaderOpen, setDownloaderOpen] = useState(false);
 
@@ -210,7 +293,76 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
           onPress={() => selectionScene.scrollBy(+3)}
         />
 
-        {beatmaps.length === 0 && (
+        {/* Search bar — top of the circle. */}
+        <motion.div
+          className="absolute left-1/2 -translate-x-1/2 pointer-events-auto"
+          style={{ top: "80px", width: "400px" }}
+          initial={false}
+          animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : -12 }}
+          transition={{ duration: PHASE_DURATION_S, ease: [0.4, 0, 0.2, 1] }}
+        >
+          <input
+            type="text"
+            placeholder="Search title, artist, mapper…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-black/30 backdrop-blur-sm border border-white/20 text-white text-xs tracking-[0.15em] uppercase placeholder-white/40 px-4 py-2 rounded focus:bg-black/50 focus:border-white/60 outline-none text-center"
+          />
+          {isNoMatch && (
+            <div className="mt-2 text-center text-[10px] tracking-[0.25em] uppercase text-white/50">
+              No matches
+            </div>
+          )}
+        </motion.div>
+
+        {/* Map info — upper middle. */}
+        <AnimatePresence mode="wait">
+          {isVisible && previewBeatmap && (
+            <motion.div
+              key={previewBeatmap.idv2 + ":info"}
+              className="absolute left-1/2 -translate-x-1/2 pointer-events-none text-center"
+              style={{ top: "180px", width: "640px" }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="text-2xl font-semibold tracking-[0.15em] uppercase truncate text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+                {previewBeatmap.title}
+              </div>
+              <div className="mt-1 text-xs tracking-[0.2em] uppercase text-white/70 truncate drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
+                {previewBeatmap.artist}
+                <span className="text-white/40"> · mapped by </span>
+                {previewBeatmap.creator}
+              </div>
+              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm">
+                <span className="text-white/70 text-xs">★</span>
+                <span className="text-white font-bold tabular-nums text-sm">
+                  {previewBeatmap.difficulty.toFixed(2)}
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Leaderboard — bottom of the circle. */}
+        <AnimatePresence mode="wait">
+          {isVisible && previewBeatmap && (
+            <motion.div
+              key={previewBeatmap.idv2 + ":leaderboard"}
+              className="absolute left-1/2 -translate-x-1/2 pointer-events-auto"
+              style={{ bottom: "80px", width: "480px" }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: 0.2 }}
+            >
+              <MapLeaderboard beatmapId={previewBeatmap.idv2} tab={leaderboardTab} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {filteredBeatmaps.length === 0 && beatmaps.length === 0 && (
           <motion.div
             className="absolute inset-0 flex items-center justify-center text-white/60 text-sm tracking-[0.25em] uppercase pointer-events-none text-center"
             initial={false}
@@ -222,27 +374,12 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
         )}
       </div>
 
-      <AnimatePresence>
-        {isVisible && focusedBeatmap && (
-          <motion.div
-            key={focusedBeatmap.idv2}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
-            className="absolute left-8 top-1/2 -translate-y-1/2 pointer-events-auto"
-          >
-            <MapLeaderboard beatmapId={focusedBeatmap.idv2} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <motion.button
         type="button"
-        className="absolute top-6 right-6 pointer-events-auto text-xs uppercase tracking-[0.25em] px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded"
+        className="absolute top-6 right-6 pointer-events-auto text-xs uppercase tracking-[0.25em] px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded whitespace-nowrap"
         initial={false}
-        animate={{ opacity: isVisible ? 1 : 0 }}
-        transition={{ duration: PHASE_DURATION_S }}
+        animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : -12 }}
+        transition={{ duration: PHASE_DURATION_S, ease: [0.4, 0, 0.2, 1] }}
         onClick={() => setDownloaderOpen(true)}
       >
         Download maps

@@ -1,35 +1,40 @@
 import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
 import { useQuery } from "@tanstack/react-query";
+import { ScoreRow } from "./ScoreRow";
+
+const LATEST_SCORE_VERSION = 3;
+const VISIBLE_ROWS = 5;
 
 type LeaderboardLocalScoresProps = {
   beatmapId: string;
-  scoreVersion: number;
 };
 
-export const LeaderboardLocalScores = ({ beatmapId, scoreVersion }: LeaderboardLocalScoresProps) => {
-  const leaderboardQuery = useQuery(localScoresBeatmapLeaderboardQueryOptions(beatmapId, scoreVersion));
+export const LeaderboardLocalScores = ({ beatmapId }: LeaderboardLocalScoresProps) => {
+  const leaderboardQuery = useQuery(
+    localScoresBeatmapLeaderboardQueryOptions(beatmapId, LATEST_SCORE_VERSION),
+  );
+
+  if (leaderboardQuery.isLoading) return <Status text="Loading…" />;
+  if (leaderboardQuery.isError) return <Status text="Failed to load" />;
+  const entries = leaderboardQuery.data ?? [];
+  if (entries.length === 0) return <Status text="No scores yet" />;
 
   return (
-    <>
-      {leaderboardQuery.isLoading && <p>Loading leaderboard...</p>}
-      {leaderboardQuery.isError && <p>Error loading leaderboard</p>}
-      {leaderboardQuery.data && leaderboardQuery.data.length === 0 && <p>No scores yet</p>}
-      {leaderboardQuery.data && leaderboardQuery.data.length > 0 && (
-        <div className="flex flex-col gap-4 max-h-[500px] overflow-y-auto">
-          {leaderboardQuery.data.map((entry, index) => (
-            <p key={entry.submissionTime.getTime()}>
-              {index + 1}. {entry.playerName} -{" "}
-              {entry.score
-                .toString()
-                .split("")
-                .flatMap((c, i, a) => (i && (a.length - i) % 3 === 0 ? [" ", c] : [c]))
-                .join("")}
-              <br />
-              {entry.accuracy.toFixed(2)}% - {entry.maxCombo}x
-            </p>
-          ))}
-        </div>
-      )}
-    </>
+    <ol className="flex flex-col gap-1">
+      {entries.slice(0, VISIBLE_ROWS).map((entry, index) => (
+        <ScoreRow
+          key={entry.submissionTime.getTime()}
+          rank={index + 1}
+          playerName={entry.playerName}
+          score={entry.score}
+          accuracy={entry.accuracy}
+          maxCombo={entry.maxCombo}
+        />
+      ))}
+    </ol>
   );
 };
+
+const Status = ({ text }: { text: string }) => (
+  <div className="text-center text-xs text-white/50 tracking-[0.2em] uppercase py-3">{text}</div>
+);

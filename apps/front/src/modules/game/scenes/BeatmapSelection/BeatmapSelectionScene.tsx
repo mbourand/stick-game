@@ -23,6 +23,9 @@ type Listener = () => void;
 export type ScrollZone = "top" | "bottom" | null;
 export type BeatmapResolver = (index: number) => Promise<ParsedMap | null>;
 export type FocusedBeatmapMedia = { audioUrl: string; backgroundUrl: string };
+export type LeaderboardTab = "global" | "local";
+
+const LEADERBOARD_TABS: readonly LeaderboardTab[] = ["global", "local"] as const;
 
 type Vec2 = { x: number; y: number };
 
@@ -61,6 +64,8 @@ export class BeatmapSelectionScene extends Scene {
   /** One-shot guard: pick a random map the first time the list arrives. */
   private hasPickedInitialFocus = false;
 
+  private leaderboardTab: LeaderboardTab = "global";
+
   constructor(engine: Engine) {
     super(engine);
     this.circle = engine.getPersistentRoot().circle;
@@ -73,6 +78,8 @@ export class BeatmapSelectionScene extends Scene {
   public override onEntered() {
     this.onAction("back", () => this.goBack());
     this.onAction("confirm", () => void this.confirmFocused());
+    this.onAction("leaderboard-prev", () => this.cycleLeaderboardTab(-1));
+    this.onAction("leaderboard-next", () => this.cycleLeaderboardTab(+1));
     // Exit transitions fade innerContainer to 0; reset before showing again.
     this.innerContainer.alpha = 1;
     // Coming back from scores etc.: re-arm the preview for the still-focused map.
@@ -147,6 +154,24 @@ export class BeatmapSelectionScene extends Scene {
     const next = clamp(this.scrollOffset + deltaItems, 0, Math.max(0, this.beatmapCount - 1));
     if (next === this.scrollOffset) return;
     this.scrollOffset = next;
+  }
+
+  public scrollTo(index: number): void {
+    this.scrollOffset = clamp(index, 0, Math.max(0, this.beatmapCount - 1));
+  }
+
+  public getLeaderboardTab = (): LeaderboardTab => this.leaderboardTab;
+
+  public setLeaderboardTab(tab: LeaderboardTab): void {
+    if (this.leaderboardTab === tab) return;
+    this.leaderboardTab = tab;
+    this.notify();
+  }
+
+  public cycleLeaderboardTab(direction: 1 | -1): void {
+    const i = LEADERBOARD_TABS.indexOf(this.leaderboardTab);
+    const next = (i + direction + LEADERBOARD_TABS.length) % LEADERBOARD_TABS.length;
+    this.setLeaderboardTab(LEADERBOARD_TABS[next]);
   }
 
   public async confirmFocused(): Promise<void> {

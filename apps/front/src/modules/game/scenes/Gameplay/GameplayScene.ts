@@ -14,6 +14,8 @@ import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
 import type { CircleLayer } from "../../engine/layers/CircleLayer";
 import type { TickContext } from "../../engine/TickContext";
+import { gameplayToScores } from "../../engine/transitions/factories/gameplayToScores";
+import { ScoresScene } from "../Scores/ScoresScene";
 import type { GameplayEvents } from "../../events/gameplayEvents";
 import type { NoteHoldTickEventType } from "../../events/impl/NoteHoldTickEvent";
 import type { NoteShouldSpawnEventType } from "../../events/impl/NoteShouldSpawnEvent";
@@ -47,6 +49,7 @@ export class GameplayScene extends Scene {
   private root = new Container();
   private notesContainer = new Container();
   private fxContainer = new Container();
+  public circleInnerContentContainer = new Container();
   private circle: CircleLayer;
 
   private clock: BeatmapClock;
@@ -65,12 +68,7 @@ export class GameplayScene extends Scene {
     const musicContext = engine.getAudio().music.getAudioContext();
     this.clock = new BeatmapClock(musicContext);
     this.audioVisualizer = new CircleAudioVisualizer(musicContext, 40, GAME_CIRCLE_DISPLAYED_RADIUS, 30);
-    this.noteSpawner = new NoteSpawner(
-      this.parsedMap.notes,
-      this.events,
-      this.clock,
-      this.settings.scrollDuration,
-    );
+    this.noteSpawner = new NoteSpawner(this.parsedMap.notes, this.events, this.clock, this.settings.scrollDuration);
     this.scoreCounter = new ScoreCounter(
       this.parsedMap.notes.length + this.parsedMap.notes.filter((n) => n.isHold).length,
     );
@@ -129,11 +127,13 @@ export class GameplayScene extends Scene {
   }
 
   private buildSceneTree() {
+    this.circleInnerContentContainer.add(new BackgroundEntity(this.parsedMap, this.engine.getSettings()));
+    this.circleInnerContentContainer.add(this.audioVisualizer);
+    this.circleInnerContentContainer.add(new ScoreHUDEntity(this.scoreCounter));
+
     // Children render in insertion order (back -> front).
-    this.root.add(new BackgroundEntity(this.parsedMap, this.engine.getSettings()));
-    this.root.add(this.audioVisualizer);
+    this.root.add(this.circleInnerContentContainer);
     this.root.add(this.circle);
-    this.root.add(new ScoreHUDEntity(this.scoreCounter));
     this.root.add(this.notesContainer);
     this.root.add(this.fxContainer);
     this.root.add(new StickDotsEntity(this.inputSystem));
@@ -231,6 +231,11 @@ export class GameplayScene extends Scene {
   }
 
   private async onBeatmapEnded(_event: BeatmapEndedEventType) {
+    void this.sceneManager.transitionReplace(
+      new ScoresScene(this.engine, this.parsedMap, this.scoreCounter),
+      gameplayToScores,
+    );
+
     const { backendResult, localResult } = await submitScore({
       accuracy: this.scoreCounter.getAccuracy(),
       score: this.scoreCounter.getScore(),

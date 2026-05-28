@@ -5,10 +5,14 @@ import { AnimatePresence, motion } from "motion/react";
 import { settings } from "@/modules/settings/Settings";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import type { SceneUIComponent } from "../Scene";
+import { useScenePhase } from "../useScene";
 import { BUTTON_HEIGHT_PX, BUTTON_WIDTH_PX, BUTTONS, getButtonYOffsetFromCenter } from "./layout";
 import type { MainMenuScene } from "./MainMenuScene";
 
 const CIRCLE_DIAMETER = GAME_CIRCLE_DISPLAYED_RADIUS * 2;
+const BUTTON_RETRACT_X = -260;
+const BUTTON_STAGGER_S = 0.04;
+const PHASE_DURATION_S = 0.32;
 
 export const MainMenuView: SceneUIComponent = ({ scene }) => {
   const mainMenuScene = scene as MainMenuScene;
@@ -17,6 +21,8 @@ export const MainMenuView: SceneUIComponent = ({ scene }) => {
     mainMenuScene.getFocused,
     mainMenuScene.getFocused,
   );
+  const phase = useScenePhase(scene);
+  const isVisible = phase === "active" || phase === "entering";
 
   const playerName = settings.get().playerName || "Guest";
   const hint = focused ? BUTTONS.find((b) => b.id === focused)?.hint : null;
@@ -39,9 +45,11 @@ export const MainMenuView: SceneUIComponent = ({ scene }) => {
           return (
             <RadialButton
               key={button.id}
+              index={i}
               label={button.label}
               yCenter={yCenter}
               isFocused={focused === button.id}
+              isVisible={isVisible}
               onFocus={() => mainMenuScene.setFocused(button.id)}
               onBlur={() => {
                 if (mainMenuScene.getFocused() === button.id) mainMenuScene.setFocused(null);
@@ -51,15 +59,20 @@ export const MainMenuView: SceneUIComponent = ({ scene }) => {
           );
         })}
 
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+        <motion.div
+          className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none"
+          initial={false}
+          animate={{ opacity: isVisible ? 1 : 0 }}
+          transition={{ duration: PHASE_DURATION_S, ease: [0.4, 0, 0.2, 1] }}
+        >
           <div className="w-32 h-32 rounded-full bg-white/10 border border-white/20 mb-6" />
           <div className="text-3xl tracking-[0.15em] uppercase">{playerName}</div>
           <div className="text-sm text-white/50 tracking-[0.25em] uppercase mt-2">rank #—</div>
-        </div>
+        </motion.div>
 
         <div className="absolute bottom-[18%] left-0 right-0 px-[14%] h-5 flex items-center justify-center pointer-events-none">
           <AnimatePresence mode="wait">
-            {hint && (
+            {isVisible && hint && (
               <motion.div
                 key={hint}
                 initial={{ opacity: 0, y: 4 }}
@@ -79,16 +92,20 @@ export const MainMenuView: SceneUIComponent = ({ scene }) => {
 };
 
 const RadialButton = ({
+  index,
   label,
   yCenter,
   isFocused,
+  isVisible,
   onFocus,
   onBlur,
   onClick,
 }: {
+  index: number;
   label: string;
   yCenter: number;
   isFocused: boolean;
+  isVisible: boolean;
   onFocus: () => void;
   onBlur: () => void;
   onClick: () => void;
@@ -109,7 +126,7 @@ const RadialButton = ({
   const paddingLeft = Math.max(24, maxHiddenX + 24);
 
   return (
-    <button
+    <motion.button
       type="button"
       className={`absolute pointer-events-auto text-white text-xl font-bold uppercase tracking-[0.3em] rounded-r-full flex items-center justify-between transition-colors ${
         isFocused ? "bg-white/25" : "bg-white/10"
@@ -125,6 +142,16 @@ const RadialButton = ({
         WebkitMaskImage: maskValue,
         border: "2px solid rgba(255,255,255,0.5)",
       }}
+      initial={false}
+      animate={{
+        x: isVisible ? 0 : BUTTON_RETRACT_X,
+        opacity: isVisible ? 1 : 0,
+      }}
+      transition={{
+        duration: PHASE_DURATION_S,
+        ease: [0.4, 0, 0.2, 1],
+        delay: isVisible ? index * BUTTON_STAGGER_S : 0,
+      }}
       onMouseEnter={onFocus}
       onMouseLeave={onBlur}
       onFocus={onFocus}
@@ -133,6 +160,6 @@ const RadialButton = ({
     >
       <span>{label}</span>
       <span className="w-7 h-7 rounded-full border border-white/40" aria-hidden />
-    </button>
+    </motion.button>
   );
 };

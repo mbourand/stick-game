@@ -9,7 +9,20 @@ export type SceneUIComponent = ComponentType<{ scene: Scene }>;
 
 type SceneState = "inactive" | "active";
 
+/**
+ * High-level lifecycle marker observed by the scene's UI. Driven by the
+ * SceneManager (instant push/pop sets it) and by transition factories
+ * (each step in a choreography flips it via `setPhase`).
+ *
+ *   - inactive: not on screen
+ *   - entering: appearing as a transition's `to`
+ *   - active:   normal at-rest state
+ *   - exiting:  disappearing as a transition's `from`
+ */
+export type ScenePhase = "inactive" | "entering" | "active" | "exiting";
+
 type ExitListener = () => void;
+type PhaseListener = () => void;
 
 export abstract class Scene {
   protected engine: Engine;
@@ -21,6 +34,9 @@ export abstract class Scene {
   private exitPromise: Promise<void> | null = null;
   private exitResolve: (() => void) | null = null;
   private exitListeners = new Set<ExitListener>();
+
+  private phase: ScenePhase = "inactive";
+  private phaseListeners = new Set<PhaseListener>();
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -94,6 +110,22 @@ export abstract class Scene {
 
   private notifyExit() {
     for (const listener of this.exitListeners) listener();
+  }
+
+  public getPhase = (): ScenePhase => this.phase;
+
+  public subscribePhase = (listener: PhaseListener): (() => void) => {
+    this.phaseListeners.add(listener);
+    return () => {
+      this.phaseListeners.delete(listener);
+    };
+  };
+
+  /** Called by SceneManager and by transition factories via `call(...)`. */
+  public setPhase(phase: ScenePhase): void {
+    if (this.phase === phase) return;
+    this.phase = phase;
+    for (const listener of this.phaseListeners) listener();
   }
 
   public isActive(): boolean {

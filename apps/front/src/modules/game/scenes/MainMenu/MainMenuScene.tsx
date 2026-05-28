@@ -3,6 +3,7 @@ import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
 import type { CircleLayer } from "../../engine/layers/CircleLayer";
 import type { TickContext } from "../../engine/TickContext";
+import { mainMenuToBeatmapSelection } from "../../engine/transitions/factories/mainMenuToBeatmapSelection";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import { BeatmapSelectionScene } from "../BeatmapSelection/BeatmapSelectionScene";
 import { Scene } from "../Scene";
@@ -62,7 +63,10 @@ export class MainMenuScene extends Scene {
   }
 
   public goToBeatmapSelection() {
-    this.sceneManager.pushScene(new BeatmapSelectionScene(this.engine));
+    void this.sceneManager.transitionPush(
+      new BeatmapSelectionScene(this.engine),
+      mainMenuToBeatmapSelection,
+    );
   }
 
   public openSettings() {

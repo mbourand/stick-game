@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
 import { Engine } from "../engine/Engine";
 import { EngineContext } from "../engine/EngineContext";
 import { MainMenuScene } from "../scenes/MainMenu/MainMenuScene";
@@ -48,49 +47,38 @@ export const GameShell = () => {
   );
 };
 
+/**
+ * Renders the UI for whichever scene(s) are visible right now: the top scene
+ * normally, or both from + to during a programmatic transition.
+ *
+ * Crucially, we render every visible scene with a stable React key in the SAME
+ * tree position in both branches — that way the `to` scene's React subtree
+ * isn't unmounted and remounted at the transition→post-transition boundary,
+ * which would otherwise replay its entrance animation a second time.
+ */
 const SceneUIOverlay = ({ engine }: { engine: Engine }) => {
   const topScene = useTopScene(engine.getSceneManager());
   const transition = useTransition(engine.getSceneManager());
 
-  // While a programmatic transition is in flight, mount both the outgoing
-  // and incoming scenes' UIs as raw siblings so each can drive its own
-  // DOM-side choreography (button retract, content fade, ...) without
-  // interference from a wrapper animation.
+  const scenes: Scene[] = [];
   if (transition) {
-    return (
-      <>
-        <SceneUIMount scene={transition.from} />
-        {transition.to !== transition.from && <SceneUIMount scene={transition.to} />}
-      </>
-    );
+    if (transition.from) scenes.push(transition.from);
+    if (transition.to && transition.to !== transition.from) scenes.push(transition.to);
+  } else if (topScene) {
+    scenes.push(topScene);
   }
 
-  // No transition active: cross-fade between top scenes on instant swaps.
-  // `initial={false}` skips the fade-in for the freshly-mounted top so we
-  // never re-fade a scene that was already visible during a transition.
   return (
-    <AnimatePresence>
-      {topScene && topScene.UI && (
-        <motion.div
-          key={topScene.id}
-          className="absolute inset-0 pointer-events-auto"
-          initial={false}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <topScene.UI scene={topScene} />
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
-
-const SceneUIMount = ({ scene }: { scene: Scene | null }) => {
-  if (!scene || !scene.UI) return null;
-  const UI = scene.UI;
-  return (
-    <div className="absolute inset-0 pointer-events-auto">
-      <UI scene={scene} />
-    </div>
+    <>
+      {scenes.map((scene) => {
+        if (!scene.UI) return null;
+        const UI = scene.UI;
+        return (
+          <div key={scene.id} className="absolute inset-0 pointer-events-auto">
+            <UI scene={scene} />
+          </div>
+        );
+      })}
+    </>
   );
 };

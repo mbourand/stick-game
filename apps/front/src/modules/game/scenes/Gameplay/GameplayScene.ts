@@ -106,9 +106,10 @@ export class GameplayScene extends Scene {
     this.eventDisposers = [];
     this.root.detach(this.circle);
     this.root.destroy();
-    const music = this.engine.getAudio().music;
-    await music.resume();
-    music.stop(BEATMAP_AUDIO_ID);
+    // Stop the source while the context is still suspended — resuming first
+    // would un-pause it for an audible blip before stop() lands. The next
+    // play() implicitly resumes the context for whoever comes after.
+    this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
     this.clock.stop();
   }
 

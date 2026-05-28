@@ -54,6 +54,18 @@ export class Container implements Entity {
     return true;
   }
 
+  /**
+   * Remove a child without destroying it. Use for entities owned elsewhere
+   * (e.g., a persistent layer that several scenes reference) — destroying it
+   * would kill state shared across scenes.
+   */
+  public detach(child: Entity): boolean {
+    const index = this.children.indexOf(child);
+    if (index === -1) return false;
+    this.children.splice(index, 1);
+    return true;
+  }
+
   public clear(): void {
     for (const child of this.children) child.destroy?.();
     this.children = [];

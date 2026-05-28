@@ -7,12 +7,12 @@ import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { type SettingsListType } from "../../../settings/Settings";
 import { EventEmitter } from "../../../utils/EventEmitter";
 import { BackgroundEntity } from "../../entities/BackgroundEntity";
-import { OuterRingEntity } from "../../entities/OuterRingEntity";
 import { ScoreHUDEntity } from "../../entities/ScoreHUDEntity";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
 import { BeatmapClock } from "../../engine/BeatmapClock";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
+import type { CircleLayer } from "../../engine/layers/CircleLayer";
 import type { TickContext } from "../../engine/TickContext";
 import type { GameplayEvents } from "../../events/gameplayEvents";
 import type { NoteHoldTickEventType } from "../../events/impl/NoteHoldTickEvent";
@@ -47,6 +47,7 @@ export class GameplayScene extends Scene {
   private root = new Container();
   private notesContainer = new Container();
   private fxContainer = new Container();
+  private circle: CircleLayer;
 
   private clock: BeatmapClock;
   private scoreCounter: ScoreCounter;
@@ -59,6 +60,7 @@ export class GameplayScene extends Scene {
     super(engine);
     this.parsedMap = parsedMap;
     this.settings = engine.getSettings().get();
+    this.circle = engine.getPersistentRoot().circle;
 
     const musicContext = engine.getAudio().music.getAudioContext();
     this.clock = new BeatmapClock(musicContext);
@@ -104,6 +106,7 @@ export class GameplayScene extends Scene {
   public override async onDestroy() {
     this.eventDisposers.forEach((off) => off());
     this.eventDisposers = [];
+    this.root.detach(this.circle);
     this.root.destroy();
     const music = this.engine.getAudio().music;
     await music.resume();
@@ -129,7 +132,7 @@ export class GameplayScene extends Scene {
     // Children render in insertion order (back -> front).
     this.root.add(new BackgroundEntity(this.parsedMap, this.engine.getSettings()));
     this.root.add(this.audioVisualizer);
-    this.root.add(new OuterRingEntity());
+    this.root.add(this.circle);
     this.root.add(new ScoreHUDEntity(this.scoreCounter));
     this.root.add(this.notesContainer);
     this.root.add(this.fxContainer);

@@ -18,3 +18,17 @@ export function useSceneStack(sceneManager: SceneManager) {
     sceneManager.getStack,
   );
 }
+
+/**
+ * Returns the in-flight transition (if any). Used by the DOM overlay to
+ * keep both the outgoing and incoming scene UIs mounted during a transition
+ * so their own React-side choreographies (button retract, content fade) can
+ * play.
+ */
+export function useTransition(sceneManager: SceneManager) {
+  return useSyncExternalStore(
+    sceneManager.subscribe,
+    sceneManager.getTransition,
+    sceneManager.getTransition,
+  );
+}

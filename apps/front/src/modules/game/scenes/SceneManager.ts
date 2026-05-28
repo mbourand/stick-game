@@ -1,12 +1,33 @@
+import type { Playable } from "../engine/animation/Playable";
+import type { PersistentRoot } from "../engine/layers/PersistentRoot";
 import type { TickContext } from "../engine/TickContext";
+import type {
+  TransitionFactory,
+  TransitionKind,
+} from "../engine/transitions/TransitionContext";
 import type { Scene } from "./Scene";
 
 type Listener = () => void;
+
+/**
+ * Snapshot of an in-flight scene transition. Both scenes update and render
+ * while this is non-null; input is silent (the SceneManager deactivates
+ * `from` at start and activates `to` at completion, so no scene has live
+ * input handlers in between).
+ */
+export type TransitionState = {
+  readonly from: Scene | null;
+  readonly to: Scene | null;
+  readonly kind: TransitionKind;
+};
 
 export class SceneManager {
   private sceneStack: Scene[] = [];
   private listeners = new Set<Listener>();
   private isTransitioning = false;
+  private transition: (TransitionState & { playable: Playable }) | null = null;
+
+  constructor(private readonly persistentRoot: PersistentRoot) {}
 
   public subscribe = (listener: Listener) => {
     this.listeners.add(listener);
@@ -21,6 +42,10 @@ export class SceneManager {
 
   public getStack = (): readonly Scene[] => {
     return this.sceneStack;
+  };
+
+  public getTransition = (): TransitionState | null => {
+    return this.transition;
   };
 
   public pushScene(scene: Scene) {
@@ -60,6 +85,80 @@ export class SceneManager {
     }
   }
 
+  /**
+   * Push `scene` on top of the stack, choreographed by `factory`. Both the
+   * outgoing top scene and the incoming `scene` update and render until the
+   * choreography's Playable finishes. Then `scene` is added to the stack and
+   * activated.
+   */
+  public async transitionPush(scene: Scene, factory: TransitionFactory): Promise<void> {
+    const from = this.getTopScene();
+    await this.runTransition({ from, to: scene, kind: "push", factory }, () => {
+      this.sceneStack.push(scene);
+      scene.activate();
+    });
+  }
+
+  /**
+   * Replace the top scene with `scene`, choreographed by `factory`. Both
+   * scenes update and render during the transition; the previous top is
+   * destroyed at completion.
+   */
+  public async transitionReplace(scene: Scene, factory: TransitionFactory): Promise<void> {
+    const from = this.getTopScene();
+    await this.runTransition({ from, to: scene, kind: "replace", factory }, () => {
+      const previous = this.sceneStack.pop();
+      if (previous) void previous.onDestroy();
+      this.sceneStack.push(scene);
+      scene.activate();
+    });
+  }
+
+  /**
+   * Pop the top scene, choreographed by `factory`. The popped scene and the
+   * scene revealed beneath both update and render during the transition; the
+   * popped scene is destroyed at completion.
+   */
+  public async transitionPop(factory: TransitionFactory): Promise<void> {
+    const from = this.getTopScene();
+    if (!from) return;
+    const to = this.sceneStack[this.sceneStack.length - 2] ?? null;
+    await this.runTransition({ from, to, kind: "pop", factory }, () => {
+      this.sceneStack.pop();
+      void from.onDestroy();
+      this.getTopScene()?.activate();
+    });
+  }
+
+  private async runTransition(
+    spec: { from: Scene | null; to: Scene | null; kind: TransitionKind; factory: TransitionFactory },
+    finalize: () => void,
+  ): Promise<void> {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+
+    spec.from?.deactivate();
+
+    const playable = spec.factory({
+      from: spec.from,
+      to: spec.to,
+      kind: spec.kind,
+      circle: this.persistentRoot.circle,
+    });
+
+    this.transition = { from: spec.from, to: spec.to, kind: spec.kind, playable };
+    this.emit();
+
+    try {
+      await this.persistentRoot.transitions.play(playable);
+      finalize();
+    } finally {
+      this.transition = null;
+      this.isTransitioning = false;
+      this.emit();
+    }
+  }
+
   public clearScenes() {
     const top = this.getTopScene();
     if (top) top.deactivate();
@@ -83,15 +182,30 @@ export class SceneManager {
   }
 
   public update(tick: TickContext) {
+    const t = this.transition;
+    if (t) {
+      t.from?.update(tick);
+      if (t.to && t.to !== t.from) t.to.update(tick);
+      return;
+    }
     this.getTopScene()?.update(tick);
   }
 
   public render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
+    const t = this.transition;
     const topIndex = this.sceneStack.length - 1;
+
     for (let i = 0; i < this.sceneStack.length; i++) {
       const scene = this.sceneStack[i];
-      if (i !== topIndex && !scene.rendersWhenInactive) continue;
+      const forcedByTransition = t !== null && (t.from === scene || t.to === scene);
+      if (i !== topIndex && !forcedByTransition && !scene.rendersWhenInactive) continue;
       scene.render(canvas, ctx);
+    }
+
+    // Push/replace transitions have a `to` scene that isn't in the stack yet —
+    // render it on top so the choreography can show it coming in.
+    if (t && t.to && !this.sceneStack.includes(t.to)) {
+      t.to.render(canvas, ctx);
     }
   }
 

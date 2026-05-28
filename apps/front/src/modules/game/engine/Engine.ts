@@ -4,6 +4,7 @@ import { Settings, settings as defaultSettings } from "../../settings/Settings";
 import { InputSystem } from "../input/InputSystem";
 import { SceneManager } from "../scenes/SceneManager";
 import { RealtimeClock } from "./Clock";
+import { PersistentRoot } from "./layers/PersistentRoot";
 import type { TickContext } from "./TickContext";
 
 export type FrameCallback = (tick: TickContext) => void;
@@ -22,7 +23,8 @@ export class Engine {
 
   private readonly settings: Settings;
   private readonly realtimeClock = new RealtimeClock();
-  private readonly sceneManager = new SceneManager();
+  private readonly persistentRoot = new PersistentRoot();
+  private readonly sceneManager = new SceneManager(this.persistentRoot);
   private readonly gamepad: Gamepad;
   private readonly inputSystem: InputSystem;
   private readonly audio = new Audio();
@@ -70,6 +72,10 @@ export class Engine {
     return this.sceneManager;
   }
 
+  public getPersistentRoot(): PersistentRoot {
+    return this.persistentRoot;
+  }
+
   public getInputSystem(): InputSystem {
     return this.inputSystem;
   }
@@ -106,6 +112,7 @@ export class Engine {
     };
 
     this.gamepad.tick();
+    this.persistentRoot.update(tick);
     this.sceneManager.update(tick);
     this.render();
 

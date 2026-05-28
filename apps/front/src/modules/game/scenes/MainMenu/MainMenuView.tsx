@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { settings } from "@/modules/settings/Settings";
-import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_STROKE_WIDTH } from "../../utils/constants";
+import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import type { SceneUIComponent } from "../Scene";
 import { BUTTON_HEIGHT_PX, BUTTON_WIDTH_PX, BUTTONS, getButtonYOffsetFromCenter } from "./layout";
 import type { MainMenuScene } from "./MainMenuScene";
@@ -50,14 +50,6 @@ export const MainMenuView: SceneUIComponent = ({ scene }) => {
             />
           );
         })}
-
-        <div
-          className="absolute inset-0 rounded-full"
-          style={{
-            border: `${GAME_CIRCLE_STROKE_WIDTH}px solid white`,
-            backgroundColor: "transparent",
-          }}
-        />
 
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
           <div className="w-32 h-32 rounded-full bg-white/10 border border-white/20 mb-6" />

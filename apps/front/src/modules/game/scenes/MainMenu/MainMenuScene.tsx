@@ -1,6 +1,7 @@
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
+import type { CircleLayer } from "../../engine/layers/CircleLayer";
 import type { TickContext } from "../../engine/TickContext";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import { BeatmapSelectionScene } from "../BeatmapSelection/BeatmapSelectionScene";
@@ -20,9 +21,12 @@ export class MainMenuScene extends Scene {
   private listeners = new Set<Listener>();
 
   private root = new Container();
+  private circle: CircleLayer;
 
   constructor(engine: Engine) {
     super(engine);
+    this.circle = engine.getPersistentRoot().circle;
+    this.root.add(this.circle);
     this.root.add(new StickDotsEntity(this.inputSystem));
   }
 
@@ -33,6 +37,7 @@ export class MainMenuScene extends Scene {
   }
 
   public override onDestroy() {
+    this.root.detach(this.circle);
     this.root.destroy();
   }
 

@@ -113,3 +113,47 @@ export function applyRadialLayout(outer: HTMLElement, yCenter: number, r: number
   const inner = outer.firstElementChild;
   if (inner instanceof HTMLElement) inner.style.paddingLeft = `${paddingLeft}px`;
 }
+
+/** Inner translate for left-side buttons retracting into the circle (positive: slides right). */
+export const LEFT_BUTTON_RETRACT_X = OUTER_LEFT_EXTRA_PX;
+
+/**
+ * Vertical position of the index-th left button when there are `count` total,
+ * distributed symmetrically around the circle's vertical centre.
+ */
+export function getLeftButtonYCenter(index: number, count: number): number {
+  return (index - (count - 1) / 2) * VERTICAL_PITCH_PX;
+}
+
+/** Helper for fixed (non-virtualised) left-side action buttons — mirror of `applyRadialLayout`. */
+export function computeLeftRadialLayout(
+  yCenter: number,
+  r: number,
+): { top: number; left: number; outerWidth: number; mask: string; paddingRight: number } {
+  const halfH = BUTTON_HEIGHT_PX / 2;
+  const farY = Math.abs(yCenter) + halfH;
+  const horizontalRadiusAtFarY = Math.sqrt(Math.max(0, r * r - farY * farY));
+
+  const top = r + yCenter - halfH;
+  const left = r - horizontalRadiusAtFarY - BUTTON_WIDTH_PX;
+  const outerWidth = BUTTON_WIDTH_PX + OUTER_LEFT_EXTRA_PX;
+
+  const maskCenterX = horizontalRadiusAtFarY + BUTTON_WIDTH_PX;
+  const maskCenterY = halfH - yCenter;
+  const radialMask = `radial-gradient(circle at ${maskCenterX}px ${maskCenterY}px, transparent ${r - 0.5}px, black ${r + 0.5}px)`;
+
+  const verticalTop = maskCenterY - r;
+  const verticalBottom = maskCenterY + r;
+  const bandMask = `linear-gradient(to bottom, transparent ${verticalTop}px, black ${verticalTop}px, black ${verticalBottom}px, transparent ${verticalBottom}px)`;
+  const mask = `${radialMask}, ${bandMask}`;
+
+  // Mirror of paddingLeft: the curve eats the RIGHT side of the inner button,
+  // so push content left away from where the mask intrudes.
+  const closestRowY = Math.max(0, Math.min(BUTTON_HEIGHT_PX, maskCenterY));
+  const yDelta = closestRowY - maskCenterY;
+  const minMaskLeftEdge = maskCenterX - Math.sqrt(Math.max(0, r * r - yDelta * yDelta));
+  const intrusion = Math.max(0, BUTTON_WIDTH_PX - minMaskLeftEdge);
+  const paddingRight = Math.max(28, intrusion + 28);
+
+  return { top, left, outerWidth, mask, paddingRight };
+}

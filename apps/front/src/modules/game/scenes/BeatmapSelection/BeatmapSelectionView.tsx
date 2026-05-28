@@ -18,7 +18,10 @@ import {
   BUTTON_RETRACT_X,
   BUTTON_WIDTH_PX,
   CIRCLE_RADIUS_PX,
+  computeLeftRadialLayout,
+  getLeftButtonYCenter,
   getVisibleIndexRange,
+  LEFT_BUTTON_RETRACT_X,
   OUTER_LEFT_EXTRA_PX,
   VERTICAL_PITCH_PX,
 } from "./layout";
@@ -143,6 +146,11 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
     selectionScene.getLeaderboardTab,
     selectionScene.getLeaderboardTab,
   );
+  const focusedLeftButton = useSyncExternalStore(
+    selectionScene.subscribe,
+    selectionScene.getFocusedLeftButton,
+    selectionScene.getFocusedLeftButton,
+  );
 
   // Re-render the virtualization window only when the integer scroll bucket
   // changes. Continuous motion in between is driven directly via DOM writes
@@ -247,6 +255,21 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
 
   const [isDownloaderOpen, setDownloaderOpen] = useState(false);
 
+  const leftButtons = useMemo<{ id: string; label: string; onActivate: () => void }[]>(
+    () => [{ id: "download", label: "Download maps", onActivate: () => setDownloaderOpen(true) }],
+    [],
+  );
+
+  useEffect(() => {
+    selectionScene.setLeftButtonCount(leftButtons.length);
+    selectionScene.setLeftConfirmHandler((index) => {
+      leftButtons[index]?.onActivate();
+    });
+    return () => {
+      selectionScene.setLeftConfirmHandler(null);
+    };
+  }, [leftButtons, selectionScene]);
+
   return (
     <div className="absolute inset-0 text-white select-none" style={{ fontFamily: "Rostex" }}>
       <div
@@ -271,14 +294,38 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
               difficulty={beatmap.difficulty}
               isFocused={focusedIndex === index}
               isVisible={isVisible}
-              onFocus={() => selectionScene.setFocused(index)}
+              onFocus={() => {
+                selectionScene.setFocusedLeftButton(null);
+                selectionScene.setFocused(index);
+              }}
               onClick={() => {
+                selectionScene.setFocusedLeftButton(null);
                 selectionScene.setFocused(index);
                 void selectionScene.confirmFocused();
               }}
             />
           ))}
         </div>
+
+        {/* Left-side action buttons — mirror of the beatmap buttons. */}
+        {leftButtons.map((btn, index) => (
+          <LeftActionButton
+            key={btn.id}
+            yCenter={getLeftButtonYCenter(index, leftButtons.length)}
+            label={btn.label}
+            isFocused={focusedLeftButton === index}
+            isVisible={isVisible}
+            onFocus={() => {
+              selectionScene.setFocused(null);
+              selectionScene.setFocusedLeftButton(index);
+            }}
+            onClick={() => {
+              selectionScene.setFocused(null);
+              selectionScene.setFocusedLeftButton(index);
+              btn.onActivate();
+            }}
+          />
+        ))}
 
         <ScrollSurface
           position="top"
@@ -374,16 +421,6 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
         )}
       </div>
 
-      <motion.button
-        type="button"
-        className="absolute top-6 right-6 pointer-events-auto text-xs uppercase tracking-[0.25em] px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded whitespace-nowrap"
-        initial={false}
-        animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : -12 }}
-        transition={{ duration: PHASE_DURATION_S, ease: [0.4, 0, 0.2, 1] }}
-        onClick={() => setDownloaderOpen(true)}
-      >
-        Download maps
-      </motion.button>
       <BeatmapsetDownloader isVisible={isDownloaderOpen} onClose={() => setDownloaderOpen(false)} />
     </div>
   );
@@ -470,6 +507,70 @@ type ScrollSurfaceProps = {
   active: boolean;
   isVisible: boolean;
   onPress: () => void;
+};
+
+type LeftActionButtonProps = {
+  yCenter: number;
+  label: string;
+  isFocused: boolean;
+  isVisible: boolean;
+  onFocus: () => void;
+  onClick: () => void;
+};
+
+const LeftActionButton = ({
+  yCenter,
+  label,
+  isFocused,
+  isVisible,
+  onFocus,
+  onClick,
+}: LeftActionButtonProps) => {
+  const { top, left, outerWidth, mask, paddingRight } = computeLeftRadialLayout(
+    yCenter,
+    CIRCLE_RADIUS_PX,
+  );
+  return (
+    <div
+      className="absolute"
+      style={{
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${outerWidth}px`,
+        height: `${BUTTON_HEIGHT_PX}px`,
+        maskImage: mask,
+        WebkitMaskImage: mask,
+        maskComposite: "intersect",
+      }}
+    >
+      <motion.button
+        type="button"
+        className={`absolute pointer-events-auto text-white text-right rounded-l-full flex items-center justify-end uppercase tracking-[0.25em] text-sm font-semibold transition-colors ${
+          isFocused ? "bg-white/25" : "bg-white/10"
+        }`}
+        style={{
+          left: 0,
+          top: 0,
+          width: `${BUTTON_WIDTH_PX}px`,
+          height: `${BUTTON_HEIGHT_PX}px`,
+          paddingLeft: "32px",
+          paddingRight: `${paddingRight}px`,
+          border: "2px solid rgba(255,255,255,0.5)",
+        }}
+        initial={false}
+        animate={{
+          x: isVisible ? 0 : LEFT_BUTTON_RETRACT_X,
+          opacity: isVisible ? 1 : 0,
+        }}
+        transition={{ duration: PHASE_DURATION_S, ease: [0.4, 0, 0.2, 1] }}
+        onMouseEnter={onFocus}
+        onFocus={onFocus}
+        onClick={onClick}
+      >
+        {label}
+      </motion.button>
+    </div>
+  );
 };
 
 const ScrollSurface = ({ position, active, isVisible, onPress }: ScrollSurfaceProps) => {

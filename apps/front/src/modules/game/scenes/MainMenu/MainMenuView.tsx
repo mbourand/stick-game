@@ -6,11 +6,17 @@ import { settings } from "@/modules/settings/Settings";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import type { SceneUIComponent } from "../Scene";
 import { useScenePhase } from "../useScene";
-import { BUTTON_HEIGHT_PX, BUTTON_WIDTH_PX, BUTTONS, getButtonYOffsetFromCenter } from "./layout";
+import {
+  BUTTON_HEIGHT_PX,
+  BUTTON_RETRACT_X,
+  BUTTON_WIDTH_PX,
+  BUTTONS,
+  getButtonYOffsetFromCenter,
+  OUTER_LEFT_EXTRA_PX,
+} from "./layout";
 import type { MainMenuScene } from "./MainMenuScene";
 
 const CIRCLE_DIAMETER = GAME_CIRCLE_DISPLAYED_RADIUS * 2;
-const BUTTON_RETRACT_X = -260;
 const BUTTON_STAGGER_S = 0.04;
 const PHASE_DURATION_S = 0.32;
 
@@ -112,54 +118,74 @@ const RadialButton = ({
 }) => {
   const r = GAME_CIRCLE_DISPLAYED_RADIUS;
 
-  const farY = Math.abs(yCenter - r) + BUTTON_HEIGHT_PX / 2;
-  const buttonLeftX = r + Math.sqrt(Math.max(0, r * r - farY * farY));
-  const buttonTopY = yCenter - BUTTON_HEIGHT_PX / 2;
+  // `yCenter` is parent-relative (parent's top-left = circle bbox top-left).
+  const yCenterFromCircleCenter = yCenter - r;
+  const halfH = BUTTON_HEIGHT_PX / 2;
+  const farY = Math.abs(yCenterFromCircleCenter) + halfH;
+  const horizontalRadiusAtFarY = Math.sqrt(Math.max(0, r * r - farY * farY));
 
-  const maskCenterX = r - buttonLeftX;
-  const maskCenterY = r - buttonTopY;
+  // Outer wrapper carries the screen-anchored mask and extends
+  // OUTER_LEFT_EXTRA_PX past the inner button on its LEFT — that way the
+  // inner can translateX leftward (retract) and slide under the circle
+  // instead of overlapping it.
+  const outerLeft = r + horizontalRadiusAtFarY - OUTER_LEFT_EXTRA_PX;
+  const outerTop = yCenter - halfH;
+  const outerWidth = BUTTON_WIDTH_PX + OUTER_LEFT_EXTRA_PX;
+
+  const maskCenterX = OUTER_LEFT_EXTRA_PX - horizontalRadiusAtFarY;
+  const maskCenterY = halfH - yCenterFromCircleCenter;
   const maskValue = `radial-gradient(circle at ${maskCenterX}px ${maskCenterY}px, transparent ${r - 0.5}px, black ${r + 0.5}px)`;
 
   const yClosestToMaskY = Math.max(0, Math.min(BUTTON_HEIGHT_PX, maskCenterY));
   const yDelta = yClosestToMaskY - maskCenterY;
   const maxHiddenX = maskCenterX + Math.sqrt(Math.max(0, r * r - yDelta * yDelta));
-  const paddingLeft = Math.max(24, maxHiddenX + 24);
+  const paddingLeft = Math.max(24, maxHiddenX - OUTER_LEFT_EXTRA_PX + 24);
 
   return (
-    <motion.button
-      type="button"
-      className={`absolute pointer-events-auto text-white text-xl font-bold uppercase tracking-[0.3em] rounded-r-full flex items-center justify-between transition-colors ${
-        isFocused ? "bg-white/25" : "bg-white/10"
-      }`}
+    <div
+      className="absolute"
       style={{
-        left: `${buttonLeftX}px`,
-        top: `${buttonTopY}px`,
-        width: `${BUTTON_WIDTH_PX}px`,
+        left: `${outerLeft}px`,
+        top: `${outerTop}px`,
+        width: `${outerWidth}px`,
         height: `${BUTTON_HEIGHT_PX}px`,
-        paddingLeft: `${paddingLeft}px`,
-        paddingRight: "44px",
         maskImage: maskValue,
         WebkitMaskImage: maskValue,
-        border: "2px solid rgba(255,255,255,0.5)",
       }}
-      initial={false}
-      animate={{
-        x: isVisible ? 0 : BUTTON_RETRACT_X,
-        opacity: isVisible ? 1 : 0,
-      }}
-      transition={{
-        duration: PHASE_DURATION_S,
-        ease: [0.4, 0, 0.2, 1],
-        delay: isVisible ? index * BUTTON_STAGGER_S : 0,
-      }}
-      onMouseEnter={onFocus}
-      onMouseLeave={onBlur}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      onClick={onClick}
     >
-      <span>{label}</span>
-      <span className="w-7 h-7 rounded-full border border-white/40" aria-hidden />
-    </motion.button>
+      <motion.button
+        type="button"
+        className={`absolute pointer-events-auto text-white text-xl font-bold uppercase tracking-[0.3em] rounded-r-full flex items-center justify-between transition-colors ${
+          isFocused ? "bg-white/25" : "bg-white/10"
+        }`}
+        style={{
+          right: 0,
+          top: 0,
+          width: `${BUTTON_WIDTH_PX}px`,
+          height: `${BUTTON_HEIGHT_PX}px`,
+          paddingLeft: `${paddingLeft}px`,
+          paddingRight: "44px",
+          border: "2px solid rgba(255,255,255,0.5)",
+        }}
+        initial={false}
+        animate={{
+          x: isVisible ? 0 : BUTTON_RETRACT_X,
+          opacity: isVisible ? 1 : 0,
+        }}
+        transition={{
+          duration: PHASE_DURATION_S,
+          ease: [0.4, 0, 0.2, 1],
+          delay: isVisible ? index * BUTTON_STAGGER_S : 0,
+        }}
+        onMouseEnter={onFocus}
+        onMouseLeave={onBlur}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        onClick={onClick}
+      >
+        <span>{label}</span>
+        <span className="w-7 h-7 rounded-full border border-white/40" aria-hidden />
+      </motion.button>
+    </div>
   );
 };

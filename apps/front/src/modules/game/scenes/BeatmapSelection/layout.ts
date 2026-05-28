@@ -9,6 +9,20 @@ export const VERTICAL_PITCH_PX = BUTTON_HEIGHT_PX + BUTTON_Y_GAP_PX;
 export const CIRCLE_RADIUS_PX = BEATMAP_SELECTION_CIRCLE_RADIUS;
 
 /**
+ * Extra width the radial-button's outer wrapper carries on its LEFT side, so
+ * the inner button can translateX leftward (during the retract animation) and
+ * still be enclosed by the wrapper — the wrapper holds the screen-anchored
+ * mask, so the inner sliding past it is what produces the "clip under the
+ * circle" effect.
+ *
+ * Must be at least |BUTTON_RETRACT_X|.
+ */
+export const OUTER_LEFT_EXTRA_PX = 260;
+
+/** Inner translateX during the retract / re-enter animation. */
+export const BUTTON_RETRACT_X = -OUTER_LEFT_EXTRA_PX;
+
+/**
  * Stick magnitude required for any input to register. Anything below counts as
  * a resting stick.
  */
@@ -45,38 +59,47 @@ export function getVisibleIndexRange(
 }
 
 /**
- * Writes the radial-button layout (position relative to the circle bbox, mask
- * cut-out, padding-left to keep content past the masked portion) directly onto
- * a DOM element. Called every frame from the view's `useFrame` so the buttons
- * follow the smooth `scrollOffset` without React re-renders.
+ * Writes the radial-button layout (outer position + screen-anchored mask,
+ * inner padding-left) directly onto DOM elements. Called every frame from the
+ * view's `useFrame` so the buttons follow the smooth `scrollOffset` without
+ * React re-renders.
  *
  * `yCenter` is the button centre's vertical offset from the circle's centre,
  * in screen pixels (negative = above, positive = below).
+ *
+ * `outer` is the static wrapper (carries the mask + position). Its first
+ * element child is expected to be the inner button; its padding-left is
+ * computed so visible content stays out of the masked area.
  */
-export function applyRadialLayout(el: HTMLElement, yCenter: number, r: number): void {
+export function applyRadialLayout(outer: HTMLElement, yCenter: number, r: number): void {
   const halfH = BUTTON_HEIGHT_PX / 2;
   const farY = Math.abs(yCenter) + halfH;
   const horizontalRadiusAtFarY = Math.sqrt(Math.max(0, r * r - farY * farY));
 
+  // Outer extends OUTER_LEFT_EXTRA_PX past the inner button on the LEFT, so
+  // the inner can translateX(-OUTER_LEFT_EXTRA_PX) and stay enclosed.
   const top = r + yCenter - halfH;
-  const left = r + horizontalRadiusAtFarY;
+  const left = r + horizontalRadiusAtFarY - OUTER_LEFT_EXTRA_PX;
 
-  // Mask centre, expressed in button-local coords (button's top-left is origin).
-  const maskCenterX = -horizontalRadiusAtFarY;
+  // Mask centre, expressed in outer-local coords (outer's top-left = origin).
+  const maskCenterX = OUTER_LEFT_EXTRA_PX - horizontalRadiusAtFarY;
   const maskCenterY = halfH - yCenter;
   const mask = `radial-gradient(circle at ${maskCenterX}px ${maskCenterY}px, transparent ${r - 0.5}px, black ${r + 0.5}px)`;
 
-  // Furthest the circle reaches into the button — that's where content must
-  // start to avoid being clipped by the mask.
+  // Furthest the circle's curve reaches into the visible inner button — that's
+  // where content must start to avoid being clipped by the mask in the static
+  // (translateX === 0) state.
   const closestRowY = Math.max(0, Math.min(BUTTON_HEIGHT_PX, maskCenterY));
   const yDelta = closestRowY - maskCenterY;
   const maxHiddenX = maskCenterX + Math.sqrt(Math.max(0, r * r - yDelta * yDelta));
-  const paddingLeft = Math.max(28, maxHiddenX + 28);
+  const paddingLeft = Math.max(28, maxHiddenX - OUTER_LEFT_EXTRA_PX + 28);
 
-  const style = el.style;
-  style.top = `${top}px`;
-  style.left = `${left}px`;
-  style.maskImage = mask;
-  style.webkitMaskImage = mask;
-  style.paddingLeft = `${paddingLeft}px`;
+  const outerStyle = outer.style;
+  outerStyle.top = `${top}px`;
+  outerStyle.left = `${left}px`;
+  outerStyle.maskImage = mask;
+  outerStyle.webkitMaskImage = mask;
+
+  const inner = outer.firstElementChild;
+  if (inner instanceof HTMLElement) inner.style.paddingLeft = `${paddingLeft}px`;
 }

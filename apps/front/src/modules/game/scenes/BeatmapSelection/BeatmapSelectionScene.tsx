@@ -33,6 +33,14 @@ const PREVIEW_AUDIO_ID = "beatmap_preview_audio";
 const PREVIEW_AUDIO_VOLUME = 0.7;
 const BACKGROUND_CROSSFADE_MS = 300;
 
+/**
+ * Stick.x must commit at least this far to one side before we switch focus
+ * between the left-action and right-beatmap columns. Pure-vertical pushes
+ * fall in the dead zone in between, so the user can scan up/down without
+ * accidentally hopping sides.
+ */
+const SIDE_COMMIT_THRESHOLD = 0.3;
+
 type BackgroundLayer = { container: Container; entity: BackgroundEntity };
 
 export class BeatmapSelectionScene extends Scene {
@@ -65,6 +73,10 @@ export class BeatmapSelectionScene extends Scene {
   private hasPickedInitialFocus = false;
 
   private leaderboardTab: LeaderboardTab = "global";
+
+  private leftButtonCount = 0;
+  private focusedLeftButton: number | null = null;
+  private leftConfirmHandler: ((index: number) => void) | null = null;
 
   constructor(engine: Engine) {
     super(engine);
@@ -174,7 +186,32 @@ export class BeatmapSelectionScene extends Scene {
     this.setLeaderboardTab(LEADERBOARD_TABS[next]);
   }
 
+  public setLeftButtonCount(count: number): void {
+    if (this.leftButtonCount === count) return;
+    this.leftButtonCount = count;
+    if (this.focusedLeftButton !== null && this.focusedLeftButton >= count) {
+      this.focusedLeftButton = null;
+    }
+    this.notify();
+  }
+
+  public setLeftConfirmHandler(handler: ((index: number) => void) | null): void {
+    this.leftConfirmHandler = handler;
+  }
+
+  public getFocusedLeftButton = (): number | null => this.focusedLeftButton;
+
+  public setFocusedLeftButton(index: number | null): void {
+    if (this.focusedLeftButton === index) return;
+    this.focusedLeftButton = index;
+    this.notify();
+  }
+
   public async confirmFocused(): Promise<void> {
+    if (this.focusedLeftButton !== null) {
+      this.leftConfirmHandler?.(this.focusedLeftButton);
+      return;
+    }
     if (this.focusedIndex === null || !this.resolver) return;
     const parsed = await this.resolver(this.focusedIndex);
     if (parsed) this.playMap(parsed);
@@ -225,11 +262,31 @@ export class BeatmapSelectionScene extends Scene {
 
     this.setScrollZone(null);
 
-    // Buttons live on the right of the circle — only point at them with x > 0.
-    if (stick.x <= 0) return;
+    if (stick.x > SIDE_COMMIT_THRESHOLD) {
+      // Right side: beatmap buttons.
+      this.setFocusedLeftButton(null);
+      const picked = this.pickButtonAtY(stickY);
+      if (picked !== null) this.setFocused(picked);
+    } else if (stick.x < -SIDE_COMMIT_THRESHOLD) {
+      // Left side: action buttons.
+      if (this.leftButtonCount === 0) return;
+      this.setFocused(null);
+      const picked = this.pickLeftButtonAtY(stickY);
+      if (picked !== null) this.setFocusedLeftButton(picked);
+    }
+    // Otherwise: pure-vertical push, keep current focus.
+  }
 
-    const picked = this.pickButtonAtY(stickY);
-    if (picked !== null) this.setFocused(picked);
+  private pickLeftButtonAtY(targetY: number): number | null {
+    if (this.leftButtonCount === 0) return null;
+    // Layout mirrors getLeftButtonYCenter — buttons distributed symmetrically
+    // around y = 0 with VERTICAL_PITCH_PX between them.
+    const offset = (this.leftButtonCount - 1) / 2;
+    const candidate = Math.round(targetY / VERTICAL_PITCH_PX + offset);
+    if (candidate < 0 || candidate >= this.leftButtonCount) return null;
+    const candidateY = (candidate - offset) * VERTICAL_PITCH_PX;
+    if (Math.abs(candidateY - targetY) > BUTTON_HEIGHT_PX / 2) return null;
+    return candidate;
   }
 
   private applyContinuousScroll(stickY: number, direction: 1 | -1, dt: number): void {

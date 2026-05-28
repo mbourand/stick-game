@@ -84,7 +84,16 @@ export function applyRadialLayout(outer: HTMLElement, yCenter: number, r: number
   // Mask centre, expressed in outer-local coords (outer's top-left = origin).
   const maskCenterX = OUTER_LEFT_EXTRA_PX - horizontalRadiusAtFarY;
   const maskCenterY = halfH - yCenter;
-  const mask = `radial-gradient(circle at ${maskCenterX}px ${maskCenterY}px, transparent ${r - 0.5}px, black ${r + 0.5}px)`;
+  const radialMask = `radial-gradient(circle at ${maskCenterX}px ${maskCenterY}px, transparent ${r - 0.5}px, black ${r + 0.5}px)`;
+
+  // Vertical band corresponding to the circle's vertical extent in outer-local
+  // coords. Composited with the radial mask via `mask-composite: intersect` so
+  // buttons that scroll past the circle's top/bottom get hard-clipped at the
+  // ring edge instead of floating in the void.
+  const verticalTop = maskCenterY - r;
+  const verticalBottom = maskCenterY + r;
+  const bandMask = `linear-gradient(to bottom, transparent ${verticalTop}px, black ${verticalTop}px, black ${verticalBottom}px, transparent ${verticalBottom}px)`;
+  const mask = `${radialMask}, ${bandMask}`;
 
   // Furthest the circle's curve reaches into the visible inner button — that's
   // where content must start to avoid being clipped by the mask in the static
@@ -99,6 +108,7 @@ export function applyRadialLayout(outer: HTMLElement, yCenter: number, r: number
   outerStyle.left = `${left}px`;
   outerStyle.maskImage = mask;
   outerStyle.webkitMaskImage = mask;
+  outerStyle.maskComposite = "intersect";
 
   const inner = outer.firstElementChild;
   if (inner instanceof HTMLElement) inner.style.paddingLeft = `${paddingLeft}px`;

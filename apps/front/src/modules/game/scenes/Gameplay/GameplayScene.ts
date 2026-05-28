@@ -137,7 +137,7 @@ export class GameplayScene extends Scene {
     this.root.add(this.circle);
     this.root.add(this.notesContainer);
     this.root.add(this.fxContainer);
-    this.root.add(new StickDotsEntity(this.inputSystem));
+    this.root.add(new StickDotsEntity(this.inputSystem, this.circle));
     // NoteSpawner is added after the clock is scheduled (in onEntered).
   }
 

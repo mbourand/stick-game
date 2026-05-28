@@ -28,7 +28,7 @@ export class MainMenuScene extends Scene {
     super(engine);
     this.circle = engine.getPersistentRoot().circle;
     this.root.add(this.circle);
-    this.root.add(new StickDotsEntity(this.inputSystem));
+    this.root.add(new StickDotsEntity(this.inputSystem, this.circle));
   }
 
   public override onEntered() {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import type { Scene } from "./Scene";
 import type { SceneManager } from "./SceneManager";
 
 export function useTopScene(sceneManager: SceneManager) {
@@ -31,4 +32,9 @@ export function useTransition(sceneManager: SceneManager) {
     sceneManager.getTransition,
     sceneManager.getTransition,
   );
+}
+
+/** Live phase of a scene (inactive / entering / active / exiting). */
+export function useScenePhase(scene: Scene) {
+  return useSyncExternalStore(scene.subscribePhase, scene.getPhase, scene.getPhase);
 }

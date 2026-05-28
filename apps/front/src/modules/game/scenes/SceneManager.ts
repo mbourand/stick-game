@@ -50,9 +50,12 @@ export class SceneManager {
 
   public pushScene(scene: Scene) {
     if (this.isTransitioning) return;
-    this.getTopScene()?.deactivate();
+    const previous = this.getTopScene();
+    previous?.deactivate();
+    previous?.setPhase("inactive");
     this.sceneStack.push(scene);
     scene.activate();
+    scene.setPhase("active");
     this.emit();
   }
 
@@ -61,10 +64,12 @@ export class SceneManager {
     const previous = this.sceneStack.pop();
     if (previous) {
       previous.deactivate();
+      previous.setPhase("inactive");
       void previous.onDestroy();
     }
     this.sceneStack.push(scene);
     scene.activate();
+    scene.setPhase("active");
     this.emit();
   }
 
@@ -77,8 +82,11 @@ export class SceneManager {
       await top.transitionOut();
       this.sceneStack.pop();
       top.deactivate();
+      top.setPhase("inactive");
       void top.onDestroy();
-      this.getTopScene()?.activate();
+      const revealed = this.getTopScene();
+      revealed?.activate();
+      revealed?.setPhase("active");
       this.emit();
     } finally {
       this.isTransitioning = false;
@@ -152,6 +160,8 @@ export class SceneManager {
     try {
       await this.persistentRoot.transitions.play(playable);
       finalize();
+      spec.from?.setPhase("inactive");
+      spec.to?.setPhase("active");
     } finally {
       this.transition = null;
       this.isTransitioning = false;
@@ -175,9 +185,14 @@ export class SceneManager {
 
     const wasTop = index === this.sceneStack.length - 1;
     if (wasTop) scene.deactivate();
+    scene.setPhase("inactive");
     void scene.onDestroy();
     this.sceneStack.splice(index, 1);
-    if (wasTop) this.getTopScene()?.activate();
+    if (wasTop) {
+      const revealed = this.getTopScene();
+      revealed?.activate();
+      revealed?.setPhase("active");
+    }
     this.emit();
   }
 

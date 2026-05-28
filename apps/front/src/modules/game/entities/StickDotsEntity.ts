@@ -1,6 +1,6 @@
+import type { CircleLayer } from "../engine/layers/CircleLayer";
 import type { Entity } from "../engine/Entity";
 import type { InputSystem } from "../input/InputSystem";
-import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../utils/constants";
 
 type Side = "left" | "right";
 
@@ -16,9 +16,11 @@ const SIDE_DOT_COLOR: Record<Side, string> = {
 
 export class StickDotsEntity implements Entity {
   private inputSystem: InputSystem;
+  private circle: CircleLayer;
 
-  constructor(inputSystem: InputSystem) {
+  constructor(inputSystem: InputSystem, circle: CircleLayer) {
     this.inputSystem = inputSystem;
+    this.circle = circle;
   }
 
   public update(): void {}
@@ -30,8 +32,9 @@ export class StickDotsEntity implements Entity {
 
   private drawSide(ctx: CanvasRenderingContext2D, side: Side) {
     const stick = this.inputSystem.getStick(side);
-    const tipX = stick.x * GAME_CIRCLE_DISPLAYED_RADIUS;
-    const tipY = stick.y * GAME_CIRCLE_DISPLAYED_RADIUS;
+    const radius = this.circle.radius;
+    const tipX = stick.x * radius;
+    const tipY = stick.y * radius;
 
     ctx.strokeStyle = SIDE_LINE_COLOR[side];
     ctx.lineWidth = 6;

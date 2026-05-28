@@ -58,13 +58,16 @@ export class BeatmapSelectionScene extends Scene {
   private incomingBackground: BackgroundLayer | null = null;
   private incomingFadeElapsedMs = 0;
 
+  /** One-shot guard: pick a random map the first time the list arrives. */
+  private hasPickedInitialFocus = false;
+
   constructor(engine: Engine) {
     super(engine);
     this.circle = engine.getPersistentRoot().circle;
     // Inner content (background) renders behind the circle, like in gameplay.
     this.root.add(this.innerContainer);
     this.root.add(this.circle);
-    this.root.add(new StickDotsEntity(this.inputSystem));
+    this.root.add(new StickDotsEntity(this.inputSystem, this.circle));
   }
 
   public override onEntered() {
@@ -104,10 +107,18 @@ export class BeatmapSelectionScene extends Scene {
   public setBeatmapCount(count: number): void {
     if (this.beatmapCount === count) return;
     this.beatmapCount = count;
-    const maxOffset = Math.max(0, count - 1);
-    this.scrollOffset = clamp(this.scrollOffset, 0, maxOffset);
-    if (this.focusedIndex !== null && this.focusedIndex >= count) {
-      this.focusedIndex = null;
+
+    if (count > 0 && !this.hasPickedInitialFocus) {
+      const randomIndex = Math.floor(Math.random() * count);
+      this.focusedIndex = randomIndex;
+      this.scrollOffset = randomIndex;
+      this.hasPickedInitialFocus = true;
+    } else {
+      const maxOffset = Math.max(0, count - 1);
+      this.scrollOffset = clamp(this.scrollOffset, 0, maxOffset);
+      if (this.focusedIndex !== null && this.focusedIndex >= count) {
+        this.focusedIndex = null;
+      }
     }
     this.notify();
   }

@@ -161,6 +161,8 @@ export class BeatmapSelectionScene extends Scene {
       if (this.uiContext.blocked) return;
       this.toggleLeaderboardTab();
     });
+    this.onActionRepeat("nav-up", () => this.navByDPad(-1));
+    this.onActionRepeat("nav-down", () => this.navByDPad(+1));
     // Exit transitions fade innerContainer to 0; reset before showing again.
     this.innerContainer.alpha = 1;
     // Coming back from scores etc.: re-arm the preview for the still-focused map.
@@ -217,6 +219,38 @@ export class BeatmapSelectionScene extends Scene {
     if (sameMedia(this.currentMedia, media)) return;
     this.currentMedia = media;
     void this.refreshPreviewMedia(++this.mediaGeneration);
+  }
+
+  /**
+   * D-pad list navigation. Operates on whichever column is currently focused:
+   * if the user is on the left action column, moves within it; otherwise
+   * moves within the beatmap list and scrolls the visible window to track
+   * the new focus. No-op while a modal owns input.
+   */
+  private navByDPad(delta: -1 | 1): void {
+    if (this.uiContext.blocked) return;
+
+    const leftFocused = this.focusedLeftButton.get();
+    if (leftFocused !== null) {
+      const count = this.uiContext.leftActions.count;
+      if (count === 0) return;
+      const next = Math.max(0, Math.min(count - 1, leftFocused + delta));
+      if (next !== leftFocused) this.focusedLeftButton.set(next);
+      return;
+    }
+
+    if (this.beatmapCount === 0) return;
+    const focused = this.focusedIndex.get();
+    if (focused === null) {
+      this.focusedIndex.set(0);
+      this.scrollTo(0);
+      return;
+    }
+    const next = Math.max(0, Math.min(this.beatmapCount - 1, focused + delta));
+    if (next !== focused) {
+      this.focusedIndex.set(next);
+      this.scrollTo(next);
+    }
   }
 
   public scrollBy(deltaItems: number): void {

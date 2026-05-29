@@ -3,8 +3,9 @@
 import { motion } from "motion/react";
 import { useScenePresenceMotion } from "../../engine/animation/scenePresence";
 import type { SceneUIComponent } from "../Scene";
+import type { PauseScene } from "./PauseScene";
 
-export const PauseView: SceneUIComponent = ({ scene: _scene }) => {
+export const PauseView: SceneUIComponent<PauseScene> = ({ scene: _scene }) => {
   const presenceMotion = useScenePresenceMotion();
 
   return (

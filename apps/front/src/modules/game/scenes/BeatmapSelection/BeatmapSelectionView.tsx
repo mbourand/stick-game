@@ -43,8 +43,7 @@ const revokeMediaUrls = ({ audioUrl, backgroundUrl }: MediaUrls) => {
   URL.revokeObjectURL(backgroundUrl);
 };
 
-export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
-  const selectionScene = scene as BeatmapSelectionScene;
+export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ scene }) => {
   const isVisible = useScenePresence() === "in";
   const searchBarMotion = useScenePresenceMotion({ y: -12 });
   const emptyStateMotion = useScenePresenceMotion();
@@ -110,7 +109,7 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
   }, []);
 
   useEffect(() => {
-    selectionScene.setBeatmapResolver(async (index) => {
+    scene.setBeatmapResolver(async (index) => {
       const beatmap = filteredBeatmaps[index];
       if (!beatmap) return null;
       try {
@@ -125,21 +124,21 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
         return null;
       }
     });
-    return () => selectionScene.setBeatmapResolver(null);
-  }, [filteredBeatmaps, resolveMediaUrls, selectionScene]);
+    return () => scene.setBeatmapResolver(null);
+  }, [filteredBeatmaps, resolveMediaUrls, scene]);
 
-  const focusedIndex = useStore(selectionScene.focusedIndex);
-  const scrollZone = useStore(selectionScene.scrollZone);
-  const leaderboardTab = useStore(selectionScene.leaderboardTab);
-  const focusedLeftButton = useStore(selectionScene.focusedLeftButton);
+  const focusedIndex = useStore(scene.focusedIndex);
+  const scrollZone = useStore(scene.scrollZone);
+  const leaderboardTab = useStore(scene.leaderboardTab);
+  const focusedLeftButton = useStore(scene.focusedLeftButton);
 
   // Re-render the virtualization window only when the integer scroll bucket
   // changes. Continuous motion in between is driven by each button's own
   // useTransform on scene.scrollOffset — no React render per frame.
   const [windowBucket, setWindowBucket] = useState(
-    () => Math.floor(selectionScene.scrollOffset.get()),
+    () => Math.floor(scene.scrollOffset.get()),
   );
-  useMotionValueEvent(selectionScene.scrollOffset, "change", (latest) => {
+  useMotionValueEvent(scene.scrollOffset, "change", (latest) => {
     const bucket = Math.floor(latest);
     setWindowBucket((prev) => (prev === bucket ? prev : bucket));
   });
@@ -175,18 +174,18 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
   // nothing, we skip entirely so the previous focus + preview stay put.
   useEffect(() => {
     if (isNoMatch) return;
-    selectionScene.setBeatmapCount(filteredBeatmaps.length);
+    scene.setBeatmapCount(filteredBeatmaps.length);
     if (filteredBeatmaps.length === 0) {
-      selectionScene.focusedIndex.set(null);
+      scene.focusedIndex.set(null);
       return;
     }
     const remembered = focusedBeatmapIdRef.current;
     if (remembered === null) return;
     const newIndex = filteredBeatmaps.findIndex((b) => b.idv2 === remembered);
     const target = newIndex >= 0 ? newIndex : 0;
-    selectionScene.focusedIndex.set(target);
-    selectionScene.scrollTo(target);
-  }, [filteredBeatmaps, selectionScene, isNoMatch]);
+    scene.focusedIndex.set(target);
+    scene.scrollTo(target);
+  }, [filteredBeatmaps, scene, isNoMatch]);
 
   // Keep the remembered id in sync with the actual focus. Declared AFTER the
   // reconciliation so that, on filter changes, reconciliation runs first and
@@ -208,38 +207,19 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
 
   useEffect(() => {
     if (!previewBeatmap) {
-      selectionScene.setFocusedBeatmapMedia(null);
+      scene.setFocusedBeatmapMedia(null);
       return;
     }
     let cancelled = false;
     void (async () => {
       const urls = await resolveMediaUrls(previewBeatmap);
       if (cancelled || !urls) return;
-      selectionScene.setFocusedBeatmapMedia(urls);
+      scene.setFocusedBeatmapMedia(urls);
     })();
     return () => {
       cancelled = true;
     };
-  }, [previewBeatmap, resolveMediaUrls, selectionScene]);
-
-
-  // Hand input ownership to whichever modal is open: scene's gamepad nav +
-  // confirm + leaderboard cycling stop firing, and B routes to closing the
-  // modal first instead of popping the scene.
-  useEffect(() => {
-    selectionScene.setInputBlocked(isModalOpen);
-    if (!isModalOpen) {
-      selectionScene.setModalBackHandler(null);
-      return;
-    }
-    selectionScene.setModalBackHandler(() => {
-      if (isFilterPanelOpen) setFilterPanelOpen(false);
-      else if (isDownloaderOpen) setDownloaderOpen(false);
-    });
-    return () => {
-      selectionScene.setModalBackHandler(null);
-    };
-  }, [isModalOpen, isFilterPanelOpen, isDownloaderOpen, selectionScene]);
+  }, [previewBeatmap, resolveMediaUrls, scene]);
 
   const leftButtons = useMemo<{ id: string; label: string; onActivate: () => void }[]>(
     () => [
@@ -249,15 +229,26 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
     [setFilterPanelOpen, setDownloaderOpen],
   );
 
+  // Push everything the scene needs to know about UI-owned input routing in
+  // one shot: which modal is open (blocks gamepad nav + confirm), how `back`
+  // should behave (close the modal vs. pop the scene), and the left-column
+  // actions (count for stick picking, onConfirm for activation).
   useEffect(() => {
-    selectionScene.setLeftButtonCount(leftButtons.length);
-    selectionScene.setLeftConfirmHandler((index) => {
-      leftButtons[index]?.onActivate();
+    scene.setUIContext({
+      blocked: isModalOpen,
+      backHandler: isModalOpen
+        ? () => {
+            if (isFilterPanelOpen) setFilterPanelOpen(false);
+            else if (isDownloaderOpen) setDownloaderOpen(false);
+          }
+        : null,
+      leftActions: {
+        count: leftButtons.length,
+        onConfirm: (index) => leftButtons[index]?.onActivate(),
+      },
     });
-    return () => {
-      selectionScene.setLeftConfirmHandler(null);
-    };
-  }, [leftButtons, selectionScene]);
+    return () => scene.resetUIContext();
+  }, [isModalOpen, isFilterPanelOpen, isDownloaderOpen, leftButtons, scene]);
 
   return (
     <div className="absolute inset-0 text-white select-none" style={{ fontFamily: "Rostex" }}>
@@ -286,7 +277,7 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
             <BeatmapRadialButton
               key={beatmap.idv2}
               index={index}
-              scrollOffset={selectionScene.scrollOffset}
+              scrollOffset={scene.scrollOffset}
               staggerSlot={index - firstIndex}
               title={beatmap.title}
               artist={beatmap.artist}
@@ -294,13 +285,13 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
               difficulty={beatmap.difficulty}
               isFocused={focusedIndex === index}
               onFocus={() => {
-                selectionScene.focusedLeftButton.set(null);
-                selectionScene.focusedIndex.set(index);
+                scene.focusedLeftButton.set(null);
+                scene.focusedIndex.set(index);
               }}
               onClick={() => {
-                selectionScene.focusedLeftButton.set(null);
-                selectionScene.focusedIndex.set(index);
-                void selectionScene.confirmFocused();
+                scene.focusedLeftButton.set(null);
+                scene.focusedIndex.set(index);
+                void scene.confirmFocused();
               }}
             />
           ))}
@@ -314,12 +305,12 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
             label={btn.label}
             isFocused={focusedLeftButton === index}
             onFocus={() => {
-              selectionScene.focusedIndex.set(null);
-              selectionScene.focusedLeftButton.set(index);
+              scene.focusedIndex.set(null);
+              scene.focusedLeftButton.set(index);
             }}
             onClick={() => {
-              selectionScene.focusedIndex.set(null);
-              selectionScene.focusedLeftButton.set(index);
+              scene.focusedIndex.set(null);
+              scene.focusedLeftButton.set(index);
               btn.onActivate();
             }}
           />
@@ -328,12 +319,12 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
         <ScrollSurface
           position="top"
           active={scrollZone === "top"}
-          onPress={() => selectionScene.scrollBy(-3)}
+          onPress={() => scene.scrollBy(-3)}
         />
         <ScrollSurface
           position="bottom"
           active={scrollZone === "bottom"}
-          onPress={() => selectionScene.scrollBy(+3)}
+          onPress={() => scene.scrollBy(+3)}
         />
 
         {/* Search bar — top of the circle. */}

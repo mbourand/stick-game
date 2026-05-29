@@ -5,9 +5,8 @@ import { useScenePresenceMotion } from "../../engine/animation/scenePresence";
 import type { SceneUIComponent } from "../Scene";
 import type { ScoresScene } from "./ScoresScene";
 
-export const ScoresView: SceneUIComponent = ({ scene }) => {
-  const scoresScene = scene as ScoresScene;
-  const sc = scoresScene.scoreCounter;
+export const ScoresView: SceneUIComponent<ScoresScene> = ({ scene }) => {
+  const sc = scene.scoreCounter;
   const presenceMotion = useScenePresenceMotion({ y: -40 });
 
   return (

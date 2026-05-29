@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useScenePresenceMotion } from "../../engine/animation/scenePresence";
+import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 
 type ScrollSurfaceProps = {
   position: "top" | "bottom";

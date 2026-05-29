@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useScenePresenceMotion } from "../../engine/animation/scenePresence";
+import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import type { SceneUIComponent } from "../Scene";
 import type { PauseScene } from "./PauseScene";
 

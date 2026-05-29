@@ -2,7 +2,7 @@
 
 import { motion, type MotionValue } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
-import { useScenePresenceMotion } from "../../engine/animation/scenePresence";
+import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 
 /** Either a fixed value or a MotionValue — both are accepted directly by motion's `style`. */
 type Numeric = number | MotionValue<number>;

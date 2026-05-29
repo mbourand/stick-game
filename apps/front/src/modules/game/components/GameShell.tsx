@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ScenePresenceProvider } from "../engine/animation/scenePresence";
 import { Engine } from "../engine/Engine";
 import { EngineContext } from "../engine/EngineContext";
 import { MainMenuScene } from "../scenes/MainMenu/MainMenuScene";
@@ -75,7 +76,9 @@ const SceneUIOverlay = ({ engine }: { engine: Engine }) => {
         const UI = scene.UI;
         return (
           <div key={scene.id} className="absolute inset-0 pointer-events-auto">
-            <UI scene={scene} />
+            <ScenePresenceProvider scene={scene}>
+              <UI scene={scene} />
+            </ScenePresenceProvider>
           </div>
         );
       })}

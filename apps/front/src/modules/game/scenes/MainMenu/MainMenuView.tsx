@@ -1,12 +1,15 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { settings } from "@/modules/settings/Settings";
+import {
+  useScenePresence,
+  useScenePresenceMotion,
+} from "../../engine/animation/scenePresence";
+import { useStore } from "../../engine/state/useStore";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import type { SceneUIComponent } from "../Scene";
-import { useScenePhase } from "../useScene";
-import { BUTTONS, getButtonYOffsetFromCenter, PHASE_DURATION_S } from "./layout";
+import { BUTTONS, getButtonYOffsetFromCenter } from "./layout";
 import type { MainMenuScene } from "./MainMenuScene";
 import { RadialButton } from "./RadialButton";
 
@@ -14,16 +17,13 @@ const CIRCLE_DIAMETER = GAME_CIRCLE_DISPLAYED_RADIUS * 2;
 
 export const MainMenuView: SceneUIComponent = ({ scene }) => {
   const mainMenuScene = scene as MainMenuScene;
-  const focused = useSyncExternalStore(
-    mainMenuScene.subscribe,
-    mainMenuScene.getFocused,
-    mainMenuScene.getFocused,
-  );
-  const phase = useScenePhase(scene);
-  const isVisible = phase === "active" || phase === "entering";
+  const focused = useStore(mainMenuScene.focused);
+  const isVisible = useScenePresence() === "in";
 
   const playerName = settings.get().playerName || "Guest";
   const hint = focused ? BUTTONS.find((b) => b.id === focused)?.hint : null;
+
+  const playerCardMotion = useScenePresenceMotion();
 
   return (
     <div className="absolute inset-0 text-white select-none" style={{ fontFamily: "Rostex" }}>
@@ -47,10 +47,9 @@ export const MainMenuView: SceneUIComponent = ({ scene }) => {
               label={button.label}
               yCenter={yCenter}
               isFocused={focused === button.id}
-              isVisible={isVisible}
-              onFocus={() => mainMenuScene.setFocused(button.id)}
+              onFocus={() => mainMenuScene.focused.set(button.id)}
               onBlur={() => {
-                if (mainMenuScene.getFocused() === button.id) mainMenuScene.setFocused(null);
+                if (mainMenuScene.focused.get() === button.id) mainMenuScene.focused.set(null);
               }}
               onClick={() => mainMenuScene.activateFocused(button.id)}
             />
@@ -59,9 +58,7 @@ export const MainMenuView: SceneUIComponent = ({ scene }) => {
 
         <motion.div
           className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none"
-          initial={false}
-          animate={{ opacity: isVisible ? 1 : 0 }}
-          transition={{ duration: PHASE_DURATION_S, ease: [0.4, 0, 0.2, 1] }}
+          {...playerCardMotion}
         >
           <div className="w-32 h-32 rounded-full bg-white/10 border border-white/20 mb-6" />
           <div className="text-3xl tracking-[0.15em] uppercase">{playerName}</div>

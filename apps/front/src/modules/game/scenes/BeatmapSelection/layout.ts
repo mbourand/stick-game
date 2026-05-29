@@ -1,5 +1,5 @@
 import { BEATMAP_SELECTION_CIRCLE_RADIUS } from "../../utils/constants";
-import { computeRadialButtonLayout } from "../shared/radialButton";
+import { computeRadialButtonLayout } from "../shared/radialButtonLayout";
 
 export const BUTTON_HEIGHT_PX = 92;
 export const BUTTON_WIDTH_PX = 520;
@@ -10,21 +10,14 @@ export const VERTICAL_PITCH_PX = BUTTON_HEIGHT_PX + BUTTON_Y_GAP_PX;
 export const CIRCLE_RADIUS_PX = BEATMAP_SELECTION_CIRCLE_RADIUS;
 
 /**
- * Extra width the radial-button's outer wrapper carries on its LEFT side, so
- * the inner button can translateX leftward (during the retract animation) and
- * still be enclosed by the wrapper — the wrapper holds the screen-anchored
- * mask, so the inner sliding past it is what produces the "clip under the
- * circle" effect.
- *
- * Must be at least |BUTTON_RETRACT_X|.
+ * Extra room on the curve-facing side of each radial-button's outer wrapper.
+ * Doubles as the retract distance — the shared RadialButton derives the
+ * inner translateX from `outerWidth - buttonWidth`, so this value IS the
+ * magnitude the inner button slides under the curve on exit.
  */
 export const OUTER_LEFT_EXTRA_PX = 260;
 
-/** Inner translateX during the retract / re-enter animation. */
-export const BUTTON_RETRACT_X = -OUTER_LEFT_EXTRA_PX;
-
 export const BUTTON_STAGGER_S = 0.025;
-export const PHASE_DURATION_S = 0.32;
 
 /**
  * Stick magnitude required for any input to register. Anything below counts as
@@ -63,41 +56,19 @@ export function getVisibleIndexRange(
 }
 
 /**
- * Writes the radial-button layout (outer position + screen-anchored mask,
- * inner padding-left) directly onto DOM elements. Called every frame from the
- * view's `useFrame` so the buttons follow the smooth `scrollOffset` without
- * React re-renders.
+ * Single screen-anchored mask applied to the scrolling list container.
+ * Hides anything that falls inside the ring's radius — buttons sliding past
+ * the curve clip naturally, with no per-button mask string to recompute.
+ * Pair with `overflow: hidden` on the container so buttons that scroll above
+ * or below the ring's vertical extent are clipped too.
  *
- * `yCenter` is the button centre's vertical offset from the circle's centre,
- * in screen pixels (negative = above, positive = below).
- *
- * `outer` is the static wrapper (carries the mask + position). Its first
- * element child is expected to be the inner button; its padding-left is
- * computed so visible content stays out of the masked area.
+ * The mask centre is pinned in pixels (not 50%) because the container is
+ * widened past the ring's right edge to fit the buttons' full extent — the
+ * gradient must stay aligned to the ring, not to the container.
  */
-export function applyRadialLayout(outer: HTMLElement, yCenter: number, r: number): void {
-  const { top, left, mask, paddingNear } = computeRadialButtonLayout({
-    side: "right",
-    yCenter,
-    radius: r,
-    buttonW: BUTTON_WIDTH_PX,
-    buttonH: BUTTON_HEIGHT_PX,
-    outerExtraPx: OUTER_LEFT_EXTRA_PX,
-  });
-
-  const outerStyle = outer.style;
-  outerStyle.top = `${top}px`;
-  outerStyle.left = `${left}px`;
-  outerStyle.maskImage = mask;
-  outerStyle.webkitMaskImage = mask;
-  outerStyle.maskComposite = "intersect";
-
-  const inner = outer.firstElementChild;
-  if (inner instanceof HTMLElement) inner.style.paddingLeft = `${paddingNear}px`;
-}
-
-/** Inner translate for left-side buttons retracting into the circle (positive: slides right). */
-export const LEFT_BUTTON_RETRACT_X = OUTER_LEFT_EXTRA_PX;
+export const RADIAL_LIST_MASK = `radial-gradient(circle at ${CIRCLE_RADIUS_PX}px 50%, transparent ${
+  CIRCLE_RADIUS_PX - 0.5
+}px, black ${CIRCLE_RADIUS_PX + 0.5}px)`;
 
 /**
  * Vertical position of the index-th left button when there are `count` total,
@@ -107,7 +78,7 @@ export function getLeftButtonYCenter(index: number, count: number): number {
   return (index - (count - 1) / 2) * VERTICAL_PITCH_PX;
 }
 
-/** Helper for fixed (non-virtualised) left-side action buttons — mirror of `applyRadialLayout`. */
+/** Helper for fixed (non-virtualised) left-side action buttons — mirror of `computeRadialButtonLayout` with side-specific field names. */
 export function computeLeftRadialLayout(
   yCenter: number,
   r: number,

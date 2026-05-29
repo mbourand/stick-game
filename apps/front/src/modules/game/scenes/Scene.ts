@@ -45,13 +45,6 @@ export abstract class Scene {
   private phaseListeners = new Set<PhaseListener>();
   private activeDisposers: (() => void)[] = [];
 
-  /**
-   * Promise + resolver used by scenes whose exit animation is driven by
-   * their React UI (see `awaitExitSignal`). Null when no exit is pending.
-   */
-  private exitPromise: Promise<void> | null = null;
-  private exitResolve: (() => void) | null = null;
-
   constructor(engine: Engine) {
     this.engine = engine;
   }
@@ -90,48 +83,6 @@ export abstract class Scene {
   public exitFadePlayable(_durationMs: number): Playable | null {
     return null;
   }
-
-  /**
-   * Awaited by `SceneManager.popScene` between `setPhase("exiting")` and
-   * `setPhase("inactive")`, letting a scene delay the pop until its React
-   * exit animation finishes. Default resolves immediately.
-   *
-   * Transition-factory pushes/pops bypass this hook — they own the exit
-   * animation via a Playable and SceneManager flips phase directly.
-   *
-   * Typical override for a React-driven exit:
-   *
-   *   public override awaitExit(): Promise<void> {
-   *     return this.awaitExitSignal();
-   *   }
-   *
-   * Then in the scene's UI, observe `phase === "exiting"` via
-   * `useScenePhase` and call `completeExit()` when the animation ends.
-   */
-  public awaitExit(): Promise<void> {
-    return Promise.resolve();
-  }
-
-  /**
-   * Helper for `awaitExit` overrides: returns a promise that resolves when
-   * the scene's UI calls `completeExit()`. Idempotent — repeated calls
-   * before completion return the same pending promise.
-   */
-  protected awaitExitSignal(): Promise<void> {
-    if (this.exitPromise) return this.exitPromise;
-    this.exitPromise = new Promise<void>((resolve) => {
-      this.exitResolve = resolve;
-    });
-    return this.exitPromise;
-  }
-
-  /** Called by the scene's UI when its exit animation finishes. */
-  public completeExit = (): void => {
-    const resolve = this.exitResolve;
-    this.exitResolve = null;
-    this.exitPromise = null;
-    resolve?.();
-  };
 
   public getPhase = (): ScenePhase => this.phase;
 

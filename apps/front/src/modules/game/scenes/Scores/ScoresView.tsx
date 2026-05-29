@@ -1,24 +1,20 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useScenePresenceMotion } from "../../engine/animation/scenePresence";
 import type { SceneUIComponent } from "../Scene";
-import { useScenePhase } from "../useScene";
 import type { ScoresScene } from "./ScoresScene";
 
 export const ScoresView: SceneUIComponent = ({ scene }) => {
   const scoresScene = scene as ScoresScene;
-  const phase = useScenePhase(scene);
   const sc = scoresScene.scoreCounter;
-
-  const isVisible = phase === "active" || phase === "entering";
+  const presenceMotion = useScenePresenceMotion({ y: -40 });
 
   return (
     <motion.div
       className="absolute inset-0 flex flex-col items-center justify-center text-white select-none"
       style={{ fontFamily: "Rostex" }}
-      initial={{ opacity: 0, y: 40 }}
-      animate={isVisible ? { opacity: 1, y: 0 } : { opacity: 0, y: -40 }}
-      transition={{ duration: 0.4, ease: "easeInOut" }}
+      {...presenceMotion}
     >
       <div className="text-6xl tracking-[0.3em] uppercase">Score</div>
       <div className="text-7xl mt-6 tabular-nums">

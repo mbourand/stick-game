@@ -1,5 +1,5 @@
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../../utils/constants";
-import { parallel } from "../../animation/Timeline";
+import { sequence } from "../../animation/Timeline";
 import type { TransitionFactory } from "../TransitionContext";
 import { EXIT_FADE_DURATION_MS } from "../durations";
 import { phaseShell, resizeRing } from "../shells";
@@ -13,6 +13,6 @@ export const beatmapSelectionToMainMenu: TransitionFactory = (ctx) => {
   const resize = resizeRing(ctx, GAME_CIRCLE_DISPLAYED_RADIUS);
   const fadeOut = ctx.from?.exitFadePlayable(EXIT_FADE_DURATION_MS);
   return phaseShell(ctx, {
-    duringExit: fadeOut ? parallel([fadeOut, resize]) : resize,
+    duringExit: fadeOut ? sequence([fadeOut, resize]) : resize,
   });
 };

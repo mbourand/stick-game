@@ -2,6 +2,7 @@ import { StickDotsEntity } from "../../entities/StickDotsEntity";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
 import type { CircleLayer } from "../../engine/layers/CircleLayer";
+import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
 import { mainMenuToBeatmapSelection } from "../../engine/transitions/factories/mainMenuToBeatmapSelection";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
@@ -12,14 +13,11 @@ import { MainMenuView } from "./MainMenuView";
 
 const STICK_EDGE_THRESHOLD = 0.9;
 
-type Listener = () => void;
-
 export class MainMenuScene extends Scene {
   public readonly id = "main-menu";
   public override readonly UI = MainMenuView;
 
-  private focusedId: ButtonId | null = null;
-  private listeners = new Set<Listener>();
+  public readonly focused = new Store<ButtonId | null>(null);
 
   private root = new Container();
   private circle: CircleLayer;
@@ -33,28 +31,14 @@ export class MainMenuScene extends Scene {
 
   public override onEntered() {
     this.onAction("confirm", () => {
-      if (this.focusedId !== null) this.activateFocused(this.focusedId);
+      const id = this.focused.get();
+      if (id !== null) this.activateFocused(id);
     });
   }
 
   public override onDestroy() {
     this.root.detach(this.circle);
     this.root.destroy();
-  }
-
-  public subscribe = (listener: Listener) => {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
-  };
-
-  public getFocused = (): ButtonId | null => this.focusedId;
-
-  public setFocused(id: ButtonId | null) {
-    if (this.focusedId === id) return;
-    this.focusedId = id;
-    this.notify();
   }
 
   public activateFocused(id: ButtonId) {
@@ -78,7 +62,7 @@ export class MainMenuScene extends Scene {
     const rightStick = this.getStick("right");
 
     const target = this.buttonAimedByStick(leftStick) ?? this.buttonAimedByStick(rightStick);
-    if (target !== null) this.setFocused(target);
+    if (target !== null) this.focused.set(target);
 
     this.root.update(tick);
   }
@@ -103,9 +87,5 @@ export class MainMenuScene extends Scene {
       }
     }
     return null;
-  }
-
-  private notify() {
-    for (const listener of this.listeners) listener();
   }
 }

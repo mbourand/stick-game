@@ -1,3 +1,4 @@
+import { motionValue, type MotionValue } from "motion/react";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { BackgroundCrossfader } from "../../entities/BackgroundCrossfader";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
@@ -7,6 +8,7 @@ import { tween } from "../../engine/animation/Tween";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
 import type { CircleLayer } from "../../engine/layers/CircleLayer";
+import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
 import { beatmapSelectionToGameplay } from "../../engine/transitions/factories/beatmapSelectionToGameplay";
 import { beatmapSelectionToMainMenu } from "../../engine/transitions/factories/beatmapSelectionToMainMenu";
@@ -23,7 +25,6 @@ import {
   VERTICAL_PITCH_PX,
 } from "./layout";
 
-type Listener = () => void;
 export type ScrollZone = "top" | "bottom" | null;
 export type BeatmapResolver = (index: number) => Promise<ParsedMap | null>;
 export type FocusedBeatmapMedia = { audioUrl: string; backgroundUrl: string };
@@ -47,13 +48,21 @@ export class BeatmapSelectionScene extends Scene {
   public readonly id = "beatmap-selection";
   public override readonly UI = BeatmapSelectionView;
 
-  private focusedIndex: number | null = null;
-  private scrollOffset = 0;
-  private scrollZone: ScrollZone = null;
+  public readonly focusedIndex = new Store<number | null>(null);
+  public readonly scrollZone = new Store<ScrollZone>(null);
+  public readonly leaderboardTab = new Store<LeaderboardTab>("global");
+  public readonly focusedLeftButton = new Store<number | null>(null);
+
+  /**
+   * Continuous scroll position (float). A MotionValue so the view can drive
+   * each visible button's transform/mask via useTransform without going
+   * through React renders — scrolling is per-frame motion, not state.
+   */
+  public readonly scrollOffset: MotionValue<number> = motionValue(0);
+
   private beatmapCount = 0;
   private resolver: BeatmapResolver | null = null;
 
-  private discreteListeners = new Set<Listener>();
   private lastGameplayScene: GameplayScene | null = null;
 
   private root = new Container();
@@ -68,10 +77,7 @@ export class BeatmapSelectionScene extends Scene {
   /** One-shot guard: pick a random map the first time the list arrives. */
   private hasPickedInitialFocus = false;
 
-  private leaderboardTab: LeaderboardTab = "global";
-
   private leftButtonCount = 0;
-  private focusedLeftButton: number | null = null;
   private leftConfirmHandler: ((index: number) => void) | null = null;
 
   /** When true, gamepad navigation + confirm + leaderboard cycling no-op so an overlay can own input. */
@@ -140,37 +146,23 @@ export class BeatmapSelectionScene extends Scene {
     });
   }
 
-  /** Discrete state (focused index, scroll zone) — drives React re-renders. */
-  public subscribe = (listener: Listener) => {
-    this.discreteListeners.add(listener);
-    return () => {
-      this.discreteListeners.delete(listener);
-    };
-  };
-
-  public getFocusedIndex = (): number | null => this.focusedIndex;
-  public getScrollZone = (): ScrollZone => this.scrollZone;
-
-  /** Continuous scroll position, read each frame by the view's useFrame. */
-  public getScrollOffset = (): number => this.scrollOffset;
-
   public setBeatmapCount(count: number): void {
     if (this.beatmapCount === count) return;
     this.beatmapCount = count;
 
     if (count > 0 && !this.hasPickedInitialFocus) {
       const randomIndex = Math.floor(Math.random() * count);
-      this.focusedIndex = randomIndex;
-      this.scrollOffset = randomIndex;
+      this.focusedIndex.set(randomIndex);
+      this.scrollOffset.set(randomIndex);
       this.hasPickedInitialFocus = true;
     } else {
       const maxOffset = Math.max(0, count - 1);
-      this.scrollOffset = clamp(this.scrollOffset, 0, maxOffset);
-      if (this.focusedIndex !== null && this.focusedIndex >= count) {
-        this.focusedIndex = null;
+      this.scrollOffset.set(clamp(this.scrollOffset.get(), 0, maxOffset));
+      const focused = this.focusedIndex.get();
+      if (focused !== null && focused >= count) {
+        this.focusedIndex.set(null);
       }
     }
-    this.notify();
   }
 
   public setBeatmapResolver(resolver: BeatmapResolver | null): void {
@@ -187,62 +179,43 @@ export class BeatmapSelectionScene extends Scene {
     void this.refreshPreviewMedia(++this.mediaGeneration);
   }
 
-  public setFocused(index: number | null): void {
-    if (this.focusedIndex === index) return;
-    this.focusedIndex = index;
-    this.notify();
-  }
-
   public scrollBy(deltaItems: number): void {
-    const next = clamp(this.scrollOffset + deltaItems, 0, Math.max(0, this.beatmapCount - 1));
-    if (next === this.scrollOffset) return;
-    this.scrollOffset = next;
+    const current = this.scrollOffset.get();
+    const next = clamp(current + deltaItems, 0, Math.max(0, this.beatmapCount - 1));
+    if (next === current) return;
+    this.scrollOffset.set(next);
   }
 
   public scrollTo(index: number): void {
-    this.scrollOffset = clamp(index, 0, Math.max(0, this.beatmapCount - 1));
-  }
-
-  public getLeaderboardTab = (): LeaderboardTab => this.leaderboardTab;
-
-  public setLeaderboardTab(tab: LeaderboardTab): void {
-    if (this.leaderboardTab === tab) return;
-    this.leaderboardTab = tab;
-    this.notify();
+    this.scrollOffset.set(clamp(index, 0, Math.max(0, this.beatmapCount - 1)));
   }
 
   public toggleLeaderboardTab(): void {
-    this.setLeaderboardTab(this.leaderboardTab === "global" ? "local" : "global");
+    this.leaderboardTab.set(this.leaderboardTab.get() === "global" ? "local" : "global");
   }
 
   public setLeftButtonCount(count: number): void {
     if (this.leftButtonCount === count) return;
     this.leftButtonCount = count;
-    if (this.focusedLeftButton !== null && this.focusedLeftButton >= count) {
-      this.focusedLeftButton = null;
+    const focused = this.focusedLeftButton.get();
+    if (focused !== null && focused >= count) {
+      this.focusedLeftButton.set(null);
     }
-    this.notify();
   }
 
   public setLeftConfirmHandler(handler: ((index: number) => void) | null): void {
     this.leftConfirmHandler = handler;
   }
 
-  public getFocusedLeftButton = (): number | null => this.focusedLeftButton;
-
-  public setFocusedLeftButton(index: number | null): void {
-    if (this.focusedLeftButton === index) return;
-    this.focusedLeftButton = index;
-    this.notify();
-  }
-
   public async confirmFocused(): Promise<void> {
-    if (this.focusedLeftButton !== null) {
-      this.leftConfirmHandler?.(this.focusedLeftButton);
+    const leftIdx = this.focusedLeftButton.get();
+    if (leftIdx !== null) {
+      this.leftConfirmHandler?.(leftIdx);
       return;
     }
-    if (this.focusedIndex === null || !this.resolver) return;
-    const parsed = await this.resolver(this.focusedIndex);
+    const idx = this.focusedIndex.get();
+    if (idx === null || !this.resolver) return;
+    const parsed = await this.resolver(idx);
     if (parsed) this.playMap(parsed);
   }
 
@@ -267,7 +240,7 @@ export class BeatmapSelectionScene extends Scene {
     this.inputBlocked = blocked;
     if (blocked) {
       // Clear transient input state so nothing's mid-scroll when control returns.
-      this.setScrollZone(null);
+      this.scrollZone.set(null);
     }
   }
 
@@ -284,36 +257,36 @@ export class BeatmapSelectionScene extends Scene {
   private processStickInput(dt: number): void {
     const stick = pickActiveStick(this.getStick("left"), this.getStick("right"));
     if (!stick) {
-      this.setScrollZone(null);
+      this.scrollZone.set(null);
       return;
     }
 
     const stickY = stick.y * CIRCLE_RADIUS_PX;
 
     if (stickY < -SCROLL_ZONE_Y_PX) {
-      this.setScrollZone("top");
+      this.scrollZone.set("top");
       this.applyContinuousScroll(stickY, -1, dt);
       return;
     }
     if (stickY > SCROLL_ZONE_Y_PX) {
-      this.setScrollZone("bottom");
+      this.scrollZone.set("bottom");
       this.applyContinuousScroll(stickY, +1, dt);
       return;
     }
 
-    this.setScrollZone(null);
+    this.scrollZone.set(null);
 
     if (stick.x > SIDE_COMMIT_THRESHOLD) {
       // Right side: beatmap buttons.
-      this.setFocusedLeftButton(null);
+      this.focusedLeftButton.set(null);
       const picked = this.pickButtonAtY(stickY);
-      if (picked !== null) this.setFocused(picked);
+      if (picked !== null) this.focusedIndex.set(picked);
     } else if (stick.x < -SIDE_COMMIT_THRESHOLD) {
       // Left side: action buttons.
       if (this.leftButtonCount === 0) return;
-      this.setFocused(null);
+      this.focusedIndex.set(null);
       const picked = this.pickLeftButtonAtY(stickY);
-      if (picked !== null) this.setFocusedLeftButton(picked);
+      if (picked !== null) this.focusedLeftButton.set(picked);
     }
     // Otherwise: pure-vertical push, keep current focus.
   }
@@ -342,18 +315,8 @@ export class BeatmapSelectionScene extends Scene {
       count: this.beatmapCount,
       pitchPx: VERTICAL_PITCH_PX,
       halfHeightPx: BUTTON_HEIGHT_PX / 2,
-      originItems: this.scrollOffset,
+      originItems: this.scrollOffset.get(),
     });
-  }
-
-  private setScrollZone(zone: ScrollZone): void {
-    if (this.scrollZone === zone) return;
-    this.scrollZone = zone;
-    this.notify();
-  }
-
-  private notify(): void {
-    for (const listener of this.discreteListeners) listener();
   }
 
   private async refreshPreviewMedia(generation: number): Promise<void> {

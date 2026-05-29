@@ -50,6 +50,11 @@ export class SceneManager {
     return this.transition;
   };
 
+  /**
+   * Push a scene with no transition animation. Intended for the initial
+   * scene at app boot; subsequent navigation should use `transitionPush`
+   * so both scenes can update/render across the choreography.
+   */
   public pushScene(scene: Scene) {
     if (this.isTransitioning) return;
     const previous = this.getTopScene();
@@ -57,39 +62,6 @@ export class SceneManager {
     this.sceneStack.push(scene);
     scene.setPhase("active");
     this.emit();
-  }
-
-  public replaceScene(scene: Scene) {
-    if (this.isTransitioning) return;
-    const previous = this.sceneStack.pop();
-    if (previous) {
-      previous.setPhase("inactive");
-      void previous.onDestroy();
-    }
-    this.sceneStack.push(scene);
-    scene.setPhase("active");
-    this.emit();
-  }
-
-  public async popScene(): Promise<void> {
-    if (this.isTransitioning) return;
-    const top = this.getTopScene();
-    if (!top) return;
-    this.isTransitioning = true;
-    try {
-      // setPhase("exiting") tears down input handlers and fires onBeforeExit;
-      // awaitExit then gates on the scene's React-driven exit animation (or
-      // resolves immediately if it doesn't have one).
-      top.setPhase("exiting");
-      await top.awaitExit();
-      this.sceneStack.pop();
-      top.setPhase("inactive");
-      void top.onDestroy();
-      this.getTopScene()?.setPhase("active");
-      this.emit();
-    } finally {
-      this.isTransitioning = false;
-    }
   }
 
   /**

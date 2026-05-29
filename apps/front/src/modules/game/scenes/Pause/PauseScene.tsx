@@ -1,3 +1,4 @@
+import { pauseExit } from "../../engine/transitions/factories/pauseExit";
 import { Scene } from "../Scene";
 import { PauseView } from "./PauseView";
 
@@ -6,11 +7,7 @@ export class PauseScene extends Scene {
   public override readonly UI = PauseView;
 
   public override onEntered() {
-    this.onAction("pause", () => this.sceneManager.popScene());
-    this.onAction("back", () => this.sceneManager.popScene());
-  }
-
-  public override awaitExit(): Promise<void> {
-    return this.awaitExitSignal();
+    this.onAction("pause", () => void this.sceneManager.transitionPop(pauseExit));
+    this.onAction("back", () => void this.sceneManager.transitionPop(pauseExit));
   }
 }

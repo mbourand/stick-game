@@ -18,18 +18,14 @@ export const BUTTON_HEIGHT_PX = 112;
 export const BUTTON_Y_GAP_PX = 16;
 
 /**
- * Extra width on the LEFT of each radial-button's outer wrapper. The mask
- * lives on the static outer; the inner button translates leftward inside it
- * during the retract animation, so the curve clips the button rather than
- * moving with it. Must be at least |BUTTON_RETRACT_X|.
+ * Extra room on the curve-facing side of each radial-button's outer wrapper.
+ * Doubles as the retract distance — the shared RadialButton derives the
+ * inner translateX from `outerWidth - buttonWidth`, so this value IS the
+ * magnitude the inner button slides under the curve on exit.
  */
 export const OUTER_LEFT_EXTRA_PX = 260;
 
-/** Inner translateX during the retract / re-enter animation. */
-export const BUTTON_RETRACT_X = -OUTER_LEFT_EXTRA_PX;
-
 export const BUTTON_STAGGER_S = 0.04;
-export const PHASE_DURATION_S = 0.32;
 
 export function getButtonYOffsetFromCenter(index: number): number {
   return (index - (BUTTONS.length - 1) / 2) * (BUTTON_HEIGHT_PX + BUTTON_Y_GAP_PX);

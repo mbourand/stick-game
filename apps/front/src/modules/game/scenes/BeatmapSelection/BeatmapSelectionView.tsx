@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useMotionValueEvent } from "motion/react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { MapLeaderboard } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
 import { BeatmapsetDownloader } from "@/app/game/_components/BeatmapsetDownloader";
@@ -13,22 +13,24 @@ import {
 import { latestDb } from "@/modules/db/db";
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
 import { convertFromOsu } from "../../../osu/convert/OsuConverter";
-import { useFrame } from "../../engine/useFrame";
+import {
+  useScenePresence,
+  useScenePresenceMotion,
+} from "../../engine/animation/scenePresence";
+import { useStore } from "../../engine/state/useStore";
 import { LruCache } from "../../utils/LruCache";
 import type { SceneUIComponent } from "../Scene";
-import { useScenePhase, useSceneSelector } from "../useScene";
 import { BeatmapRadialButton } from "./BeatmapRadialButton";
 import type { BeatmapSelectionScene } from "./BeatmapSelectionScene";
 import { LeftActionButton } from "./LeftActionButton";
 import { ScrollSurface } from "./ScrollSurface";
 import { useGlobalTypeahead } from "./useGlobalTypeahead";
 import {
-  applyRadialLayout,
+  BUTTON_WIDTH_PX,
   CIRCLE_RADIUS_PX,
   getLeftButtonYCenter,
   getVisibleIndexRange,
-  PHASE_DURATION_S,
-  VERTICAL_PITCH_PX,
+  RADIAL_LIST_MASK,
 } from "./layout";
 
 const CIRCLE_DIAMETER = CIRCLE_RADIUS_PX * 2;
@@ -43,8 +45,9 @@ const revokeMediaUrls = ({ audioUrl, backgroundUrl }: MediaUrls) => {
 
 export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
   const selectionScene = scene as BeatmapSelectionScene;
-  const phase = useScenePhase(scene);
-  const isVisible = phase === "active" || phase === "entering";
+  const isVisible = useScenePresence() === "in";
+  const searchBarMotion = useScenePresenceMotion({ y: -12 });
+  const emptyStateMotion = useScenePresenceMotion();
 
   const beatmaps: V3BeatmapEntity[] = useLiveQuery(
     () => latestDb.beatmaps.toArray().then((maps) => maps.sort((a, b) => b.difficulty - a.difficulty)),
@@ -125,18 +128,20 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
     return () => selectionScene.setBeatmapResolver(null);
   }, [filteredBeatmaps, resolveMediaUrls, selectionScene]);
 
-  const focusedIndex = useSceneSelector(selectionScene, selectionScene.getFocusedIndex);
-  const scrollZone = useSceneSelector(selectionScene, selectionScene.getScrollZone);
-  const leaderboardTab = useSceneSelector(selectionScene, selectionScene.getLeaderboardTab);
-  const focusedLeftButton = useSceneSelector(selectionScene, selectionScene.getFocusedLeftButton);
+  const focusedIndex = useStore(selectionScene.focusedIndex);
+  const scrollZone = useStore(selectionScene.scrollZone);
+  const leaderboardTab = useStore(selectionScene.leaderboardTab);
+  const focusedLeftButton = useStore(selectionScene.focusedLeftButton);
 
   // Re-render the virtualization window only when the integer scroll bucket
-  // changes. Continuous motion in between is driven directly via DOM writes
-  // (see the useFrame below).
-  const [windowBucket, setWindowBucket] = useState(() => Math.floor(selectionScene.getScrollOffset()));
-  useFrame(() => {
-    const bucket = Math.floor(selectionScene.getScrollOffset());
-    if (bucket !== windowBucket) setWindowBucket(bucket);
+  // changes. Continuous motion in between is driven by each button's own
+  // useTransform on scene.scrollOffset — no React render per frame.
+  const [windowBucket, setWindowBucket] = useState(
+    () => Math.floor(selectionScene.scrollOffset.get()),
+  );
+  useMotionValueEvent(selectionScene.scrollOffset, "change", (latest) => {
+    const bucket = Math.floor(latest);
+    setWindowBucket((prev) => (prev === bucket ? prev : bucket));
   });
 
   const { firstIndex, lastIndex } = useMemo(
@@ -152,20 +157,6 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
     }
     return out;
   }, [firstIndex, lastIndex, filteredBeatmaps]);
-
-  // Per-frame DOM writes: position + mask each visible button along the curve.
-  const listRef = useRef<HTMLDivElement>(null);
-  useFrame(() => {
-    const list = listRef.current;
-    if (!list) return;
-    const offset = selectionScene.getScrollOffset();
-    const r = CIRCLE_RADIUS_PX;
-    for (const child of Array.from(list.children) as HTMLElement[]) {
-      const idx = Number(child.dataset.index);
-      if (Number.isNaN(idx)) continue;
-      applyRadialLayout(child, (idx - offset) * VERTICAL_PITCH_PX, r);
-    }
-  });
 
   const focusedBeatmap = focusedIndex !== null ? filteredBeatmaps[focusedIndex] ?? null : null;
 
@@ -186,14 +177,14 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
     if (isNoMatch) return;
     selectionScene.setBeatmapCount(filteredBeatmaps.length);
     if (filteredBeatmaps.length === 0) {
-      selectionScene.setFocused(null);
+      selectionScene.focusedIndex.set(null);
       return;
     }
     const remembered = focusedBeatmapIdRef.current;
     if (remembered === null) return;
     const newIndex = filteredBeatmaps.findIndex((b) => b.idv2 === remembered);
     const target = newIndex >= 0 ? newIndex : 0;
-    selectionScene.setFocused(target);
+    selectionScene.focusedIndex.set(target);
     selectionScene.scrollTo(target);
   }, [filteredBeatmaps, selectionScene, isNoMatch]);
 
@@ -280,25 +271,35 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
           transform: "translate(-50%, -50%)",
         }}
       >
-        <div ref={listRef} className="absolute inset-0">
+        <div
+          className="absolute overflow-hidden"
+          style={{
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: -BUTTON_WIDTH_PX,
+            maskImage: RADIAL_LIST_MASK,
+            WebkitMaskImage: RADIAL_LIST_MASK,
+          }}
+        >
           {visible.map(({ index, beatmap }) => (
             <BeatmapRadialButton
               key={beatmap.idv2}
               index={index}
+              scrollOffset={selectionScene.scrollOffset}
               staggerSlot={index - firstIndex}
               title={beatmap.title}
               artist={beatmap.artist}
               creator={beatmap.creator}
               difficulty={beatmap.difficulty}
               isFocused={focusedIndex === index}
-              isVisible={isVisible}
               onFocus={() => {
-                selectionScene.setFocusedLeftButton(null);
-                selectionScene.setFocused(index);
+                selectionScene.focusedLeftButton.set(null);
+                selectionScene.focusedIndex.set(index);
               }}
               onClick={() => {
-                selectionScene.setFocusedLeftButton(null);
-                selectionScene.setFocused(index);
+                selectionScene.focusedLeftButton.set(null);
+                selectionScene.focusedIndex.set(index);
                 void selectionScene.confirmFocused();
               }}
             />
@@ -312,14 +313,13 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
             yCenter={getLeftButtonYCenter(index, leftButtons.length)}
             label={btn.label}
             isFocused={focusedLeftButton === index}
-            isVisible={isVisible}
             onFocus={() => {
-              selectionScene.setFocused(null);
-              selectionScene.setFocusedLeftButton(index);
+              selectionScene.focusedIndex.set(null);
+              selectionScene.focusedLeftButton.set(index);
             }}
             onClick={() => {
-              selectionScene.setFocused(null);
-              selectionScene.setFocusedLeftButton(index);
+              selectionScene.focusedIndex.set(null);
+              selectionScene.focusedLeftButton.set(index);
               btn.onActivate();
             }}
           />
@@ -328,13 +328,11 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
         <ScrollSurface
           position="top"
           active={scrollZone === "top"}
-          isVisible={isVisible}
           onPress={() => selectionScene.scrollBy(-3)}
         />
         <ScrollSurface
           position="bottom"
           active={scrollZone === "bottom"}
-          isVisible={isVisible}
           onPress={() => selectionScene.scrollBy(+3)}
         />
 
@@ -342,9 +340,7 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
         <motion.div
           className="absolute left-1/2 -translate-x-1/2 pointer-events-auto"
           style={{ top: "80px", width: "400px" }}
-          initial={false}
-          animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : -12 }}
-          transition={{ duration: PHASE_DURATION_S, ease: [0.4, 0, 0.2, 1] }}
+          {...searchBarMotion}
         >
           <input
             type="text"
@@ -410,9 +406,7 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
         {filteredBeatmaps.length === 0 && beatmaps.length === 0 && (
           <motion.div
             className="absolute inset-0 flex items-center justify-center text-white/60 text-sm tracking-[0.25em] uppercase pointer-events-none text-center"
-            initial={false}
-            animate={{ opacity: isVisible ? 1 : 0 }}
-            transition={{ duration: PHASE_DURATION_S }}
+            {...emptyStateMotion}
           >
             No beatmaps yet — download some!
           </motion.div>

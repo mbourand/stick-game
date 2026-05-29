@@ -1,23 +1,17 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useScenePresenceMotion } from "../../engine/animation/scenePresence";
 import type { SceneUIComponent } from "../Scene";
-import { useScenePhase } from "../useScene";
 
-const FADE_DURATION_SECONDS = 0.3;
-
-export const PauseView: SceneUIComponent = ({ scene }) => {
-  const isExiting = useScenePhase(scene) === "exiting";
+export const PauseView: SceneUIComponent = ({ scene: _scene }) => {
+  const presenceMotion = useScenePresenceMotion();
 
   return (
     <motion.div
       className="absolute inset-0 flex items-center justify-center bg-black/50 select-none"
       style={{ fontFamily: "Rostex" }}
-      animate={{ opacity: isExiting ? 0 : 1 }}
-      transition={{ duration: FADE_DURATION_SECONDS }}
-      onAnimationComplete={() => {
-        if (isExiting) scene.completeExit();
-      }}
+      {...presenceMotion}
     >
       <div className="text-center text-white">
         <div className="text-6xl tracking-[0.3em] uppercase">Paused</div>

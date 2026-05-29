@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { MapLeaderboard } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
@@ -14,9 +14,11 @@ import { latestDb } from "@/modules/db/db";
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
 import { convertFromOsu } from "../../../osu/convert/OsuConverter";
 import { useFrame } from "../../engine/useFrame";
+import { LruCache } from "../../utils/LruCache";
 import type { SceneUIComponent } from "../Scene";
-import { useScenePhase } from "../useScene";
+import { useScenePhase, useSceneSelector } from "../useScene";
 import type { BeatmapSelectionScene } from "./BeatmapSelectionScene";
+import { useGlobalTypeahead } from "./useGlobalTypeahead";
 import {
   applyRadialLayout,
   BUTTON_HEIGHT_PX,
@@ -35,6 +37,13 @@ const CIRCLE_DIAMETER = CIRCLE_RADIUS_PX * 2;
 const BUTTON_STAGGER_S = 0.025;
 const PHASE_DURATION_S = 0.32;
 const MEDIA_URL_CACHE_SIZE = 10;
+
+type MediaUrls = { audioUrl: string; backgroundUrl: string };
+
+const revokeMediaUrls = ({ audioUrl, backgroundUrl }: MediaUrls) => {
+  URL.revokeObjectURL(audioUrl);
+  URL.revokeObjectURL(backgroundUrl);
+};
 
 export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
   const selectionScene = scene as BeatmapSelectionScene;
@@ -76,62 +85,28 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
     return result;
   }, [beatmaps, searchQuery, difficultyFilter]);
 
-  // Game is played on a controller, so users won't usually have the search
-  // input focused. Funnel global keystrokes into the query — unless another
-  // input/textarea is already focused (so the input itself still works
-  // normally when clicked), or an overlay modal is open (it owns input).
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (isModalOpen) return;
-      const active = document.activeElement;
-      if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
-      if (e.ctrlKey || e.altKey || e.metaKey) return;
-      if (e.key === "Backspace") {
-        setSearchQuery((q) => q.slice(0, -1));
-        e.preventDefault();
-      } else if (e.key === "Escape") {
-        setSearchQuery("");
-        e.preventDefault();
-      } else if (e.key.length === 1) {
-        setSearchQuery((q) => q + e.key);
-        e.preventDefault();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [isModalOpen]);
+  useGlobalTypeahead(setSearchQuery, { disabled: isModalOpen });
 
-  // LRU cache of blob URLs keyed by beatmap id. Bounded so memory doesn't
-  // grow without limit as the user browses, and intentionally NOT cleared on
-  // unmount — the just-confirmed map's URLs need to survive until
+  // Bounded LRU of blob URLs keyed by beatmap id. Intentionally NOT cleared
+  // on unmount — the just-confirmed map's URLs need to survive until
   // GameplayScene.onEntered consumes them post-transition.
-  const urlCacheRef = useRef<Map<string, { audioUrl: string; backgroundUrl: string }>>(new Map());
-  const resolveMediaUrls = useCallback(async (beatmap: V3BeatmapEntity) => {
+  const urlCacheRef = useRef<LruCache<string, MediaUrls>>(
+    new LruCache(MEDIA_URL_CACHE_SIZE, revokeMediaUrls),
+  );
+  const resolveMediaUrls = useCallback(async (beatmap: V3BeatmapEntity): Promise<MediaUrls | null> => {
     const cache = urlCacheRef.current;
     const cached = cache.get(beatmap.idv2);
-    if (cached) {
-      cache.delete(beatmap.idv2);
-      cache.set(beatmap.idv2, cached);
-      return cached;
-    }
+    if (cached) return cached;
     const [audioFile, bgFile] = await Promise.all([
       latestDb.files.get(beatmap.audioId),
       latestDb.files.get(beatmap.gameplayBackgroundId),
     ]);
     if (!audioFile || !bgFile) return null;
-    const urls = {
+    const urls: MediaUrls = {
       audioUrl: URL.createObjectURL(audioFile.content),
       backgroundUrl: URL.createObjectURL(bgFile.content),
     };
     cache.set(beatmap.idv2, urls);
-    while (cache.size > MEDIA_URL_CACHE_SIZE) {
-      const oldestKey = cache.keys().next().value;
-      if (oldestKey === undefined) break;
-      const evicted = cache.get(oldestKey)!;
-      URL.revokeObjectURL(evicted.audioUrl);
-      URL.revokeObjectURL(evicted.backgroundUrl);
-      cache.delete(oldestKey);
-    }
     return urls;
   }, []);
 
@@ -154,26 +129,10 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
     return () => selectionScene.setBeatmapResolver(null);
   }, [filteredBeatmaps, resolveMediaUrls, selectionScene]);
 
-  const focusedIndex = useSyncExternalStore(
-    selectionScene.subscribe,
-    selectionScene.getFocusedIndex,
-    selectionScene.getFocusedIndex,
-  );
-  const scrollZone = useSyncExternalStore(
-    selectionScene.subscribe,
-    selectionScene.getScrollZone,
-    selectionScene.getScrollZone,
-  );
-  const leaderboardTab = useSyncExternalStore(
-    selectionScene.subscribe,
-    selectionScene.getLeaderboardTab,
-    selectionScene.getLeaderboardTab,
-  );
-  const focusedLeftButton = useSyncExternalStore(
-    selectionScene.subscribe,
-    selectionScene.getFocusedLeftButton,
-    selectionScene.getFocusedLeftButton,
-  );
+  const focusedIndex = useSceneSelector(selectionScene, selectionScene.getFocusedIndex);
+  const scrollZone = useSceneSelector(selectionScene, selectionScene.getScrollZone);
+  const leaderboardTab = useSceneSelector(selectionScene, selectionScene.getLeaderboardTab);
+  const focusedLeftButton = useSceneSelector(selectionScene, selectionScene.getFocusedLeftButton);
 
   // Re-render the virtualization window only when the integer scroll bucket
   // changes. Continuous motion in between is driven directly via DOM writes

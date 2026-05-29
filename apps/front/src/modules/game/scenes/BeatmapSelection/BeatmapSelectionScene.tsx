@@ -1,6 +1,9 @@
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
-import { BackgroundEntity } from "../../entities/BackgroundEntity";
+import { BackgroundCrossfader } from "../../entities/BackgroundCrossfader";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
+import { easeInOutCubic } from "../../engine/animation/Easing";
+import type { Playable } from "../../engine/animation/Playable";
+import { tween } from "../../engine/animation/Tween";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
 import type { CircleLayer } from "../../engine/layers/CircleLayer";
@@ -9,6 +12,7 @@ import { beatmapSelectionToGameplay } from "../../engine/transitions/factories/b
 import { beatmapSelectionToMainMenu } from "../../engine/transitions/factories/beatmapSelectionToMainMenu";
 import { GameplayScene } from "../Gameplay/GameplayScene";
 import { Scene } from "../Scene";
+import { pickIndexAtY } from "../shared/verticalPicker";
 import { BeatmapSelectionView } from "./BeatmapSelectionView";
 import {
   BUTTON_HEIGHT_PX,
@@ -25,8 +29,6 @@ export type BeatmapResolver = (index: number) => Promise<ParsedMap | null>;
 export type FocusedBeatmapMedia = { audioUrl: string; backgroundUrl: string };
 export type LeaderboardTab = "global" | "local";
 
-const LEADERBOARD_TABS: readonly LeaderboardTab[] = ["global", "local"] as const;
-
 type Vec2 = { x: number; y: number };
 
 const PREVIEW_AUDIO_ID = "beatmap_preview_audio";
@@ -40,8 +42,6 @@ const BACKGROUND_CROSSFADE_MS = 300;
  * accidentally hopping sides.
  */
 const SIDE_COMMIT_THRESHOLD = 0.3;
-
-type BackgroundLayer = { container: Container; entity: BackgroundEntity };
 
 export class BeatmapSelectionScene extends Scene {
   public readonly id = "beatmap-selection";
@@ -57,17 +57,13 @@ export class BeatmapSelectionScene extends Scene {
   private lastGameplayScene: GameplayScene | null = null;
 
   private root = new Container();
-  /** Public so exit transitions can tween its alpha alongside the ring resize. */
-  public innerContainer = new Container();
+  /** Holds the background crossfader; fades to 0 during exit transitions. */
+  private innerContainer = new Container();
   private circle: CircleLayer;
+  private background: BackgroundCrossfader;
 
   private currentMedia: FocusedBeatmapMedia | null = null;
   private mediaGeneration = 0;
-  /** Background currently at full opacity. Replaced once an incoming finishes fading in. */
-  private stableBackground: BackgroundLayer | null = null;
-  /** Background currently fading from alpha 0 → 1 on top of `stableBackground`. */
-  private incomingBackground: BackgroundLayer | null = null;
-  private incomingFadeElapsedMs = 0;
 
   /** One-shot guard: pick a random map the first time the list arrives. */
   private hasPickedInitialFocus = false;
@@ -86,7 +82,12 @@ export class BeatmapSelectionScene extends Scene {
   constructor(engine: Engine) {
     super(engine);
     this.circle = engine.getPersistentRoot().circle;
+    this.background = new BackgroundCrossfader(engine.getSettings(), {
+      radius: CIRCLE_RADIUS_PX,
+      fadeDurationMs: BACKGROUND_CROSSFADE_MS,
+    });
     // Inner content (background) renders behind the circle, like in gameplay.
+    this.innerContainer.add(this.background);
     this.root.add(this.innerContainer);
     this.root.add(this.circle);
     this.root.add(new StickDotsEntity(this.inputSystem, this.circle));
@@ -108,11 +109,11 @@ export class BeatmapSelectionScene extends Scene {
     });
     this.onAction("leaderboard-prev", () => {
       if (this.inputBlocked) return;
-      this.cycleLeaderboardTab(-1);
+      this.toggleLeaderboardTab();
     });
     this.onAction("leaderboard-next", () => {
       if (this.inputBlocked) return;
-      this.cycleLeaderboardTab(+1);
+      this.toggleLeaderboardTab();
     });
     // Exit transitions fade innerContainer to 0; reset before showing again.
     this.innerContainer.alpha = 1;
@@ -126,9 +127,17 @@ export class BeatmapSelectionScene extends Scene {
 
   public override onDestroy() {
     this.stopPreviewAudio();
-    this.clearBackground();
     this.root.detach(this.circle);
     this.root.destroy();
+  }
+
+  public override exitFadePlayable(durationMs: number): Playable {
+    return tween({
+      target: this.innerContainer,
+      to: { alpha: 0 },
+      duration: durationMs,
+      easing: easeInOutCubic,
+    });
   }
 
   /** Discrete state (focused index, scroll zone) — drives React re-renders. */
@@ -202,10 +211,8 @@ export class BeatmapSelectionScene extends Scene {
     this.notify();
   }
 
-  public cycleLeaderboardTab(direction: 1 | -1): void {
-    const i = LEADERBOARD_TABS.indexOf(this.leaderboardTab);
-    const next = (i + direction + LEADERBOARD_TABS.length) % LEADERBOARD_TABS.length;
-    this.setLeaderboardTab(LEADERBOARD_TABS[next]);
+  public toggleLeaderboardTab(): void {
+    this.setLeaderboardTab(this.leaderboardTab === "global" ? "local" : "global");
   }
 
   public setLeftButtonCount(count: number): void {
@@ -252,7 +259,6 @@ export class BeatmapSelectionScene extends Scene {
 
   public override update(tick: TickContext): void {
     if (this.beatmapCount > 0 && !this.inputBlocked) this.processStickInput(tick.dt);
-    this.tickBackgroundFade(tick.dt);
     this.root.update(tick);
   }
 
@@ -313,15 +319,14 @@ export class BeatmapSelectionScene extends Scene {
   }
 
   private pickLeftButtonAtY(targetY: number): number | null {
-    if (this.leftButtonCount === 0) return null;
-    // Layout mirrors getLeftButtonYCenter — buttons distributed symmetrically
-    // around y = 0 with VERTICAL_PITCH_PX between them.
-    const offset = (this.leftButtonCount - 1) / 2;
-    const candidate = Math.round(targetY / VERTICAL_PITCH_PX + offset);
-    if (candidate < 0 || candidate >= this.leftButtonCount) return null;
-    const candidateY = (candidate - offset) * VERTICAL_PITCH_PX;
-    if (Math.abs(candidateY - targetY) > BUTTON_HEIGHT_PX / 2) return null;
-    return candidate;
+    return pickIndexAtY({
+      targetY,
+      count: this.leftButtonCount,
+      pitchPx: VERTICAL_PITCH_PX,
+      halfHeightPx: BUTTON_HEIGHT_PX / 2,
+      // Mirrors getLeftButtonYCenter — buttons centred symmetrically around y=0.
+      originItems: (this.leftButtonCount - 1) / 2,
+    });
   }
 
   private applyContinuousScroll(stickY: number, direction: 1 | -1, dt: number): void {
@@ -332,12 +337,13 @@ export class BeatmapSelectionScene extends Scene {
   }
 
   private pickButtonAtY(targetY: number): number | null {
-    const indexFloat = this.scrollOffset + targetY / VERTICAL_PITCH_PX;
-    const candidate = Math.round(indexFloat);
-    if (candidate < 0 || candidate >= this.beatmapCount) return null;
-    const candidateY = (candidate - this.scrollOffset) * VERTICAL_PITCH_PX;
-    if (Math.abs(candidateY - targetY) > BUTTON_HEIGHT_PX / 2) return null;
-    return candidate;
+    return pickIndexAtY({
+      targetY,
+      count: this.beatmapCount,
+      pitchPx: VERTICAL_PITCH_PX,
+      halfHeightPx: BUTTON_HEIGHT_PX / 2,
+      originItems: this.scrollOffset,
+    });
   }
 
   private setScrollZone(zone: ScrollZone): void {
@@ -355,11 +361,11 @@ export class BeatmapSelectionScene extends Scene {
 
     const media = this.currentMedia;
     if (!media || !this.isActive()) {
-      this.clearBackground();
+      this.background.setSource(null);
       return;
     }
 
-    this.pushIncomingBackground(media.backgroundUrl);
+    this.background.setSource(media.backgroundUrl);
 
     const music = this.engine.getAudio().music;
     let buffer: AudioBuffer;
@@ -373,66 +379,8 @@ export class BeatmapSelectionScene extends Scene {
     music.play(PREVIEW_AUDIO_ID, buffer, { loop: true, volume: PREVIEW_AUDIO_VOLUME });
   }
 
-  /**
-   * Add a new background that fades in over BACKGROUND_CROSSFADE_MS. If one was
-   * already fading in, snap it to fully opaque and promote it to the stable
-   * slot first — that way we never accumulate more than two layers even when
-   * the user changes focus faster than the crossfade duration.
-   */
-  private pushIncomingBackground(backgroundUrl: string): void {
-    if (this.incomingBackground) {
-      this.incomingBackground.container.alpha = 1;
-      this.replaceStableWith(this.incomingBackground);
-      this.incomingBackground = null;
-    }
-
-    const entity = new BackgroundEntity(
-      { backgroundUrl, backgroundOffsetX: 0, backgroundOffsetY: 0 },
-      this.engine.getSettings(),
-      { radius: CIRCLE_RADIUS_PX },
-    );
-    const container = new Container({ alpha: 0 });
-    container.add(entity);
-    // Added last → rendered on top of the stable background.
-    this.innerContainer.add(container);
-
-    this.incomingBackground = { container, entity };
-    this.incomingFadeElapsedMs = 0;
-  }
-
-  private tickBackgroundFade(dt: number): void {
-    if (!this.incomingBackground) return;
-    this.incomingFadeElapsedMs += dt;
-    const progress = Math.min(1, this.incomingFadeElapsedMs / BACKGROUND_CROSSFADE_MS);
-    this.incomingBackground.container.alpha = progress;
-    if (progress >= 1) {
-      this.replaceStableWith(this.incomingBackground);
-      this.incomingBackground = null;
-      this.incomingFadeElapsedMs = 0;
-    }
-  }
-
-  private replaceStableWith(layer: BackgroundLayer): void {
-    if (this.stableBackground) {
-      this.innerContainer.remove(this.stableBackground.container);
-    }
-    this.stableBackground = layer;
-  }
-
   private stopPreviewAudio(): void {
     this.engine.getAudio().music.stop(PREVIEW_AUDIO_ID);
-  }
-
-  private clearBackground(): void {
-    if (this.incomingBackground) {
-      this.innerContainer.remove(this.incomingBackground.container);
-      this.incomingBackground = null;
-    }
-    if (this.stableBackground) {
-      this.innerContainer.remove(this.stableBackground.container);
-      this.stableBackground = null;
-    }
-    this.incomingFadeElapsedMs = 0;
   }
 }
 
@@ -445,9 +393,9 @@ function sameMedia(a: FocusedBeatmapMedia | null, b: FocusedBeatmapMedia | null)
 function pickActiveStick(left: Vec2, right: Vec2): Vec2 | null {
   const lm = Math.hypot(left.x, left.y);
   const rm = Math.hypot(right.x, right.y);
-  const candidate = lm >= rm ? left : right;
-  if (Math.hypot(candidate.x, candidate.y) < STICK_ACTIVE_THRESHOLD) return null;
-  return candidate;
+  const dominantMagnitude = Math.max(lm, rm);
+  if (dominantMagnitude < STICK_ACTIVE_THRESHOLD) return null;
+  return lm >= rm ? left : right;
 }
 
 function clamp(v: number, lo: number, hi: number): number {

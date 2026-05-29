@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { Engine } from "../engine/Engine";
+import type { Playable } from "../engine/animation/Playable";
 import type { TickContext } from "../engine/TickContext";
 import type { ButtonAction } from "../input/actions";
 import type { InputSystem } from "../input/InputSystem";
@@ -63,6 +64,19 @@ export abstract class Scene {
   public onEntered(): void | Promise<void> {}
   public onBeforeExit(): void | Promise<void> {}
   public onDestroy(): void | Promise<void> {}
+
+  /**
+   * Optional canvas-side fade-out played by transition factories. Override to
+   * return a Playable that fades whatever the scene draws *inside* the ring
+   * (background, HUD, etc.) — the ring itself is owned by the persistent
+   * root and handled separately by the transition.
+   *
+   * Returning `null` (the default) means the scene has no canvas content
+   * worth fading and the transition can skip it.
+   */
+  public exitFadePlayable(_durationMs: number): Playable | null {
+    return null;
+  }
 
   /**
    * Called by SceneManager.popScene before the scene is deactivated.

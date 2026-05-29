@@ -1,4 +1,5 @@
 import { BEATMAP_SELECTION_CIRCLE_RADIUS } from "../../utils/constants";
+import { computeRadialButtonLayout } from "../shared/radialButton";
 
 export const BUTTON_HEIGHT_PX = 92;
 export const BUTTON_WIDTH_PX = 520;
@@ -72,36 +73,14 @@ export function getVisibleIndexRange(
  * computed so visible content stays out of the masked area.
  */
 export function applyRadialLayout(outer: HTMLElement, yCenter: number, r: number): void {
-  const halfH = BUTTON_HEIGHT_PX / 2;
-  const farY = Math.abs(yCenter) + halfH;
-  const horizontalRadiusAtFarY = Math.sqrt(Math.max(0, r * r - farY * farY));
-
-  // Outer extends OUTER_LEFT_EXTRA_PX past the inner button on the LEFT, so
-  // the inner can translateX(-OUTER_LEFT_EXTRA_PX) and stay enclosed.
-  const top = r + yCenter - halfH;
-  const left = r + horizontalRadiusAtFarY - OUTER_LEFT_EXTRA_PX;
-
-  // Mask centre, expressed in outer-local coords (outer's top-left = origin).
-  const maskCenterX = OUTER_LEFT_EXTRA_PX - horizontalRadiusAtFarY;
-  const maskCenterY = halfH - yCenter;
-  const radialMask = `radial-gradient(circle at ${maskCenterX}px ${maskCenterY}px, transparent ${r - 0.5}px, black ${r + 0.5}px)`;
-
-  // Vertical band corresponding to the circle's vertical extent in outer-local
-  // coords. Composited with the radial mask via `mask-composite: intersect` so
-  // buttons that scroll past the circle's top/bottom get hard-clipped at the
-  // ring edge instead of floating in the void.
-  const verticalTop = maskCenterY - r;
-  const verticalBottom = maskCenterY + r;
-  const bandMask = `linear-gradient(to bottom, transparent ${verticalTop}px, black ${verticalTop}px, black ${verticalBottom}px, transparent ${verticalBottom}px)`;
-  const mask = `${radialMask}, ${bandMask}`;
-
-  // Furthest the circle's curve reaches into the visible inner button — that's
-  // where content must start to avoid being clipped by the mask in the static
-  // (translateX === 0) state.
-  const closestRowY = Math.max(0, Math.min(BUTTON_HEIGHT_PX, maskCenterY));
-  const yDelta = closestRowY - maskCenterY;
-  const maxHiddenX = maskCenterX + Math.sqrt(Math.max(0, r * r - yDelta * yDelta));
-  const paddingLeft = Math.max(28, maxHiddenX - OUTER_LEFT_EXTRA_PX + 28);
+  const { top, left, mask, paddingNear } = computeRadialButtonLayout({
+    side: "right",
+    yCenter,
+    radius: r,
+    buttonW: BUTTON_WIDTH_PX,
+    buttonH: BUTTON_HEIGHT_PX,
+    outerExtraPx: OUTER_LEFT_EXTRA_PX,
+  });
 
   const outerStyle = outer.style;
   outerStyle.top = `${top}px`;
@@ -111,7 +90,7 @@ export function applyRadialLayout(outer: HTMLElement, yCenter: number, r: number
   outerStyle.maskComposite = "intersect";
 
   const inner = outer.firstElementChild;
-  if (inner instanceof HTMLElement) inner.style.paddingLeft = `${paddingLeft}px`;
+  if (inner instanceof HTMLElement) inner.style.paddingLeft = `${paddingNear}px`;
 }
 
 /** Inner translate for left-side buttons retracting into the circle (positive: slides right). */
@@ -130,30 +109,19 @@ export function computeLeftRadialLayout(
   yCenter: number,
   r: number,
 ): { top: number; left: number; outerWidth: number; mask: string; paddingRight: number } {
-  const halfH = BUTTON_HEIGHT_PX / 2;
-  const farY = Math.abs(yCenter) + halfH;
-  const horizontalRadiusAtFarY = Math.sqrt(Math.max(0, r * r - farY * farY));
-
-  const top = r + yCenter - halfH;
-  const left = r - horizontalRadiusAtFarY - BUTTON_WIDTH_PX;
-  const outerWidth = BUTTON_WIDTH_PX + OUTER_LEFT_EXTRA_PX;
-
-  const maskCenterX = horizontalRadiusAtFarY + BUTTON_WIDTH_PX;
-  const maskCenterY = halfH - yCenter;
-  const radialMask = `radial-gradient(circle at ${maskCenterX}px ${maskCenterY}px, transparent ${r - 0.5}px, black ${r + 0.5}px)`;
-
-  const verticalTop = maskCenterY - r;
-  const verticalBottom = maskCenterY + r;
-  const bandMask = `linear-gradient(to bottom, transparent ${verticalTop}px, black ${verticalTop}px, black ${verticalBottom}px, transparent ${verticalBottom}px)`;
-  const mask = `${radialMask}, ${bandMask}`;
-
-  // Mirror of paddingLeft: the curve eats the RIGHT side of the inner button,
-  // so push content left away from where the mask intrudes.
-  const closestRowY = Math.max(0, Math.min(BUTTON_HEIGHT_PX, maskCenterY));
-  const yDelta = closestRowY - maskCenterY;
-  const minMaskLeftEdge = maskCenterX - Math.sqrt(Math.max(0, r * r - yDelta * yDelta));
-  const intrusion = Math.max(0, BUTTON_WIDTH_PX - minMaskLeftEdge);
-  const paddingRight = Math.max(28, intrusion + 28);
-
-  return { top, left, outerWidth, mask, paddingRight };
+  const layout = computeRadialButtonLayout({
+    side: "left",
+    yCenter,
+    radius: r,
+    buttonW: BUTTON_WIDTH_PX,
+    buttonH: BUTTON_HEIGHT_PX,
+    outerExtraPx: OUTER_LEFT_EXTRA_PX,
+  });
+  return {
+    top: layout.top,
+    left: layout.left,
+    outerWidth: layout.outerWidth,
+    mask: layout.mask,
+    paddingRight: layout.paddingNear,
+  };
 }

@@ -1,41 +1,18 @@
-import type { BeatmapSelectionScene } from "../../../scenes/BeatmapSelection/BeatmapSelectionScene";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../../utils/constants";
-import { easeInOutCubic } from "../../animation/Easing";
-import { call, parallel, sequence, wait } from "../../animation/Timeline";
-import { tween } from "../../animation/Tween";
+import { parallel } from "../../animation/Timeline";
 import type { TransitionFactory } from "../TransitionContext";
-import { CIRCLE_RESIZE_DURATION_MS, ENTER_DURATION_MS, EXIT_DURATION_MS } from "../durations";
+import { EXIT_FADE_DURATION_MS } from "../durations";
+import { phaseShell, resizeRing } from "../shells";
 
 /**
  * Selection's buttons retract + its inner background fades, the ring shrinks
- * back to the default radius, and the main menu re-appears.
+ * back to the default radius (concurrent with the retract), then the main
+ * menu re-appears.
  */
-export const beatmapSelectionToMainMenu: TransitionFactory = ({ from, to, circle }) => {
-  const selection = from as BeatmapSelectionScene | null;
-
-  return sequence([
-    call(() => from?.setPhase("exiting")),
-    parallel([
-      ...(selection
-        ? [
-            tween({
-              target: selection.innerContainer,
-              to: { alpha: 0 },
-              duration: EXIT_DURATION_MS / 2,
-              easing: easeInOutCubic,
-            }),
-          ]
-        : []),
-      sequence([wait(EXIT_DURATION_MS)]),
-    ]),
-    parallel([
-      tween({
-        target: circle,
-        to: { radius: GAME_CIRCLE_DISPLAYED_RADIUS },
-        duration: CIRCLE_RESIZE_DURATION_MS,
-        easing: easeInOutCubic,
-      }),
-      sequence([call(() => to?.setPhase("entering")), wait(ENTER_DURATION_MS)]),
-    ]),
-  ]);
+export const beatmapSelectionToMainMenu: TransitionFactory = (ctx) => {
+  const resize = resizeRing(ctx, GAME_CIRCLE_DISPLAYED_RADIUS);
+  const fadeOut = ctx.from?.exitFadePlayable(EXIT_FADE_DURATION_MS);
+  return phaseShell(ctx, {
+    duringExit: fadeOut ? parallel([fadeOut, resize]) : resize,
+  });
 };

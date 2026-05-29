@@ -5,6 +5,11 @@ import { AnimatePresence, motion } from "motion/react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { MapLeaderboard } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
 import { BeatmapsetDownloader } from "@/app/game/_components/BeatmapsetDownloader";
+import {
+  BeatmapFilters,
+  DIFFICULTY_SLIDER_MAX,
+  type DifficultyFilter,
+} from "@/app/game/_components/BeatmapFilters";
 import { latestDb } from "@/modules/db/db";
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
 import { convertFromOsu } from "../../../osu/convert/OsuConverter";
@@ -43,23 +48,41 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
   );
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter | null>(null);
+  const [isDownloaderOpen, setDownloaderOpen] = useState(false);
+  const [isFilterPanelOpen, setFilterPanelOpen] = useState(false);
+  const isModalOpen = isDownloaderOpen || isFilterPanelOpen;
+
   const filteredBeatmaps = useMemo(() => {
+    let result = beatmaps;
+    if (difficultyFilter !== null) {
+      // Slider parked at the maximum means "no upper bound" — keep maps that
+      // exceed the slider range.
+      const effectiveMax =
+        difficultyFilter.max >= DIFFICULTY_SLIDER_MAX ? Infinity : difficultyFilter.max;
+      result = result.filter(
+        (b) => b.difficulty >= difficultyFilter.min && b.difficulty <= effectiveMax,
+      );
+    }
     const q = searchQuery.trim().toLowerCase();
-    if (q === "") return beatmaps;
-    return beatmaps.filter(
-      (b) =>
-        b.title.toLowerCase().includes(q) ||
-        b.artist.toLowerCase().includes(q) ||
-        b.creator.toLowerCase().includes(q),
-    );
-  }, [beatmaps, searchQuery]);
+    if (q !== "") {
+      result = result.filter(
+        (b) =>
+          b.title.toLowerCase().includes(q) ||
+          b.artist.toLowerCase().includes(q) ||
+          b.creator.toLowerCase().includes(q),
+      );
+    }
+    return result;
+  }, [beatmaps, searchQuery, difficultyFilter]);
 
   // Game is played on a controller, so users won't usually have the search
   // input focused. Funnel global keystrokes into the query — unless another
   // input/textarea is already focused (so the input itself still works
-  // normally when clicked).
+  // normally when clicked), or an overlay modal is open (it owns input).
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (isModalOpen) return;
       const active = document.activeElement;
       if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
       if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -76,7 +99,7 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [isModalOpen]);
 
   // LRU cache of blob URLs keyed by beatmap id. Bounded so memory doesn't
   // grow without limit as the user browses, and intentionally NOT cleared on
@@ -253,11 +276,31 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
     };
   }, [previewBeatmap, resolveMediaUrls, selectionScene]);
 
-  const [isDownloaderOpen, setDownloaderOpen] = useState(false);
+
+  // Hand input ownership to whichever modal is open: scene's gamepad nav +
+  // confirm + leaderboard cycling stop firing, and B routes to closing the
+  // modal first instead of popping the scene.
+  useEffect(() => {
+    selectionScene.setInputBlocked(isModalOpen);
+    if (!isModalOpen) {
+      selectionScene.setModalBackHandler(null);
+      return;
+    }
+    selectionScene.setModalBackHandler(() => {
+      if (isFilterPanelOpen) setFilterPanelOpen(false);
+      else if (isDownloaderOpen) setDownloaderOpen(false);
+    });
+    return () => {
+      selectionScene.setModalBackHandler(null);
+    };
+  }, [isModalOpen, isFilterPanelOpen, isDownloaderOpen, selectionScene]);
 
   const leftButtons = useMemo<{ id: string; label: string; onActivate: () => void }[]>(
-    () => [{ id: "download", label: "Download maps", onActivate: () => setDownloaderOpen(true) }],
-    [],
+    () => [
+      { id: "filter", label: "Filters", onActivate: () => setFilterPanelOpen(true) },
+      { id: "download", label: "Download maps", onActivate: () => setDownloaderOpen(true) },
+    ],
+    [setFilterPanelOpen, setDownloaderOpen],
   );
 
   useEffect(() => {
@@ -422,6 +465,12 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
       </div>
 
       <BeatmapsetDownloader isVisible={isDownloaderOpen} onClose={() => setDownloaderOpen(false)} />
+      <BeatmapFilters
+        isVisible={isFilterPanelOpen}
+        onClose={() => setFilterPanelOpen(false)}
+        difficultyFilter={difficultyFilter}
+        onDifficultyChange={setDifficultyFilter}
+      />
     </div>
   );
 };

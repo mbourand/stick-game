@@ -78,6 +78,11 @@ export class BeatmapSelectionScene extends Scene {
   private focusedLeftButton: number | null = null;
   private leftConfirmHandler: ((index: number) => void) | null = null;
 
+  /** When true, gamepad navigation + confirm + leaderboard cycling no-op so an overlay can own input. */
+  private inputBlocked = false;
+  /** When set, the back action invokes this instead of `goBack` — used by modals to close themselves. */
+  private modalBackHandler: (() => void) | null = null;
+
   constructor(engine: Engine) {
     super(engine);
     this.circle = engine.getPersistentRoot().circle;
@@ -88,10 +93,27 @@ export class BeatmapSelectionScene extends Scene {
   }
 
   public override onEntered() {
-    this.onAction("back", () => this.goBack());
-    this.onAction("confirm", () => void this.confirmFocused());
-    this.onAction("leaderboard-prev", () => this.cycleLeaderboardTab(-1));
-    this.onAction("leaderboard-next", () => this.cycleLeaderboardTab(+1));
+    // Back is never blocked — it's the user's escape from overlays back into
+    // the scene, then from the scene back to the main menu.
+    this.onAction("back", () => {
+      if (this.modalBackHandler) {
+        this.modalBackHandler();
+        return;
+      }
+      this.goBack();
+    });
+    this.onAction("confirm", () => {
+      if (this.inputBlocked) return;
+      void this.confirmFocused();
+    });
+    this.onAction("leaderboard-prev", () => {
+      if (this.inputBlocked) return;
+      this.cycleLeaderboardTab(-1);
+    });
+    this.onAction("leaderboard-next", () => {
+      if (this.inputBlocked) return;
+      this.cycleLeaderboardTab(+1);
+    });
     // Exit transitions fade innerContainer to 0; reset before showing again.
     this.innerContainer.alpha = 1;
     // Coming back from scores etc.: re-arm the preview for the still-focused map.
@@ -229,9 +251,22 @@ export class BeatmapSelectionScene extends Scene {
   }
 
   public override update(tick: TickContext): void {
-    if (this.beatmapCount > 0) this.processStickInput(tick.dt);
+    if (this.beatmapCount > 0 && !this.inputBlocked) this.processStickInput(tick.dt);
     this.tickBackgroundFade(tick.dt);
     this.root.update(tick);
+  }
+
+  public setInputBlocked(blocked: boolean): void {
+    if (this.inputBlocked === blocked) return;
+    this.inputBlocked = blocked;
+    if (blocked) {
+      // Clear transient input state so nothing's mid-scroll when control returns.
+      this.setScrollZone(null);
+    }
+  }
+
+  public setModalBackHandler(handler: (() => void) | null): void {
+    this.modalBackHandler = handler;
   }
 
   public override render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {

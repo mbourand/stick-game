@@ -16,9 +16,12 @@ import { CIRCLE_RESIZE_DURATION_MS, ENTER_DURATION_MS, EXIT_DURATION_MS } from "
  *   - duringEnter: runs in parallel with the to-scene's UI enter anim
  *                  (used when the resize and the enter visually overlap).
  *
+ * SceneManager flips `from` to "exiting" before the playable starts, so
+ * the from-scene's UI is already animating out when the timeline begins.
+ * The shell only needs to flip `to` to "entering" at the right moment.
+ *
  * Resulting timeline:
  *
- *   from.setPhase("exiting")
  *   parallel( wait(EXIT_DURATION_MS), duringExit? )
  *   between?
  *   parallel(
@@ -27,7 +30,7 @@ import { CIRCLE_RESIZE_DURATION_MS, ENTER_DURATION_MS, EXIT_DURATION_MS } from "
  *   )
  */
 export function phaseShell(
-  { from, to }: TransitionContext,
+  { to }: TransitionContext,
   slots: {
     duringExit?: Playable | null;
     between?: Playable | null;
@@ -36,7 +39,6 @@ export function phaseShell(
 ): Playable {
   return sequence(
     compact([
-      call(() => from?.setPhase("exiting")),
       parallel(compact([wait(EXIT_DURATION_MS), slots.duringExit])),
       slots.between,
       parallel(

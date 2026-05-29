@@ -1,13 +1,13 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useSyncExternalStore } from "react";
 import type { SceneUIComponent } from "../Scene";
+import { useScenePhase } from "../useScene";
 
 const FADE_DURATION_SECONDS = 0.3;
 
 export const PauseView: SceneUIComponent = ({ scene }) => {
-  const isExiting = useSyncExternalStore(scene.subscribeExit, scene.isExiting, scene.isExiting);
+  const isExiting = useScenePhase(scene) === "exiting";
 
   return (
     <motion.div

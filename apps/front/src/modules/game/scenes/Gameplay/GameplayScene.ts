@@ -11,13 +11,18 @@ import { ScoreHUDEntity } from "../../entities/ScoreHUDEntity";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
 import { easeInOutCubic } from "../../engine/animation/Easing";
 import type { Playable } from "../../engine/animation/Playable";
+import { parallel } from "../../engine/animation/Timeline";
 import { tween } from "../../engine/animation/Tween";
+import { EXIT_FADE_DURATION_MS } from "../../engine/transitions/durations";
 import { BeatmapClock } from "../../engine/BeatmapClock";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
 import type { CircleLayer } from "../../engine/layers/CircleLayer";
 import type { TickContext } from "../../engine/TickContext";
+import { gameplayRetry } from "../../engine/transitions/factories/gameplayRetry";
+import { gameplayToBeatmapSelection } from "../../engine/transitions/factories/gameplayToBeatmapSelection";
 import { gameplayToScores } from "../../engine/transitions/factories/gameplayToScores";
+import { pauseExit } from "../../engine/transitions/factories/pauseExit";
 import { ScoresScene } from "../Scores/ScoresScene";
 import type { GameplayEvents } from "../../events/gameplayEvents";
 import type { NoteHoldTickEventType } from "../../events/impl/NoteHoldTickEvent";
@@ -117,16 +122,55 @@ export class GameplayScene extends Scene {
   }
 
   public override exitFadePlayable(durationMs: number): Playable {
-    return tween({
-      target: this.circleInnerContentContainer,
-      to: { alpha: 0 },
-      duration: durationMs,
-      easing: easeInOutCubic,
-    });
+    // Fade every fadeable surface the scene owns — notes and fx hang off
+    // root directly (so they can sit in front of the ring), so the inner
+    // container alone wouldn't cover them.
+    const fade = (target: { alpha: number }) =>
+      tween({ target, to: { alpha: 0 }, duration: durationMs, easing: easeInOutCubic });
+    return parallel([
+      fade(this.circleInnerContentContainer),
+      fade(this.notesContainer),
+      fade(this.fxContainer),
+    ]);
   }
 
   public openPauseMenu() {
-    this.sceneManager.pushScene(new PauseScene(this.engine));
+    this.sceneManager.pushScene(
+      new PauseScene(this.engine, {
+        onResume: () => void this.sceneManager.transitionPop(pauseExit),
+        onRetry: () => void this.retryBeatmap(),
+        onExit: () => void this.exitToBeatmapSelection(),
+      }),
+    );
+  }
+
+  /**
+   * Retry/exit flow:
+   *   1. Stop the source (the brief resume/suspend dance during phase
+   *      changes between pause's pop and gameplay's next transition would
+   *      otherwise produce an audible blip).
+   *   2. Start the canvas-content fade on the persistent tween scheduler so
+   *      it runs *in parallel* with the pause UI's DOM fade — by the time
+   *      pause is gone, the notes are gone too.
+   *   3. Await the pause pop, then drive the gameplay-side transition.
+   */
+  public async retryBeatmap(): Promise<void> {
+    this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
+    void this.engine.getPersistentRoot().transitions.play(
+      this.exitFadePlayable(EXIT_FADE_DURATION_MS),
+    );
+    await this.sceneManager.transitionPop(pauseExit);
+    const next = new GameplayScene(this.engine, this.parsedMap);
+    void this.sceneManager.transitionReplace(next, gameplayRetry);
+  }
+
+  public async exitToBeatmapSelection(): Promise<void> {
+    this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
+    void this.engine.getPersistentRoot().transitions.play(
+      this.exitFadePlayable(EXIT_FADE_DURATION_MS),
+    );
+    await this.sceneManager.transitionPop(pauseExit);
+    void this.sceneManager.transitionPop(gameplayToBeatmapSelection);
   }
 
   public override update(tick: TickContext): void {

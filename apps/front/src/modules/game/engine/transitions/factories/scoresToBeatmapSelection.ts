@@ -8,4 +8,4 @@ import { phaseShell, resizeRing } from "../shells";
  * back in (concurrently with the resize).
  */
 export const scoresToBeatmapSelection: TransitionFactory = (ctx) =>
-  phaseShell(ctx, { duringEnter: resizeRing(ctx, BEATMAP_SELECTION_CIRCLE_RADIUS) });
+  phaseShell(ctx, { between: resizeRing(ctx, BEATMAP_SELECTION_CIRCLE_RADIUS) });

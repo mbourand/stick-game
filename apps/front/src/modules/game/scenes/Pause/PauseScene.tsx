@@ -18,9 +18,14 @@ export type PauseCallbacks = {
   onExit: () => void;
 };
 
-const STICK_ACTIVE_THRESHOLD = 0.5;
-/** Y bands for stick navigation: above this magnitude on y picks the top/bottom button. */
-const STICK_BAND_THRESHOLD = 0.4;
+/**
+ * Edge-triggered list navigation: a push past `ENGAGE` moves the focus one
+ * step, then the stick has to return below `RELEASE` before another move
+ * registers. Hysteresis between the two keeps a stick parked near the
+ * threshold from firing repeatedly.
+ */
+const STICK_ENGAGE_THRESHOLD = 0.3;
+const STICK_RELEASE_THRESHOLD = 0.2;
 
 export class PauseScene extends Scene {
   public readonly id = "pause";
@@ -31,6 +36,8 @@ export class PauseScene extends Scene {
   public readonly focused = new Store<PauseAction>("resume");
 
   private readonly callbacks: PauseCallbacks;
+  /** Edge state for the engage/release nav: true while the stick is held past ENGAGE. */
+  private stickEngaged = false;
 
   constructor(engine: Engine, callbacks: PauseCallbacks) {
     super(engine);
@@ -46,8 +53,20 @@ export class PauseScene extends Scene {
   public override update(_tick: TickContext): void {
     const left = this.getStick("left");
     const right = this.getStick("right");
-    const target = this.pickByStick(left) ?? this.pickByStick(right);
-    if (target !== null) this.focused.set(target);
+    // Dominant stick by absolute y — either stick navigates.
+    const y = Math.abs(left.y) >= Math.abs(right.y) ? left.y : right.y;
+
+    if (this.stickEngaged) {
+      if (Math.abs(y) < STICK_RELEASE_THRESHOLD) this.stickEngaged = false;
+      return;
+    }
+    if (y < -STICK_ENGAGE_THRESHOLD) {
+      this.moveFocus(-1);
+      this.stickEngaged = true;
+    } else if (y > STICK_ENGAGE_THRESHOLD) {
+      this.moveFocus(+1);
+      this.stickEngaged = true;
+    }
   }
 
   /**
@@ -61,11 +80,11 @@ export class PauseScene extends Scene {
     else this.callbacks.onExit();
   }
 
-  private pickByStick(stick: { x: number; y: number }): PauseAction | null {
-    const magnitude = Math.sqrt(stick.x * stick.x + stick.y * stick.y);
-    if (magnitude < STICK_ACTIVE_THRESHOLD) return null;
-    if (stick.y < -STICK_BAND_THRESHOLD) return "resume";
-    if (stick.y > STICK_BAND_THRESHOLD) return "exit";
-    return "retry";
+  private moveFocus(delta: -1 | 1): void {
+    const current = this.focused.get();
+    const idx = PAUSE_ACTIONS.findIndex((a) => a.id === current);
+    if (idx === -1) return;
+    const nextIdx = Math.max(0, Math.min(PAUSE_ACTIONS.length - 1, idx + delta));
+    if (nextIdx !== idx) this.focused.set(PAUSE_ACTIONS[nextIdx].id);
   }
 }

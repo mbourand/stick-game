@@ -1,4 +1,5 @@
 import { motionValue, type MotionValue } from "motion/react";
+import type { DifficultyFilter } from "@/app/game/_components/BeatmapFilters";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { BackgroundCrossfader } from "../../entities/BackgroundCrossfader";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
@@ -80,6 +81,14 @@ export class BeatmapSelectionScene extends Scene {
   public readonly scrollZone = new Store<ScrollZone>(null);
   public readonly leaderboardTab = new Store<LeaderboardTab>("global");
   public readonly focusedLeftButton = new Store<number | null>(null);
+
+  /**
+   * Search and difficulty filter live on the scene (not in the view's useState)
+   * so they survive while the view unmounts during gameplay/scores — when the
+   * user pops back here, the list re-renders with the same filter applied.
+   */
+  public readonly searchQuery = new Store<string>("");
+  public readonly difficultyFilter = new Store<DifficultyFilter | null>(null);
 
   /**
    * Continuous scroll position (float). A MotionValue so the view can drive

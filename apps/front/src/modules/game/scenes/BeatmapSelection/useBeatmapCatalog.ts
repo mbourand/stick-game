@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   DIFFICULTY_SLIDER_MAX,
@@ -19,12 +19,13 @@ export type BeatmapCatalog = {
   filteredBeatmaps: V3BeatmapEntity[];
   /** True iff a search/filter is active AND it filtered to zero. */
   isNoMatch: boolean;
-
-  searchQuery: string;
-  setSearchQuery: Dispatch<SetStateAction<string>>;
-
-  difficultyFilter: DifficultyFilter | null;
-  setDifficultyFilter: Dispatch<SetStateAction<DifficultyFilter | null>>;
+  /**
+   * False during the first render(s) after mount, while Dexie's live query is
+   * still resolving. Lets downstream sync hooks skip pushing transient
+   * "library has 0 maps" states into the scene, which would otherwise clobber
+   * preserved focus/scroll when the view remounts on scene re-entry.
+   */
+  isLoaded: boolean;
 
   /**
    * Resolves audio + background blob URLs for a beatmap, backed by an LRU
@@ -42,15 +43,24 @@ const revokeMediaUrls = ({ audioUrl, backgroundUrl }: MediaUrls) => {
   URL.revokeObjectURL(backgroundUrl);
 };
 
-export function useBeatmapCatalog(): BeatmapCatalog {
-  const beatmaps: V3BeatmapEntity[] = useLiveQuery(
+/**
+ * Filter inputs are passed in (not held inside) so the view can source them
+ * from a scene-owned Store and keep them alive while the view unmounts.
+ */
+export function useBeatmapCatalog(
+  searchQuery: string,
+  difficultyFilter: DifficultyFilter | null,
+): BeatmapCatalog {
+  // No default value — returns `undefined` until Dexie resolves. We need to
+  // tell "not loaded yet" apart from "loaded but empty" so the focus-sync
+  // effect doesn't push count=0 into the scene during the first render after
+  // a remount (which would clobber preserved focus + scroll).
+  const liveBeatmaps = useLiveQuery(
     () => latestDb.beatmaps.toArray().then((maps) => maps.sort((a, b) => b.difficulty - a.difficulty)),
     [],
-    [] as V3BeatmapEntity[],
   );
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter | null>(null);
+  const isLoaded = liveBeatmaps !== undefined;
+  const beatmaps = useMemo(() => liveBeatmaps ?? [], [liveBeatmaps]);
 
   const filteredBeatmaps = useMemo(() => {
     let result = beatmaps;
@@ -103,10 +113,7 @@ export function useBeatmapCatalog(): BeatmapCatalog {
     beatmaps,
     filteredBeatmaps,
     isNoMatch,
-    searchQuery,
-    setSearchQuery,
-    difficultyFilter,
-    setDifficultyFilter,
+    isLoaded,
     resolveMediaUrls,
   };
 }

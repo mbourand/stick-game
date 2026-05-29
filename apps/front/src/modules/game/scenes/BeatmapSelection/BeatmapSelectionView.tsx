@@ -39,16 +39,12 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
   const searchBarMotion = useScenePresenceMotion({ y: -12 });
   const emptyStateMotion = useScenePresenceMotion();
 
-  const {
-    beatmaps,
-    filteredBeatmaps,
-    isNoMatch,
+  const searchQuery = useStore(scene.searchQuery);
+  const difficultyFilter = useStore(scene.difficultyFilter);
+  const { beatmaps, filteredBeatmaps, isNoMatch, isLoaded, resolveMediaUrls } = useBeatmapCatalog(
     searchQuery,
-    setSearchQuery,
     difficultyFilter,
-    setDifficultyFilter,
-    resolveMediaUrls,
-  } = useBeatmapCatalog();
+  );
 
   const {
     isFilterPanelOpen,
@@ -59,7 +55,7 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
     closeTop: closeTopModal,
   } = useBeatmapModals();
 
-  useGlobalTypeahead(setSearchQuery, { disabled: isModalOpen });
+  useGlobalTypeahead(scene.searchQuery.update, { disabled: isModalOpen });
 
   const leftButtons = useMemo<{ id: string; label: string; onActivate: () => void }[]>(
     () => [
@@ -70,7 +66,7 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
   );
 
   useSceneResolverBridge(scene, filteredBeatmaps, resolveMediaUrls);
-  const { focusedIndex, focusedBeatmap } = useSceneFocusSync(scene, filteredBeatmaps, isNoMatch);
+  const { focusedIndex, focusedBeatmap } = useSceneFocusSync(scene, filteredBeatmaps, isNoMatch, isLoaded);
   const previewBeatmap = usePreviewBeatmap(focusedBeatmap);
   useScenePreviewBridge(scene, previewBeatmap, resolveMediaUrls);
 
@@ -177,7 +173,7 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
             type="text"
             placeholder="Search title, artist, mapper…"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => scene.searchQuery.set(e.target.value)}
             className="w-full bg-black/30 backdrop-blur-sm border border-white/20 text-white text-xs tracking-[0.15em] uppercase placeholder-white/40 px-4 py-2 rounded focus:bg-black/50 focus:border-white/60 outline-none text-center"
           />
           {isNoMatch && (
@@ -247,7 +243,7 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
         isVisible={isFilterPanelOpen}
         onClose={() => setFilterPanelOpen(false)}
         difficultyFilter={difficultyFilter}
-        onDifficultyChange={setDifficultyFilter}
+        onDifficultyChange={scene.difficultyFilter.set}
       />
     </div>
   );

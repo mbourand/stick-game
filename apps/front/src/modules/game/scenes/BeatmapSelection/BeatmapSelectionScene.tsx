@@ -12,6 +12,7 @@ import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
 import { beatmapSelectionToGameplay } from "../../engine/transitions/factories/beatmapSelectionToGameplay";
 import { beatmapSelectionToMainMenu } from "../../engine/transitions/factories/beatmapSelectionToMainMenu";
+import { CircleAudioVisualizer } from "../../flair/CircleAudioVisualizer";
 import { GameplayScene } from "../Gameplay/GameplayScene";
 import { Scene } from "../Scene";
 import { pickIndexAtY } from "../shared/verticalPicker";
@@ -93,10 +94,11 @@ export class BeatmapSelectionScene extends Scene {
   private lastGameplayScene: GameplayScene | null = null;
 
   private root = new Container();
-  /** Holds the background crossfader; fades to 0 during exit transitions. */
+  /** Holds the background crossfader + audio visualizer; fades to 0 during exit transitions. */
   private innerContainer = new Container();
   private circle: CircleLayer;
   private background: BackgroundCrossfader;
+  private audioVisualizer: CircleAudioVisualizer;
 
   private currentMedia: FocusedBeatmapMedia | null = null;
   private mediaGeneration = 0;
@@ -113,8 +115,15 @@ export class BeatmapSelectionScene extends Scene {
       radius: CIRCLE_RADIUS_PX,
       fadeDurationMs: BACKGROUND_CROSSFADE_MS,
     });
-    // Inner content (background) renders behind the circle, like in gameplay.
+    this.audioVisualizer = new CircleAudioVisualizer(
+      engine.getAudio().music.getAudioContext(),
+      40,
+      CIRCLE_RADIUS_PX,
+      30,
+    );
+    // Inner content renders behind the circle, like in gameplay: background → visualizer.
     this.innerContainer.add(this.background);
+    this.innerContainer.add(this.audioVisualizer);
     this.root.add(this.innerContainer);
     this.root.add(this.circle);
     this.root.add(new StickDotsEntity(this.inputSystem, this.circle));
@@ -360,7 +369,8 @@ export class BeatmapSelectionScene extends Scene {
       return;
     }
     if (generation !== this.mediaGeneration || !this.isActive()) return;
-    music.play(PREVIEW_AUDIO_ID, buffer, { loop: true, volume: PREVIEW_AUDIO_VOLUME });
+    const source = music.play(PREVIEW_AUDIO_ID, buffer, { loop: true, volume: PREVIEW_AUDIO_VOLUME });
+    this.audioVisualizer.connectSource(source);
   }
 
   private stopPreviewAudio(): void {

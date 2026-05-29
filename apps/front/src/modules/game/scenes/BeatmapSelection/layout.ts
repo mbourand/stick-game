@@ -23,7 +23,7 @@ export const BUTTON_STAGGER_S = 0.025;
  * Stick magnitude required for any input to register. Anything below counts as
  * a resting stick.
  */
-export const STICK_ACTIVE_THRESHOLD = 0.6;
+export const STICK_ACTIVE_THRESHOLD = 0.9;
 
 /**
  * Vertical bound (in screen px from circle centre) past which the stick is
@@ -47,9 +47,7 @@ export function getVisibleIndexRange(
   itemCount: number,
 ): { firstIndex: number; lastIndex: number } {
   if (itemCount === 0) return { firstIndex: 0, lastIndex: -1 };
-  const itemsPerSide = Math.ceil(
-    (CIRCLE_RADIUS_PX + BUTTON_HEIGHT_PX) / VERTICAL_PITCH_PX,
-  ) + RENDER_OVERSCAN_ITEMS;
+  const itemsPerSide = Math.ceil((CIRCLE_RADIUS_PX + BUTTON_HEIGHT_PX) / VERTICAL_PITCH_PX) + RENDER_OVERSCAN_ITEMS;
   const firstIndex = Math.max(0, scrollFloor - itemsPerSide);
   const lastIndex = Math.min(itemCount - 1, scrollFloor + itemsPerSide);
   return { firstIndex, lastIndex };

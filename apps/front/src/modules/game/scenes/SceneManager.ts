@@ -11,9 +11,11 @@ type Listener = () => void;
 
 /**
  * Snapshot of an in-flight scene transition. Both scenes update and render
- * while this is non-null; input is silent (the SceneManager deactivates
- * `from` at start and activates `to` at completion, so no scene has live
- * input handlers in between).
+ * while this is non-null; event-driven input is silent (SceneManager flips
+ * `from` to "exiting" at start and `to` to "active" only at completion, so
+ * neither scene has live input handlers during the choreography). Polled
+ * input — sticks read inside Scene.update — is NOT silenced; scenes that
+ * poll should check `isActive()` first.
  */
 export type TransitionState = {
   readonly from: Scene | null;
@@ -51,10 +53,8 @@ export class SceneManager {
   public pushScene(scene: Scene) {
     if (this.isTransitioning) return;
     const previous = this.getTopScene();
-    previous?.deactivate();
     previous?.setPhase("inactive");
     this.sceneStack.push(scene);
-    scene.activate();
     scene.setPhase("active");
     this.emit();
   }
@@ -63,12 +63,10 @@ export class SceneManager {
     if (this.isTransitioning) return;
     const previous = this.sceneStack.pop();
     if (previous) {
-      previous.deactivate();
       previous.setPhase("inactive");
       void previous.onDestroy();
     }
     this.sceneStack.push(scene);
-    scene.activate();
     scene.setPhase("active");
     this.emit();
   }
@@ -79,14 +77,15 @@ export class SceneManager {
     if (!top) return;
     this.isTransitioning = true;
     try {
-      await top.transitionOut();
+      // setPhase("exiting") tears down input handlers and fires onBeforeExit;
+      // awaitExit then gates on the scene's React-driven exit animation (or
+      // resolves immediately if it doesn't have one).
+      top.setPhase("exiting");
+      await top.awaitExit();
       this.sceneStack.pop();
-      top.deactivate();
       top.setPhase("inactive");
       void top.onDestroy();
-      const revealed = this.getTopScene();
-      revealed?.activate();
-      revealed?.setPhase("active");
+      this.getTopScene()?.setPhase("active");
       this.emit();
     } finally {
       this.isTransitioning = false;
@@ -103,7 +102,6 @@ export class SceneManager {
     const from = this.getTopScene();
     await this.runTransition({ from, to: scene, kind: "push", factory }, () => {
       this.sceneStack.push(scene);
-      scene.activate();
     });
   }
 
@@ -118,7 +116,6 @@ export class SceneManager {
       const previous = this.sceneStack.pop();
       if (previous) void previous.onDestroy();
       this.sceneStack.push(scene);
-      scene.activate();
     });
   }
 
@@ -134,7 +131,6 @@ export class SceneManager {
     await this.runTransition({ from, to, kind: "pop", factory }, () => {
       this.sceneStack.pop();
       void from.onDestroy();
-      this.getTopScene()?.activate();
     });
   }
 
@@ -145,7 +141,12 @@ export class SceneManager {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
 
-    spec.from?.deactivate();
+    // setPhase("exiting") fires onBeforeExit and tears down `from`'s input
+    // handlers BEFORE the choreography plays, so the user can't drive a
+    // scene that's animating out. Mid-timeline, the playable will call
+    // setPhase("entering") on `to` (no side effect — not the active
+    // boundary). When the playable finishes we commit to "inactive"/"active".
+    spec.from?.setPhase("exiting");
 
     const playable = spec.factory({
       from: spec.from,
@@ -171,7 +172,7 @@ export class SceneManager {
 
   public clearScenes() {
     const top = this.getTopScene();
-    if (top) top.deactivate();
+    top?.setPhase("inactive");
     for (let i = this.sceneStack.length - 1; i >= 0; i--) {
       void this.sceneStack[i].onDestroy();
     }
@@ -184,15 +185,10 @@ export class SceneManager {
     if (index === -1) return;
 
     const wasTop = index === this.sceneStack.length - 1;
-    if (wasTop) scene.deactivate();
     scene.setPhase("inactive");
     void scene.onDestroy();
     this.sceneStack.splice(index, 1);
-    if (wasTop) {
-      const revealed = this.getTopScene();
-      revealed?.activate();
-      revealed?.setPhase("active");
-    }
+    if (wasTop) this.getTopScene()?.setPhase("active");
     this.emit();
   }
 

@@ -8,36 +8,49 @@ import type { SceneManager } from "./SceneManager";
 
 export type SceneUIComponent = ComponentType<{ scene: Scene }>;
 
-type SceneState = "inactive" | "active";
-
 /**
- * High-level lifecycle marker observed by the scene's UI. Driven by the
- * SceneManager (instant push/pop sets it) and by transition factories
- * (each step in a choreography flips it via `setPhase`).
+ * The single lifecycle state for a scene. Drives both visible behavior
+ * (rendered? updated?) and side effects (input handlers armed? onEntered
+ * fired?). Every transition between phases is a `setPhase(...)` call —
+ * there is no separate active/inactive flag.
  *
- *   - inactive: not on screen
- *   - entering: appearing as a transition's `to`
- *   - active:   normal at-rest state
- *   - exiting:  disappearing as a transition's `from`
+ *   - inactive: not on screen, no input, no per-frame work expected.
+ *   - entering: appearing as a transition's `to`. Rendered + updated but
+ *               not yet "active" — input handlers aren't armed, onEntered
+ *               hasn't fired.
+ *   - active:   normal at-rest state. Input handlers live, onEntered has
+ *               fired.
+ *   - exiting:  disappearing — either as a transition's `from` or as a
+ *               popped scene waiting on its own exit animation. Input
+ *               handlers have been torn down, onBeforeExit has fired.
+ *
+ * Side effects fire when crossing the `active` boundary:
+ *
+ *   * → active:  onEntered() is called.
+ *   active → *:  registered input disposers are torn down, then
+ *                onBeforeExit() is called.
+ *
+ * Phase transitions are driven by SceneManager and (mid-timeline) by
+ * transition factories via `call(() => scene.setPhase(...))`. Scene
+ * subclasses should not call setPhase on themselves.
  */
 export type ScenePhase = "inactive" | "entering" | "active" | "exiting";
 
-type ExitListener = () => void;
 type PhaseListener = () => void;
 
 export abstract class Scene {
   protected engine: Engine;
 
-  private state: SceneState = "inactive";
-  private activeDisposers: (() => void)[] = [];
-
-  private exiting = false;
-  private exitPromise: Promise<void> | null = null;
-  private exitResolve: (() => void) | null = null;
-  private exitListeners = new Set<ExitListener>();
-
   private phase: ScenePhase = "inactive";
   private phaseListeners = new Set<PhaseListener>();
+  private activeDisposers: (() => void)[] = [];
+
+  /**
+   * Promise + resolver used by scenes whose exit animation is driven by
+   * their React UI (see `awaitExitSignal`). Null when no exit is pending.
+   */
+  private exitPromise: Promise<void> | null = null;
+  private exitResolve: (() => void) | null = null;
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -79,27 +92,33 @@ export abstract class Scene {
   }
 
   /**
-   * Called by SceneManager.popScene before the scene is deactivated.
-   * Default: returns immediately. Override and return a Promise to delay the pop
-   * (e.g., to play an exit animation).
+   * Awaited by `SceneManager.popScene` between `setPhase("exiting")` and
+   * `setPhase("inactive")`, letting a scene delay the pop until its React
+   * exit animation finishes. Default resolves immediately.
    *
-   * For React-driven exit animations:
+   * Transition-factory pushes/pops bypass this hook — they own the exit
+   * animation via a Playable and SceneManager flips phase directly.
    *
-   *   public override transitionOut(): Promise<void> { return this.beginExit(); }
+   * Typical override for a React-driven exit:
    *
-   * Then in the scene's UI, observe `isExiting()` via `subscribeExit` and call
-   * `completeExit()` when the animation finishes.
+   *   public override awaitExit(): Promise<void> {
+   *     return this.awaitExitSignal();
+   *   }
+   *
+   * Then in the scene's UI, observe `phase === "exiting"` via
+   * `useScenePhase` and call `completeExit()` when the animation ends.
    */
-  public transitionOut(): Promise<void> | void {}
+  public awaitExit(): Promise<void> {
+    return Promise.resolve();
+  }
 
   /**
-   * React-driven exit helper. Flips `isExiting` to true, notifies UI subscribers,
-   * and returns a promise resolved by `completeExit()`.
+   * Helper for `awaitExit` overrides: returns a promise that resolves when
+   * the scene's UI calls `completeExit()`. Idempotent — repeated calls
+   * before completion return the same pending promise.
    */
-  protected beginExit(): Promise<void> {
+  protected awaitExitSignal(): Promise<void> {
     if (this.exitPromise) return this.exitPromise;
-    this.exiting = true;
-    this.notifyExit();
     this.exitPromise = new Promise<void>((resolve) => {
       this.exitResolve = resolve;
     });
@@ -110,21 +129,9 @@ export abstract class Scene {
   public completeExit = (): void => {
     const resolve = this.exitResolve;
     this.exitResolve = null;
+    this.exitPromise = null;
     resolve?.();
   };
-
-  public isExiting = (): boolean => this.exiting;
-
-  public subscribeExit = (listener: ExitListener): (() => void) => {
-    this.exitListeners.add(listener);
-    return () => {
-      this.exitListeners.delete(listener);
-    };
-  };
-
-  private notifyExit() {
-    for (const listener of this.exitListeners) listener();
-  }
 
   public getPhase = (): ScenePhase => this.phase;
 
@@ -135,31 +142,30 @@ export abstract class Scene {
     };
   };
 
-  /** Called by SceneManager and by transition factories via `call(...)`. */
+  public isActive(): boolean {
+    return this.phase === "active";
+  }
+
+  /**
+   * Called by SceneManager and (mid-timeline) by transition factories. Fires
+   * onEntered/onBeforeExit on the active-boundary crossings.
+   */
   public setPhase(phase: ScenePhase): void {
     if (this.phase === phase) return;
+    const wasActive = this.phase === "active";
+    const willBeActive = phase === "active";
     this.phase = phase;
+
+    if (wasActive && !willBeActive) {
+      for (const dispose of this.activeDisposers) dispose();
+      this.activeDisposers = [];
+      void this.onBeforeExit();
+    }
+    if (willBeActive && !wasActive) {
+      void this.onEntered();
+    }
+
     for (const listener of this.phaseListeners) listener();
-  }
-
-  public isActive(): boolean {
-    return this.state === "active";
-  }
-
-  /** Called by SceneManager. Do not call directly. */
-  public activate(): void {
-    if (this.state === "active") return;
-    this.state = "active";
-    void this.onEntered();
-  }
-
-  /** Called by SceneManager. Do not call directly. */
-  public deactivate(): void {
-    if (this.state === "inactive") return;
-    this.state = "inactive";
-    for (const dispose of this.activeDisposers) dispose();
-    this.activeDisposers = [];
-    void this.onBeforeExit();
   }
 
   protected onAction(action: ButtonAction, handler: () => void): void {

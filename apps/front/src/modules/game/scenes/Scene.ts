@@ -134,6 +134,46 @@ export abstract class Scene {
     this.activeDisposers.push(off);
   }
 
+  /**
+   * Press-with-repeat: handler fires once on press, then once after
+   * `initialDelayMs`, then every `repeatIntervalMs` until release. Used for
+   * UI list navigation (d-pad up/down) where a single tap moves one item
+   * and a held press passes through items at the repeat rate.
+   *
+   * Tied to the active lifetime — timers are cleared when the scene leaves
+   * active, same as the underlying onAction subscriptions.
+   */
+  protected onActionRepeat(
+    action: ButtonAction,
+    handler: () => void,
+    opts: { initialDelayMs?: number; repeatIntervalMs?: number } = {},
+  ): void {
+    const initialDelayMs = opts.initialDelayMs ?? 350;
+    const repeatIntervalMs = opts.repeatIntervalMs ?? 60;
+    let initialTimer: ReturnType<typeof setTimeout> | null = null;
+    let repeatTimer: ReturnType<typeof setInterval> | null = null;
+    const clearTimers = () => {
+      if (initialTimer !== null) {
+        clearTimeout(initialTimer);
+        initialTimer = null;
+      }
+      if (repeatTimer !== null) {
+        clearInterval(repeatTimer);
+        repeatTimer = null;
+      }
+    };
+    this.onAction(action, () => {
+      clearTimers();
+      handler();
+      initialTimer = setTimeout(() => {
+        initialTimer = null;
+        repeatTimer = setInterval(handler, repeatIntervalMs);
+      }, initialDelayMs);
+    });
+    this.onActionUp(action, clearTimers);
+    this.activeDisposers.push(clearTimers);
+  }
+
   protected getStick(side: "left" | "right"): { x: number; y: number } {
     return this.inputSystem.getStick(side);
   }

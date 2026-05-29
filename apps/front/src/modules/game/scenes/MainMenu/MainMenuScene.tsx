@@ -34,6 +34,19 @@ export class MainMenuScene extends Scene {
       const id = this.focused.get();
       if (id !== null) this.activateFocused(id);
     });
+    this.onActionRepeat("nav-up", () => this.moveFocus(-1));
+    this.onActionRepeat("nav-down", () => this.moveFocus(+1));
+  }
+
+  private moveFocus(delta: -1 | 1): void {
+    const current = this.focused.get();
+    if (current === null) {
+      this.focused.set(BUTTONS[0].id);
+      return;
+    }
+    const idx = BUTTONS.findIndex((b) => b.id === current);
+    const next = Math.max(0, Math.min(BUTTONS.length - 1, idx + delta));
+    if (next !== idx) this.focused.set(BUTTONS[next].id);
   }
 
   public override onDestroy() {

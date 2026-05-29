@@ -48,6 +48,8 @@ export class PauseScene extends Scene {
     this.onAction("pause", () => this.callbacks.onResume());
     this.onAction("back", () => this.callbacks.onResume());
     this.onAction("confirm", () => this.activate(this.focused.get()));
+    this.onActionRepeat("nav-up", () => this.moveFocus(-1));
+    this.onActionRepeat("nav-down", () => this.moveFocus(+1));
   }
 
   public override update(_tick: TickContext): void {

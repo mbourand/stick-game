@@ -17,25 +17,21 @@ import { useFrame } from "../../engine/useFrame";
 import { LruCache } from "../../utils/LruCache";
 import type { SceneUIComponent } from "../Scene";
 import { useScenePhase, useSceneSelector } from "../useScene";
+import { BeatmapRadialButton } from "./BeatmapRadialButton";
 import type { BeatmapSelectionScene } from "./BeatmapSelectionScene";
+import { LeftActionButton } from "./LeftActionButton";
+import { ScrollSurface } from "./ScrollSurface";
 import { useGlobalTypeahead } from "./useGlobalTypeahead";
 import {
   applyRadialLayout,
-  BUTTON_HEIGHT_PX,
-  BUTTON_RETRACT_X,
-  BUTTON_WIDTH_PX,
   CIRCLE_RADIUS_PX,
-  computeLeftRadialLayout,
   getLeftButtonYCenter,
   getVisibleIndexRange,
-  LEFT_BUTTON_RETRACT_X,
-  OUTER_LEFT_EXTRA_PX,
+  PHASE_DURATION_S,
   VERTICAL_PITCH_PX,
 } from "./layout";
 
 const CIRCLE_DIAMETER = CIRCLE_RADIUS_PX * 2;
-const BUTTON_STAGGER_S = 0.025;
-const PHASE_DURATION_S = 0.32;
 const MEDIA_URL_CACHE_SIZE = 10;
 
 type MediaUrls = { audioUrl: string; backgroundUrl: string };
@@ -431,181 +427,5 @@ export const BeatmapSelectionView: SceneUIComponent = ({ scene }) => {
         onDifficultyChange={setDifficultyFilter}
       />
     </div>
-  );
-};
-
-type BeatmapRadialButtonProps = {
-  index: number;
-  staggerSlot: number;
-  title: string;
-  artist: string;
-  creator: string;
-  difficulty: number;
-  isFocused: boolean;
-  isVisible: boolean;
-  onFocus: () => void;
-  onClick: () => void;
-};
-
-const BeatmapRadialButton = ({
-  index,
-  staggerSlot,
-  title,
-  artist,
-  creator,
-  difficulty,
-  isFocused,
-  isVisible,
-  onFocus,
-  onClick,
-}: BeatmapRadialButtonProps) => {
-  return (
-    <div
-      data-index={index}
-      className="absolute"
-      style={{
-        width: `${BUTTON_WIDTH_PX + OUTER_LEFT_EXTRA_PX}px`,
-        height: `${BUTTON_HEIGHT_PX}px`,
-      }}
-    >
-      <motion.button
-        type="button"
-        className={`absolute pointer-events-auto text-white text-left rounded-r-full flex items-center justify-between gap-4 transition-colors ${
-          isFocused ? "bg-white/25" : "bg-white/10"
-        }`}
-        style={{
-          right: 0,
-          top: 0,
-          width: `${BUTTON_WIDTH_PX}px`,
-          height: `${BUTTON_HEIGHT_PX}px`,
-          paddingRight: "32px",
-          border: "2px solid rgba(255,255,255,0.5)",
-        }}
-        initial={false}
-        animate={{
-          x: isVisible ? 0 : BUTTON_RETRACT_X,
-          opacity: isVisible ? 1 : 0,
-        }}
-        transition={{
-          duration: PHASE_DURATION_S,
-          ease: [0.4, 0, 0.2, 1],
-          delay: isVisible ? Math.max(0, staggerSlot) * BUTTON_STAGGER_S : 0,
-        }}
-        onMouseEnter={onFocus}
-        onFocus={onFocus}
-        onClick={onClick}
-      >
-        <div className="flex flex-col min-w-0 flex-1">
-          <span className="text-lg font-semibold tracking-widest uppercase truncate">{title}</span>
-          <span className="text-xs text-white/60 tracking-[0.15em] truncate">
-            {artist} · mapped by {creator}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-2xl font-bold tabular-nums">{difficulty.toFixed(1)}</span>
-          <span className="text-xs text-white/60 uppercase tracking-[0.2em]">★</span>
-        </div>
-      </motion.button>
-    </div>
-  );
-};
-
-type ScrollSurfaceProps = {
-  position: "top" | "bottom";
-  active: boolean;
-  isVisible: boolean;
-  onPress: () => void;
-};
-
-type LeftActionButtonProps = {
-  yCenter: number;
-  label: string;
-  isFocused: boolean;
-  isVisible: boolean;
-  onFocus: () => void;
-  onClick: () => void;
-};
-
-const LeftActionButton = ({
-  yCenter,
-  label,
-  isFocused,
-  isVisible,
-  onFocus,
-  onClick,
-}: LeftActionButtonProps) => {
-  const { top, left, outerWidth, mask, paddingRight } = computeLeftRadialLayout(
-    yCenter,
-    CIRCLE_RADIUS_PX,
-  );
-  return (
-    <div
-      className="absolute"
-      style={{
-        top: `${top}px`,
-        left: `${left}px`,
-        width: `${outerWidth}px`,
-        height: `${BUTTON_HEIGHT_PX}px`,
-        maskImage: mask,
-        WebkitMaskImage: mask,
-        maskComposite: "intersect",
-      }}
-    >
-      <motion.button
-        type="button"
-        className={`absolute pointer-events-auto text-white text-right rounded-l-full flex items-center justify-end uppercase tracking-[0.25em] text-sm font-semibold transition-colors ${
-          isFocused ? "bg-white/25" : "bg-white/10"
-        }`}
-        style={{
-          left: 0,
-          top: 0,
-          width: `${BUTTON_WIDTH_PX}px`,
-          height: `${BUTTON_HEIGHT_PX}px`,
-          paddingLeft: "32px",
-          paddingRight: `${paddingRight}px`,
-          border: "2px solid rgba(255,255,255,0.5)",
-        }}
-        initial={false}
-        animate={{
-          x: isVisible ? 0 : LEFT_BUTTON_RETRACT_X,
-          opacity: isVisible ? 1 : 0,
-        }}
-        transition={{ duration: PHASE_DURATION_S, ease: [0.4, 0, 0.2, 1] }}
-        onMouseEnter={onFocus}
-        onFocus={onFocus}
-        onClick={onClick}
-      >
-        {label}
-      </motion.button>
-    </div>
-  );
-};
-
-const ScrollSurface = ({ position, active, isVisible, onPress }: ScrollSurfaceProps) => {
-  const isTop = position === "top";
-  return (
-    <motion.button
-      type="button"
-      aria-label={isTop ? "Scroll up" : "Scroll down"}
-      className={`absolute pointer-events-auto left-1/2 -translate-x-1/2 flex items-center justify-center rounded-full border transition-colors ${
-        active ? "bg-white/25 border-white/70" : "bg-white/5 border-white/20 hover:bg-white/15"
-      }`}
-      style={{
-        width: 96,
-        height: 36,
-        [isTop ? "top" : "bottom"]: -24,
-      }}
-      initial={false}
-      animate={{
-        opacity: isVisible ? 1 : 0,
-        y: isVisible ? 0 : isTop ? -12 : 12,
-      }}
-      transition={{ duration: PHASE_DURATION_S, ease: [0.4, 0, 0.2, 1] }}
-      onClick={onPress}
-    >
-      <span className="text-white/80 text-lg leading-none" aria-hidden>
-        {isTop ? "▲" : "▼"}
-      </span>
-    </motion.button>
   );
 };

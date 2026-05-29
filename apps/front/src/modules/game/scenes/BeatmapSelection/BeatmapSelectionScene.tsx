@@ -44,6 +44,33 @@ const BACKGROUND_CROSSFADE_MS = 300;
  */
 const SIDE_COMMIT_THRESHOLD = 0.3;
 
+/**
+ * Snapshot of UI-owned input routing — pushed in from the view in a single
+ * call so the scene sees a coherent state rather than tracking N separate
+ * setters that can be out of sync mid-render.
+ *
+ *   - blocked:     true while a modal owns input. Gamepad nav, confirm, and
+ *                  leaderboard cycling silently no-op.
+ *   - backHandler: when set, the back action invokes this instead of `goBack`
+ *                  — modals use it to close themselves.
+ *   - leftActions: left-column buttons currently rendered by the view; count
+ *                  bounds stick picking, onConfirm fires on activation.
+ */
+export type BeatmapSelectionUIContext = {
+  blocked: boolean;
+  backHandler: (() => void) | null;
+  leftActions: {
+    count: number;
+    onConfirm: (index: number) => void;
+  };
+};
+
+const DEFAULT_UI_CONTEXT: BeatmapSelectionUIContext = {
+  blocked: false,
+  backHandler: null,
+  leftActions: { count: 0, onConfirm: () => {} },
+};
+
 export class BeatmapSelectionScene extends Scene {
   public readonly id = "beatmap-selection";
   public override readonly UI = BeatmapSelectionView;
@@ -77,13 +104,7 @@ export class BeatmapSelectionScene extends Scene {
   /** One-shot guard: pick a random map the first time the list arrives. */
   private hasPickedInitialFocus = false;
 
-  private leftButtonCount = 0;
-  private leftConfirmHandler: ((index: number) => void) | null = null;
-
-  /** When true, gamepad navigation + confirm + leaderboard cycling no-op so an overlay can own input. */
-  private inputBlocked = false;
-  /** When set, the back action invokes this instead of `goBack` — used by modals to close themselves. */
-  private modalBackHandler: (() => void) | null = null;
+  private uiContext: BeatmapSelectionUIContext = DEFAULT_UI_CONTEXT;
 
   constructor(engine: Engine) {
     super(engine);
@@ -103,22 +124,23 @@ export class BeatmapSelectionScene extends Scene {
     // Back is never blocked — it's the user's escape from overlays back into
     // the scene, then from the scene back to the main menu.
     this.onAction("back", () => {
-      if (this.modalBackHandler) {
-        this.modalBackHandler();
+      const handler = this.uiContext.backHandler;
+      if (handler) {
+        handler();
         return;
       }
       this.goBack();
     });
     this.onAction("confirm", () => {
-      if (this.inputBlocked) return;
+      if (this.uiContext.blocked) return;
       void this.confirmFocused();
     });
     this.onAction("leaderboard-prev", () => {
-      if (this.inputBlocked) return;
+      if (this.uiContext.blocked) return;
       this.toggleLeaderboardTab();
     });
     this.onAction("leaderboard-next", () => {
-      if (this.inputBlocked) return;
+      if (this.uiContext.blocked) return;
       this.toggleLeaderboardTab();
     });
     // Exit transitions fade innerContainer to 0; reset before showing again.
@@ -194,23 +216,35 @@ export class BeatmapSelectionScene extends Scene {
     this.leaderboardTab.set(this.leaderboardTab.get() === "global" ? "local" : "global");
   }
 
-  public setLeftButtonCount(count: number): void {
-    if (this.leftButtonCount === count) return;
-    this.leftButtonCount = count;
-    const focused = this.focusedLeftButton.get();
-    if (focused !== null && focused >= count) {
-      this.focusedLeftButton.set(null);
+  /**
+   * Single sync point for everything the view tells the scene about input
+   * routing — replaces a stack of individual setters that the view had to
+   * keep in lockstep via separate effects.
+   */
+  public setUIContext(ctx: BeatmapSelectionUIContext): void {
+    const prev = this.uiContext;
+    this.uiContext = ctx;
+
+    if (prev.leftActions.count !== ctx.leftActions.count) {
+      const focused = this.focusedLeftButton.get();
+      if (focused !== null && focused >= ctx.leftActions.count) {
+        this.focusedLeftButton.set(null);
+      }
+    }
+    if (!prev.blocked && ctx.blocked) {
+      // Drop transient input state so nothing's mid-scroll when control returns.
+      this.scrollZone.set(null);
     }
   }
 
-  public setLeftConfirmHandler(handler: ((index: number) => void) | null): void {
-    this.leftConfirmHandler = handler;
+  public resetUIContext(): void {
+    this.setUIContext(DEFAULT_UI_CONTEXT);
   }
 
   public async confirmFocused(): Promise<void> {
     const leftIdx = this.focusedLeftButton.get();
     if (leftIdx !== null) {
-      this.leftConfirmHandler?.(leftIdx);
+      this.uiContext.leftActions.onConfirm(leftIdx);
       return;
     }
     const idx = this.focusedIndex.get();
@@ -231,21 +265,8 @@ export class BeatmapSelectionScene extends Scene {
   }
 
   public override update(tick: TickContext): void {
-    if (this.beatmapCount > 0 && !this.inputBlocked) this.processStickInput(tick.dt);
+    if (this.beatmapCount > 0 && !this.uiContext.blocked) this.processStickInput(tick.dt);
     this.root.update(tick);
-  }
-
-  public setInputBlocked(blocked: boolean): void {
-    if (this.inputBlocked === blocked) return;
-    this.inputBlocked = blocked;
-    if (blocked) {
-      // Clear transient input state so nothing's mid-scroll when control returns.
-      this.scrollZone.set(null);
-    }
-  }
-
-  public setModalBackHandler(handler: (() => void) | null): void {
-    this.modalBackHandler = handler;
   }
 
   public override render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
@@ -283,7 +304,7 @@ export class BeatmapSelectionScene extends Scene {
       if (picked !== null) this.focusedIndex.set(picked);
     } else if (stick.x < -SIDE_COMMIT_THRESHOLD) {
       // Left side: action buttons.
-      if (this.leftButtonCount === 0) return;
+      if (this.uiContext.leftActions.count === 0) return;
       this.focusedIndex.set(null);
       const picked = this.pickLeftButtonAtY(stickY);
       if (picked !== null) this.focusedLeftButton.set(picked);
@@ -294,11 +315,11 @@ export class BeatmapSelectionScene extends Scene {
   private pickLeftButtonAtY(targetY: number): number | null {
     return pickIndexAtY({
       targetY,
-      count: this.leftButtonCount,
+      count: this.uiContext.leftActions.count,
       pitchPx: VERTICAL_PITCH_PX,
       halfHeightPx: BUTTON_HEIGHT_PX / 2,
       // Mirrors getLeftButtonYCenter — buttons centred symmetrically around y=0.
-      originItems: (this.leftButtonCount - 1) / 2,
+      originItems: (this.uiContext.leftActions.count - 1) / 2,
     });
   }
 

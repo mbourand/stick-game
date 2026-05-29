@@ -6,7 +6,7 @@ import type { ButtonAction } from "../input/actions";
 import type { InputSystem } from "../input/InputSystem";
 import type { SceneManager } from "./SceneManager";
 
-export type SceneUIComponent = ComponentType<{ scene: Scene }>;
+export type SceneUIComponent<TScene extends Scene = Scene> = ComponentType<{ scene: TScene }>;
 
 /**
  * The single lifecycle state for a scene. Drives both visible behavior
@@ -59,7 +59,12 @@ export abstract class Scene {
 
   public abstract readonly id: string;
 
-  public readonly UI: SceneUIComponent | null = null;
+  // `any` here is load-bearing: it sidesteps the function-arg contravariance
+  // that would otherwise block subclasses from assigning a properly-typed
+  // SceneUIComponent<TheirScene>. Each subclass's view is independently
+  // type-checked at its own declaration via SceneUIComponent<TheirScene>.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public readonly UI: SceneUIComponent<any> | null = null;
 
   /** When false, the scene's render() is skipped while another scene is on top of it. */
   public readonly rendersWhenInactive: boolean = false;

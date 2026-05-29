@@ -15,9 +15,8 @@ import { RadialButton } from "./RadialButton";
 
 const CIRCLE_DIAMETER = GAME_CIRCLE_DISPLAYED_RADIUS * 2;
 
-export const MainMenuView: SceneUIComponent = ({ scene }) => {
-  const mainMenuScene = scene as MainMenuScene;
-  const focused = useStore(mainMenuScene.focused);
+export const MainMenuView: SceneUIComponent<MainMenuScene> = ({ scene }) => {
+  const focused = useStore(scene.focused);
   const isVisible = useScenePresence() === "in";
 
   const playerName = settings.get().playerName || "Guest";
@@ -47,11 +46,11 @@ export const MainMenuView: SceneUIComponent = ({ scene }) => {
               label={button.label}
               yCenter={yCenter}
               isFocused={focused === button.id}
-              onFocus={() => mainMenuScene.focused.set(button.id)}
+              onFocus={() => scene.focused.set(button.id)}
               onBlur={() => {
-                if (mainMenuScene.focused.get() === button.id) mainMenuScene.focused.set(null);
+                if (scene.focused.get() === button.id) scene.focused.set(null);
               }}
-              onClick={() => mainMenuScene.activateFocused(button.id)}
+              onClick={() => scene.activateFocused(button.id)}
             />
           );
         })}

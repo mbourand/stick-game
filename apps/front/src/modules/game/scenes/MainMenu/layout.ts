@@ -28,6 +28,9 @@ export const OUTER_LEFT_EXTRA_PX = 260;
 /** Inner translateX during the retract / re-enter animation. */
 export const BUTTON_RETRACT_X = -OUTER_LEFT_EXTRA_PX;
 
+export const BUTTON_STAGGER_S = 0.04;
+export const PHASE_DURATION_S = 0.32;
+
 export function getButtonYOffsetFromCenter(index: number): number {
   return (index - (BUTTONS.length - 1) / 2) * (BUTTON_HEIGHT_PX + BUTTON_Y_GAP_PX);
 }

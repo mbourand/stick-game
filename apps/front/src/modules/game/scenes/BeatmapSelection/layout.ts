@@ -23,6 +23,9 @@ export const OUTER_LEFT_EXTRA_PX = 260;
 /** Inner translateX during the retract / re-enter animation. */
 export const BUTTON_RETRACT_X = -OUTER_LEFT_EXTRA_PX;
 
+export const BUTTON_STAGGER_S = 0.025;
+export const PHASE_DURATION_S = 0.32;
+
 /**
  * Stick magnitude required for any input to register. Anything below counts as
  * a resting stick.

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { settings } from "@/modules/settings/Settings";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import type { SceneUIComponent } from "../Scene";
+import { computeRadialButtonLayout } from "../shared/radialButton";
 import { useScenePhase } from "../useScene";
 import {
   BUTTON_HEIGHT_PX,
@@ -118,39 +119,28 @@ const RadialButton = ({
 }) => {
   const r = GAME_CIRCLE_DISPLAYED_RADIUS;
 
-  // `yCenter` is parent-relative (parent's top-left = circle bbox top-left).
-  const yCenterFromCircleCenter = yCenter - r;
-  const halfH = BUTTON_HEIGHT_PX / 2;
-  const farY = Math.abs(yCenterFromCircleCenter) + halfH;
-  const horizontalRadiusAtFarY = Math.sqrt(Math.max(0, r * r - farY * farY));
-
-  // Outer wrapper carries the screen-anchored mask and extends
-  // OUTER_LEFT_EXTRA_PX past the inner button on its LEFT — that way the
-  // inner can translateX leftward (retract) and slide under the circle
-  // instead of overlapping it.
-  const outerLeft = r + horizontalRadiusAtFarY - OUTER_LEFT_EXTRA_PX;
-  const outerTop = yCenter - halfH;
-  const outerWidth = BUTTON_WIDTH_PX + OUTER_LEFT_EXTRA_PX;
-
-  const maskCenterX = OUTER_LEFT_EXTRA_PX - horizontalRadiusAtFarY;
-  const maskCenterY = halfH - yCenterFromCircleCenter;
-  const maskValue = `radial-gradient(circle at ${maskCenterX}px ${maskCenterY}px, transparent ${r - 0.5}px, black ${r + 0.5}px)`;
-
-  const yClosestToMaskY = Math.max(0, Math.min(BUTTON_HEIGHT_PX, maskCenterY));
-  const yDelta = yClosestToMaskY - maskCenterY;
-  const maxHiddenX = maskCenterX + Math.sqrt(Math.max(0, r * r - yDelta * yDelta));
-  const paddingLeft = Math.max(24, maxHiddenX - OUTER_LEFT_EXTRA_PX + 24);
+  // Caller passes parent-relative yCenter; helper expects circle-centre-relative.
+  const { top, left, outerWidth, mask, paddingNear: paddingLeft } = computeRadialButtonLayout({
+    side: "right",
+    yCenter: yCenter - r,
+    radius: r,
+    buttonW: BUTTON_WIDTH_PX,
+    buttonH: BUTTON_HEIGHT_PX,
+    outerExtraPx: OUTER_LEFT_EXTRA_PX,
+    minNearPaddingPx: 24,
+  });
 
   return (
     <div
       className="absolute"
       style={{
-        left: `${outerLeft}px`,
-        top: `${outerTop}px`,
+        left: `${left}px`,
+        top: `${top}px`,
         width: `${outerWidth}px`,
         height: `${BUTTON_HEIGHT_PX}px`,
-        maskImage: maskValue,
-        WebkitMaskImage: maskValue,
+        maskImage: mask,
+        WebkitMaskImage: mask,
+        maskComposite: "intersect",
       }}
     >
       <motion.button

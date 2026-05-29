@@ -9,6 +9,9 @@ import { EventEmitter } from "../../../utils/EventEmitter";
 import { BackgroundEntity } from "../../entities/BackgroundEntity";
 import { ScoreHUDEntity } from "../../entities/ScoreHUDEntity";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
+import { easeInOutCubic } from "../../engine/animation/Easing";
+import type { Playable } from "../../engine/animation/Playable";
+import { tween } from "../../engine/animation/Tween";
 import { BeatmapClock } from "../../engine/BeatmapClock";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
@@ -49,7 +52,7 @@ export class GameplayScene extends Scene {
   private root = new Container();
   private notesContainer = new Container();
   private fxContainer = new Container();
-  public circleInnerContentContainer = new Container();
+  private circleInnerContentContainer = new Container();
   private circle: CircleLayer;
 
   private clock: BeatmapClock;
@@ -111,6 +114,15 @@ export class GameplayScene extends Scene {
     // play() implicitly resumes the context for whoever comes after.
     this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
     this.clock.stop();
+  }
+
+  public override exitFadePlayable(durationMs: number): Playable {
+    return tween({
+      target: this.circleInnerContentContainer,
+      to: { alpha: 0 },
+      duration: durationMs,
+      easing: easeInOutCubic,
+    });
   }
 
   public openPauseMenu() {

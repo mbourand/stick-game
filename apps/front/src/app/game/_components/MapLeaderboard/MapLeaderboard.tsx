@@ -5,7 +5,7 @@ import { twMerge } from "tailwind-merge";
 export type LeaderboardTab = "global" | "local";
 
 const TAB_LABEL: Record<LeaderboardTab, string> = {
-  global: "Top 50",
+  global: "Top 5",
   local: "Your scores",
 };
 

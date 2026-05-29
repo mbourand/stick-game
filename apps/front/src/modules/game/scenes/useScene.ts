@@ -38,3 +38,14 @@ export function useTransition(sceneManager: SceneManager) {
 export function useScenePhase(scene: Scene) {
   return useSyncExternalStore(scene.subscribePhase, scene.getPhase, scene.getPhase);
 }
+
+/**
+ * Subscribe to a scene's discrete-state store with a single selector. Scene
+ * must expose `subscribe(listener)` returning an unsubscribe fn.
+ */
+export function useSceneSelector<S extends { subscribe: (listener: () => void) => () => void }, R>(
+  scene: S,
+  selector: () => R,
+): R {
+  return useSyncExternalStore(scene.subscribe, selector, selector);
+}

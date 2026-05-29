@@ -2,10 +2,8 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { settings } from "@/modules/settings/Settings";
-import {
-  useScenePresence,
-  useScenePresenceMotion,
-} from "../../engine/animation/scenePresence";
+import { useScenePresence } from "../../engine/animation/scenePresence";
+import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import type { SceneUIComponent } from "../Scene";

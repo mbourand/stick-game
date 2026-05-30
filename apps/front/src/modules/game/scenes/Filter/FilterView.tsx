@@ -1,42 +1,41 @@
-import { Modal } from "@/components/Modal";
+"use client";
 
-export type DifficultyFilter = { min: number; max: number };
-
-/**
- * Upper bound of the difficulty slider. When the max thumb is parked here we
- * treat the filter as having no upper limit (∞), so beatmaps above this rating
- * still pass.
- */
-export const DIFFICULTY_SLIDER_MAX = 10;
+import { motion } from "motion/react";
+import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
+import { useStore } from "../../engine/state/useStore";
+import type { SceneUIComponent } from "../Scene";
+import type { FilterScene } from "./FilterScene";
+import { DIFFICULTY_SLIDER_MAX, type DifficultyFilter } from "./filterTypes";
 
 const DIFFICULTY_BOUNDS = { min: 0, max: DIFFICULTY_SLIDER_MAX } as const;
 
-type BeatmapFiltersProps = {
-  isVisible: boolean;
-  onClose: () => void;
-  difficultyFilter: DifficultyFilter | null;
-  onDifficultyChange: (filter: DifficultyFilter | null) => void;
-};
-
-export const BeatmapFilters = ({
-  isVisible,
-  onClose,
-  difficultyFilter,
-  onDifficultyChange,
-}: BeatmapFiltersProps) => {
+export const FilterView: SceneUIComponent<FilterScene> = ({ scene }) => {
+  const backdropMotion = useScenePresenceMotion();
+  const panelMotion = useScenePresenceMotion({ y: 12 });
+  const hintMotion = useScenePresenceMotion({ y: 12 });
+  const difficultyFilter = useStore(scene.difficultyFilter);
   const current = difficultyFilter ?? DIFFICULTY_BOUNDS;
-  const isDifficultyActive = difficultyFilter !== null;
+  const isActive = difficultyFilter !== null;
   const maxIsInfinite = current.max >= DIFFICULTY_SLIDER_MAX;
 
+  const setFilter = (f: DifficultyFilter | null) => scene.difficultyFilter.set(f);
+
   return (
-    <Modal isVisible={isVisible} onClose={onClose} rounded={false}>
-      <div className="w-120 flex flex-col gap-8" style={{ fontFamily: "Rostex" }}>
+    <motion.div
+      className="absolute inset-0 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md select-none"
+      style={{ fontFamily: "Rostex" }}
+      {...backdropMotion}
+    >
+      <motion.div
+        className="w-[480px] flex flex-col gap-8 text-white p-6 rounded border border-white/10 bg-white/[0.02]"
+        {...panelMotion}
+      >
         <div className="flex items-center justify-between">
           <h2 className="text-2xl tracking-[0.3em] uppercase">Filters</h2>
           <button
             type="button"
-            onClick={onClose}
-            className="text-xs uppercase tracking-[0.25em] px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded"
+            onClick={() => scene.close()}
+            className="text-[10px] uppercase tracking-[0.3em] px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded"
           >
             Close
           </button>
@@ -44,12 +43,12 @@ export const BeatmapFilters = ({
 
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm tracking-[0.25em] uppercase text-white/70">Difficulty</h3>
-            {isDifficultyActive && (
+            <h3 className="text-xs tracking-[0.3em] uppercase text-white/70">Difficulty</h3>
+            {isActive && (
               <button
                 type="button"
-                onClick={() => onDifficultyChange(null)}
-                className="text-xs tracking-wider text-white/60 hover:text-white underline"
+                onClick={() => setFilter(null)}
+                className="text-[10px] tracking-[0.25em] uppercase text-white/60 hover:text-white underline"
               >
                 Reset
               </button>
@@ -65,10 +64,10 @@ export const BeatmapFilters = ({
             max={DIFFICULTY_BOUNDS.max}
             step={0.1}
             value={current}
-            onChange={onDifficultyChange}
+            onChange={setFilter}
           />
 
-          <div className="flex justify-between mt-2 text-xs text-white/40 tabular-nums">
+          <div className="flex justify-between mt-2 text-[10px] text-white/40 tabular-nums tracking-[0.2em]">
             <span>{DIFFICULTY_BOUNDS.min.toFixed(1)} ★</span>
             <span>{DIFFICULTY_SLIDER_MAX}+ ★</span>
           </div>
@@ -81,7 +80,7 @@ export const BeatmapFilters = ({
               max={current.max}
               step={0.1}
               onChange={(v) =>
-                onDifficultyChange({
+                setFilter({
                   min: clamp(v, DIFFICULTY_BOUNDS.min, current.max),
                   max: current.max,
                 })
@@ -94,7 +93,7 @@ export const BeatmapFilters = ({
               max={DIFFICULTY_BOUNDS.max}
               step={0.1}
               onChange={(v) =>
-                onDifficultyChange({
+                setFilter({
                   min: current.min,
                   max: clamp(v, current.min, DIFFICULTY_BOUNDS.max),
                 })
@@ -102,8 +101,15 @@ export const BeatmapFilters = ({
             />
           </div>
         </section>
-      </div>
-    </Modal>
+      </motion.div>
+
+      <motion.div
+        className="mt-8 text-[10px] text-white/40 tracking-[0.3em] uppercase"
+        {...hintMotion}
+      >
+        <KeyHint label="B" /> Close
+      </motion.div>
+    </motion.div>
   );
 };
 
@@ -155,13 +161,6 @@ const DualRangeSlider = ({ min, max, step, value, onChange }: DualRangeSliderPro
   );
 };
 
-/**
- * Tailwind arbitrary-selector classes that strip the native range-input chrome
- * (track, focus outline) and style only the thumb. Track is invisible — the
- * coloured bar behind the inputs is the visible track. `pointer-events-none`
- * on the input + `pointer-events-auto` on the thumb means clicks on the bare
- * track fall through to whichever input's thumb is closer.
- */
 const SLIDER_INPUT_CLASS = [
   "absolute w-full appearance-none bg-transparent pointer-events-none m-0 outline-none",
   "[&::-webkit-slider-thumb]:appearance-none",
@@ -197,7 +196,7 @@ type NumberFieldProps = {
 
 const NumberField = ({ label, value, min, max, step, onChange }: NumberFieldProps) => (
   <label className="flex flex-col gap-1">
-    <span className="text-xs uppercase tracking-[0.2em] text-white/50">{label}</span>
+    <span className="text-[10px] uppercase tracking-[0.3em] text-white/50">{label}</span>
     <input
       type="number"
       value={Number.isFinite(value) ? value.toFixed(1) : ""}
@@ -211,6 +210,15 @@ const NumberField = ({ label, value, min, max, step, onChange }: NumberFieldProp
       className="bg-white/10 border border-white/20 text-white text-sm px-3 py-2 rounded focus:bg-white/20 focus:border-white/60 outline-none tabular-nums"
     />
   </label>
+);
+
+const KeyHint = ({ label }: { label: string }) => (
+  <span
+    className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 mr-2 rounded border border-white/30 text-[10px] font-bold tracking-wider text-white/70 align-middle"
+    aria-hidden
+  >
+    {label}
+  </span>
 );
 
 function clamp(v: number, lo: number, hi: number): number {

@@ -1,35 +1,28 @@
 "use client";
 
-import { Modal } from "@/components/Modal";
 import { latestDb } from "@/modules/db/db";
-import { useAction, useActionRepeat } from "@/modules/game/hooks/useActions";
 import { convertFromOsu } from "@/modules/osu/convert/OsuConverter";
 import { beatmapsetsSearchQueryOptions } from "@/modules/fetching/back/queries/beatmapsets-search";
 import { debounce } from "@/modules/utils/debounce";
 import type { zOsuControllerBeatmapsetsSearchResponse } from "@tau/back-schemas";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "motion/react";
 import JSZip from "jszip";
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { z } from "zod";
+import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
+import { useStore } from "../../engine/state/useStore";
+import type { SceneUIComponent } from "../Scene";
+import type { DownloaderScene } from "./DownloaderScene";
 
 type Beatmapset = z.infer<typeof zOsuControllerBeatmapsetsSearchResponse>["beatmapsets"][number];
 
-type BeatmapsetDownloaderProps = {
-  isVisible: boolean;
-  onClose: () => void;
-};
+export const DownloaderView: SceneUIComponent<DownloaderScene> = ({ scene }) => {
+  const backdropMotion = useScenePresenceMotion();
+  const panelMotion = useScenePresenceMotion({ y: 12 });
 
-export const BeatmapsetDownloader = ({ isVisible, onClose }: BeatmapsetDownloaderProps) => {
-  // Modal returns null when not visible, so DownloaderContent + its hooks only
-  // mount (and subscribe to gamepad/keyboard input) while the modal is open.
-  return (
-    <Modal isVisible={isVisible} onClose={onClose} rounded={false}>
-      <DownloaderContent onClose={onClose} />
-    </Modal>
-  );
-};
+  const focused = useStore(scene.focused);
 
-const DownloaderContent = ({ onClose }: { onClose: () => void }) => {
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const debouncedSetQuery = useMemo(
@@ -39,47 +32,26 @@ const DownloaderContent = ({ onClose }: { onClose: () => void }) => {
   const searchResults = useQuery(beatmapsetsSearchQueryOptions(query));
   const beatmapsets = searchResults.data?.beatmapsets ?? [];
 
-  const [focused, setFocused] = useState(0);
-  // Reset focus to top whenever the result set changes. Adjusted during
-  // render via the prev-state pattern instead of an effect so we don't
-  // commit an extra empty render before fixing focus.
+  // Reset focus to the top when the underlying result set changes (in-render
+  // adjustment is preferred over an effect for prop-derived state).
   const [prevData, setPrevData] = useState(searchResults.data);
   if (prevData !== searchResults.data) {
     setPrevData(searchResults.data);
-    setFocused(0);
+    scene.focused.set(0);
   }
 
-  // Refs read inside input handlers so we don't churn subscriptions on every
-  // focus or list change. Sync'd via effects so we don't write to refs during
-  // render.
-  const focusedRef = useRef(focused);
-  useEffect(() => {
-    focusedRef.current = focused;
-  });
-  const beatmapsetsLengthRef = useRef(beatmapsets.length);
-  useEffect(() => {
-    beatmapsetsLengthRef.current = beatmapsets.length;
-  });
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const moveFocus = useCallback((delta: -1 | 1) => {
-    setFocused((f) => {
-      const count = beatmapsetsLengthRef.current;
-      if (count === 0) return 0;
-      return Math.max(0, Math.min(count - 1, f + delta));
+  // Push the current list count + the per-row confirm handler into the scene.
+  // The scene's d-pad confirm / A button uses this to fire the right download
+  // without ever touching React Query.
+  useEffect(() => {
+    scene.setListContext({
+      count: beatmapsets.length,
+      onConfirm: (index) => rowRefs.current[index]?.click(),
     });
-  }, []);
-
-  const confirmFocused = useCallback(() => {
-    rowRefs.current[focusedRef.current]?.click();
-  }, []);
-
-  const onNavUp = useCallback(() => moveFocus(-1), [moveFocus]);
-  const onNavDown = useCallback(() => moveFocus(+1), [moveFocus]);
-
-  useActionRepeat("nav-up", onNavUp);
-  useActionRepeat("nav-down", onNavDown);
-  useAction("confirm", confirmFocused);
+    return () => scene.resetListContext();
+  }, [beatmapsets.length, scene]);
 
   // Keep the focused row visible.
   useEffect(() => {
@@ -91,78 +63,84 @@ const DownloaderContent = ({ onClose }: { onClose: () => void }) => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        moveFocus(-1);
+        scene.moveFocus(-1);
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
-        moveFocus(+1);
+        scene.moveFocus(+1);
       } else if (e.key === "Enter") {
         e.preventDefault();
-        confirmFocused();
+        scene.confirmFocused();
       } else if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        scene.close();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [moveFocus, confirmFocused, onClose]);
+  }, [scene]);
 
   return (
-    <div
-      className="w-[640px] h-[640px] flex flex-col text-white"
+    <motion.div
+      className="absolute inset-0 flex items-center justify-center bg-black/85 backdrop-blur-md select-none"
       style={{ fontFamily: "Rostex" }}
+      {...backdropMotion}
     >
-      <header className="mb-5">
-        <h2 className="text-2xl tracking-[0.3em] uppercase">Download maps</h2>
-        <p className="mt-1 text-[10px] text-white/40 tracking-[0.3em] uppercase">
-          Browse and import beatmapsets from the osu! catalogue
-        </p>
-      </header>
+      <motion.div
+        className="w-[640px] h-[640px] flex flex-col text-white p-6 rounded border border-white/10 bg-white/[0.02]"
+        {...panelMotion}
+      >
+        <header className="mb-5">
+          <h2 className="text-2xl tracking-[0.3em] uppercase">Download maps</h2>
+          <p className="mt-1 text-[10px] text-white/40 tracking-[0.3em] uppercase">
+            Browse and import beatmapsets from the osu! catalogue
+          </p>
+        </header>
 
-      <input
-        type="text"
-        autoFocus
-        value={searchInput}
-        onChange={(e) => {
-          setSearchInput(e.target.value);
-          debouncedSetQuery(e.target.value);
-        }}
-        placeholder="Search title, artist, mapper…"
-        className="w-full bg-black/30 backdrop-blur-sm border border-white/20 text-white text-xs tracking-[0.15em] uppercase placeholder-white/40 px-4 py-2 rounded focus:bg-black/50 focus:border-white/60 outline-none text-center"
-      />
+        <input
+          type="text"
+          autoFocus
+          value={searchInput}
+          onChange={(e) => {
+            setSearchInput(e.target.value);
+            debouncedSetQuery(e.target.value);
+          }}
+          placeholder="Search title, artist, mapper…"
+          className="w-full bg-black/30 backdrop-blur-sm border border-white/20 text-white text-xs tracking-[0.15em] uppercase placeholder-white/40 px-4 py-2 rounded focus:bg-black/50 focus:border-white/60 outline-none text-center"
+        />
 
-      <div className="flex-1 overflow-y-auto mt-4 -mx-1 px-1">
-        {searchResults.isLoading && <CenteredHint label="Loading…" />}
-        {!searchResults.isLoading && beatmapsets.length === 0 && (
-          <CenteredHint label={query.trim() ? "No results" : "Type to search"} />
-        )}
-        {beatmapsets.map((set, i) => (
-          <BeatmapsetRow
-            key={set.id}
-            ref={(el) => {
-              rowRefs.current[i] = el;
-            }}
-            beatmapset={set}
-            isFocused={focused === i}
-            onFocus={() => setFocused(i)}
-          />
-        ))}
-      </div>
+        <div className="flex-1 overflow-y-auto mt-4 -mx-1 px-1">
+          {searchResults.isLoading && <CenteredHint label="Loading…" />}
+          {!searchResults.isLoading && beatmapsets.length === 0 && (
+            <CenteredHint label={query.trim() ? "No results" : "Type to search"} />
+          )}
+          {beatmapsets.map((set, i) => (
+            <BeatmapsetRow
+              key={set.id}
+              ref={(el) => {
+                rowRefs.current[i] = el;
+              }}
+              beatmapset={set}
+              isFocused={focused === i}
+              onFocus={() => scene.focused.set(i)}
+            />
+          ))}
+        </div>
 
-      <footer className="mt-4 pt-4 border-t border-white/10 flex items-center justify-center gap-5 text-[10px] text-white/40 tracking-[0.3em] uppercase">
-        <span>
-          <KeyHint label="↑↓" /> Navigate
-        </span>
-        <span className="text-white/20">|</span>
-        <span>
-          <KeyHint label="A" /> Download
-        </span>
-        <span className="text-white/20">|</span>
-        <span>
-          <KeyHint label="B" /> Close
-        </span>
-      </footer>
-    </div>
+        <footer className="mt-4 pt-4 border-t border-white/10 flex items-center justify-center gap-5 text-[10px] text-white/40 tracking-[0.3em] uppercase">
+          <span>
+            <KeyHint label="↑↓" /> Navigate
+          </span>
+          <span className="text-white/20">|</span>
+          <span>
+            <KeyHint label="A" /> Download
+          </span>
+          <span className="text-white/20">|</span>
+          <span>
+            <KeyHint label="B" /> Close
+          </span>
+        </footer>
+      </motion.div>
+    </motion.div>
   );
 };
 
@@ -182,7 +160,7 @@ const BeatmapsetRow = forwardRef<HTMLButtonElement, RowProps>(function Beatmapse
   const minDiff = diffs.length > 0 ? Math.min(...diffs.map((d) => d.difficulty_rating)) : 0;
   const maxDiff = diffs.length > 0 ? Math.max(...diffs.map((d) => d.difficulty_rating)) : 0;
 
-  const handleClick = async () => {
+  const handleClick = useCallback(async () => {
     if (state !== "idle") return;
     setState("loading");
     try {
@@ -192,7 +170,7 @@ const BeatmapsetRow = forwardRef<HTMLButtonElement, RowProps>(function Beatmapse
       console.error("Failed to download beatmapset", e);
       setState("idle");
     }
-  };
+  }, [beatmapset, state]);
 
   return (
     <button

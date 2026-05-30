@@ -2,10 +2,7 @@
 
 import { useCallback, useMemo, useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import {
-  DIFFICULTY_SLIDER_MAX,
-  type DifficultyFilter,
-} from "@/app/game/_components/BeatmapFilters";
+import { DIFFICULTY_SLIDER_MAX, type DifficultyFilter } from "../Filter/filterTypes";
 import { latestDb } from "@/modules/db/db";
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
 import { LruCache } from "../../utils/LruCache";

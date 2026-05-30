@@ -1,5 +1,4 @@
 import { motionValue, type MotionValue } from "motion/react";
-import type { DifficultyFilter } from "@/app/game/_components/BeatmapFilters";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { BackgroundCrossfader } from "../../entities/BackgroundCrossfader";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
@@ -11,9 +10,14 @@ import type { Engine } from "../../engine/Engine";
 import type { CircleLayer } from "../../engine/layers/CircleLayer";
 import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
+import { beatmapSelectionToDownloader } from "../../engine/transitions/factories/beatmapSelectionToDownloader";
+import { beatmapSelectionToFilter } from "../../engine/transitions/factories/beatmapSelectionToFilter";
 import { beatmapSelectionToGameplay } from "../../engine/transitions/factories/beatmapSelectionToGameplay";
 import { beatmapSelectionToMainMenu } from "../../engine/transitions/factories/beatmapSelectionToMainMenu";
 import { CircleAudioVisualizer } from "../../flair/CircleAudioVisualizer";
+import { DownloaderScene } from "../Downloader/DownloaderScene";
+import type { DifficultyFilter } from "../Filter/filterTypes";
+import { FilterScene } from "../Filter/FilterScene";
 import { GameplayScene } from "../Gameplay/GameplayScene";
 import { Scene } from "../Scene";
 import { pickIndexAtY } from "../shared/verticalPicker";
@@ -32,6 +36,12 @@ export type BeatmapResolver = (index: number) => Promise<ParsedMap | null>;
 export type FocusedBeatmapMedia = { audioUrl: string; backgroundUrl: string };
 export type LeaderboardTab = "global" | "local";
 
+export type LeftAction = {
+  id: string;
+  label: string;
+  onActivate: () => void;
+};
+
 type Vec2 = { x: number; y: number };
 
 const PREVIEW_AUDIO_ID = "beatmap_preview_audio";
@@ -46,33 +56,6 @@ const BACKGROUND_CROSSFADE_MS = 300;
  */
 const SIDE_COMMIT_THRESHOLD = 0.3;
 
-/**
- * Snapshot of UI-owned input routing — pushed in from the view in a single
- * call so the scene sees a coherent state rather than tracking N separate
- * setters that can be out of sync mid-render.
- *
- *   - blocked:     true while a modal owns input. Gamepad nav, confirm, and
- *                  leaderboard cycling silently no-op.
- *   - backHandler: when set, the back action invokes this instead of `goBack`
- *                  — modals use it to close themselves.
- *   - leftActions: left-column buttons currently rendered by the view; count
- *                  bounds stick picking, onConfirm fires on activation.
- */
-export type BeatmapSelectionUIContext = {
-  blocked: boolean;
-  backHandler: (() => void) | null;
-  leftActions: {
-    count: number;
-    onConfirm: (index: number) => void;
-  };
-};
-
-const DEFAULT_UI_CONTEXT: BeatmapSelectionUIContext = {
-  blocked: false,
-  backHandler: null,
-  leftActions: { count: 0, onConfirm: () => {} },
-};
-
 export class BeatmapSelectionScene extends Scene {
   public readonly id = "beatmap-selection";
   public override readonly UI = BeatmapSelectionView;
@@ -84,11 +67,21 @@ export class BeatmapSelectionScene extends Scene {
 
   /**
    * Search and difficulty filter live on the scene (not in the view's useState)
-   * so they survive while the view unmounts during gameplay/scores — when the
-   * user pops back here, the list re-renders with the same filter applied.
+   * so they survive while the view unmounts during gameplay/scores/overlays —
+   * when the user pops back here, the list re-renders with the same filter.
    */
   public readonly searchQuery = new Store<string>("");
   public readonly difficultyFilter = new Store<DifficultyFilter | null>(null);
+
+  /**
+   * Left-column actions, defined here so both the view (renders them) and the
+   * scene (handles stick / d-pad / confirm input for them) see the same
+   * source of truth — no need to push counts/handlers through a context.
+   */
+  public readonly leftActions: readonly LeftAction[] = [
+    { id: "filter", label: "Filters", onActivate: () => this.openFilter() },
+    { id: "download", label: "Download maps", onActivate: () => this.openDownloader() },
+  ];
 
   /**
    * Continuous scroll position (float). A MotionValue so the view can drive
@@ -111,11 +104,15 @@ export class BeatmapSelectionScene extends Scene {
 
   private currentMedia: FocusedBeatmapMedia | null = null;
   private mediaGeneration = 0;
+  /**
+   * Whether the preview source is currently playing. Lets us skip the
+   * re-arm in onEntered when the audio survived an overlay scene (downloader/
+   * filter) — we don't want to restart the preview from 0 every pop-back.
+   */
+  private isPreviewArmed = false;
 
   /** One-shot guard: pick a random map the first time the list arrives. */
   private hasPickedInitialFocus = false;
-
-  private uiContext: BeatmapSelectionUIContext = DEFAULT_UI_CONTEXT;
 
   constructor(engine: Engine) {
     super(engine);
@@ -139,38 +136,20 @@ export class BeatmapSelectionScene extends Scene {
   }
 
   public override onEntered() {
-    // Back is never blocked — it's the user's escape from overlays back into
-    // the scene, then from the scene back to the main menu.
-    this.onAction("back", () => {
-      const handler = this.uiContext.backHandler;
-      if (handler) {
-        handler();
-        return;
-      }
-      this.goBack();
-    });
-    this.onAction("confirm", () => {
-      if (this.uiContext.blocked) return;
-      void this.confirmFocused();
-    });
-    this.onAction("leaderboard-prev", () => {
-      if (this.uiContext.blocked) return;
-      this.toggleLeaderboardTab();
-    });
-    this.onAction("leaderboard-next", () => {
-      if (this.uiContext.blocked) return;
-      this.toggleLeaderboardTab();
-    });
+    this.onAction("back", () => this.goBack());
+    this.onAction("confirm", () => void this.confirmFocused());
+    this.onAction("leaderboard-prev", () => this.toggleLeaderboardTab());
+    this.onAction("leaderboard-next", () => this.toggleLeaderboardTab());
     this.onActionRepeat("nav-up", () => this.navByDPad(-1));
     this.onActionRepeat("nav-down", () => this.navByDPad(+1));
     // Exit transitions fade innerContainer to 0; reset before showing again.
     this.innerContainer.alpha = 1;
-    // Coming back from scores etc.: re-arm the preview for the still-focused map.
-    if (this.currentMedia) void this.refreshPreviewMedia(++this.mediaGeneration);
-  }
-
-  public override onBeforeExit() {
-    this.stopPreviewAudio();
+    // Re-arm preview only if it isn't already playing. Coming back from
+    // gameplay/scores: audio was stopped, this restarts it. Coming back
+    // from downloader/filter: audio is still playing, no-op.
+    if (this.currentMedia && !this.isPreviewArmed) {
+      void this.refreshPreviewMedia(++this.mediaGeneration);
+    }
   }
 
   public override onDestroy() {
@@ -225,14 +204,12 @@ export class BeatmapSelectionScene extends Scene {
    * D-pad list navigation. Operates on whichever column is currently focused:
    * if the user is on the left action column, moves within it; otherwise
    * moves within the beatmap list and scrolls the visible window to track
-   * the new focus. No-op while a modal owns input.
+   * the new focus.
    */
   private navByDPad(delta: -1 | 1): void {
-    if (this.uiContext.blocked) return;
-
     const leftFocused = this.focusedLeftButton.get();
     if (leftFocused !== null) {
-      const count = this.uiContext.leftActions.count;
+      const count = this.leftActions.length;
       if (count === 0) return;
       const next = Math.max(0, Math.min(count - 1, leftFocused + delta));
       if (next !== leftFocused) this.focusedLeftButton.set(next);
@@ -268,35 +245,10 @@ export class BeatmapSelectionScene extends Scene {
     this.leaderboardTab.set(this.leaderboardTab.get() === "global" ? "local" : "global");
   }
 
-  /**
-   * Single sync point for everything the view tells the scene about input
-   * routing — replaces a stack of individual setters that the view had to
-   * keep in lockstep via separate effects.
-   */
-  public setUIContext(ctx: BeatmapSelectionUIContext): void {
-    const prev = this.uiContext;
-    this.uiContext = ctx;
-
-    if (prev.leftActions.count !== ctx.leftActions.count) {
-      const focused = this.focusedLeftButton.get();
-      if (focused !== null && focused >= ctx.leftActions.count) {
-        this.focusedLeftButton.set(null);
-      }
-    }
-    if (!prev.blocked && ctx.blocked) {
-      // Drop transient input state so nothing's mid-scroll when control returns.
-      this.scrollZone.set(null);
-    }
-  }
-
-  public resetUIContext(): void {
-    this.setUIContext(DEFAULT_UI_CONTEXT);
-  }
-
   public async confirmFocused(): Promise<void> {
     const leftIdx = this.focusedLeftButton.get();
     if (leftIdx !== null) {
-      this.uiContext.leftActions.onConfirm(leftIdx);
+      this.leftActions[leftIdx]?.onActivate();
       return;
     }
     const idx = this.focusedIndex.get();
@@ -306,6 +258,9 @@ export class BeatmapSelectionScene extends Scene {
   }
 
   public playMap(map: ParsedMap): void {
+    // Stop the preview before transitioning — gameplay starts its own audio
+    // from 0 and we don't want any overlap during the cross-fade.
+    this.stopPreviewAudio();
     this.lastGameplayScene?.remove();
     const gameplayScene = new GameplayScene(this.engine, map);
     void this.sceneManager.transitionPush(gameplayScene, beatmapSelectionToGameplay);
@@ -313,11 +268,28 @@ export class BeatmapSelectionScene extends Scene {
   }
 
   public goBack(): void {
+    this.stopPreviewAudio();
     void this.sceneManager.transitionPop(beatmapSelectionToMainMenu);
   }
 
+  public openDownloader(): void {
+    // Preview audio is deliberately left playing — the downloader is just an
+    // overlay scene and we want the user's track to keep going behind it.
+    void this.sceneManager.transitionPush(
+      new DownloaderScene(this.engine),
+      beatmapSelectionToDownloader,
+    );
+  }
+
+  public openFilter(): void {
+    void this.sceneManager.transitionPush(
+      new FilterScene(this.engine, this.difficultyFilter),
+      beatmapSelectionToFilter,
+    );
+  }
+
   public override update(tick: TickContext): void {
-    if (this.beatmapCount > 0 && !this.uiContext.blocked) this.processStickInput(tick.dt);
+    if (this.beatmapCount > 0) this.processStickInput(tick.dt);
     this.root.update(tick);
   }
 
@@ -356,7 +328,7 @@ export class BeatmapSelectionScene extends Scene {
       if (picked !== null) this.focusedIndex.set(picked);
     } else if (stick.x < -SIDE_COMMIT_THRESHOLD) {
       // Left side: action buttons.
-      if (this.uiContext.leftActions.count === 0) return;
+      if (this.leftActions.length === 0) return;
       this.focusedIndex.set(null);
       const picked = this.pickLeftButtonAtY(stickY);
       if (picked !== null) this.focusedLeftButton.set(picked);
@@ -367,11 +339,11 @@ export class BeatmapSelectionScene extends Scene {
   private pickLeftButtonAtY(targetY: number): number | null {
     return pickIndexAtY({
       targetY,
-      count: this.uiContext.leftActions.count,
+      count: this.leftActions.length,
       pitchPx: VERTICAL_PITCH_PX,
       halfHeightPx: BUTTON_HEIGHT_PX / 2,
       // Mirrors getLeftButtonYCenter — buttons centred symmetrically around y=0.
-      originItems: (this.uiContext.leftActions.count - 1) / 2,
+      originItems: (this.leftActions.length - 1) / 2,
     });
   }
 
@@ -414,10 +386,12 @@ export class BeatmapSelectionScene extends Scene {
     if (generation !== this.mediaGeneration || !this.isActive()) return;
     const source = music.play(PREVIEW_AUDIO_ID, buffer, { loop: true, volume: PREVIEW_AUDIO_VOLUME });
     this.audioVisualizer.connectSource(source);
+    this.isPreviewArmed = true;
   }
 
   private stopPreviewAudio(): void {
     this.engine.getAudio().music.stop(PREVIEW_AUDIO_ID);
+    this.isPreviewArmed = false;
   }
 }
 

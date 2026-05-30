@@ -1,32 +1,26 @@
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
-import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
-import type { CircleLayer } from "../../entities/CircleLayer";
 import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
 import { mainMenuToBeatmapSelection } from "../../engine/transitions/factories/mainMenuToBeatmapSelection";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import { BeatmapSelectionScene } from "../BeatmapSelection/BeatmapSelectionScene";
-import { Scene } from "../Scene";
+import { CanvasScene } from "../CanvasScene";
 import { BUTTON_HEIGHT_PX, BUTTONS, getButtonYOffsetFromCenter, type ButtonId } from "./layout";
 import { MainMenuView } from "./MainMenuView";
 
 const STICK_EDGE_THRESHOLD = 0.9;
 
-export class MainMenuScene extends Scene {
+export class MainMenuScene extends CanvasScene {
   public readonly id = "main-menu";
   public override readonly UI = MainMenuView;
 
   public readonly focused = new Store<ButtonId | null>(null);
 
-  private root = new Container();
-  private circle: CircleLayer;
-
   constructor(engine: Engine) {
     super(engine);
-    this.circle = engine.circle;
-    this.root.add(this.circle);
-    this.root.add(new StickDotsEntity(this.inputSystem, this.circle));
+    this.root.add(engine.circle);
+    this.root.add(new StickDotsEntity(this.inputSystem, engine.circle));
   }
 
   public override onEntered() {
@@ -47,11 +41,6 @@ export class MainMenuScene extends Scene {
     const idx = BUTTONS.findIndex((b) => b.id === current);
     const next = Math.max(0, Math.min(BUTTONS.length - 1, idx + delta));
     if (next !== idx) this.focused.set(BUTTONS[next].id);
-  }
-
-  public override onDestroy() {
-    this.root.detach(this.circle);
-    this.root.destroy();
   }
 
   public activateFocused(id: ButtonId) {
@@ -77,13 +66,7 @@ export class MainMenuScene extends Scene {
     const target = this.buttonAimedByStick(leftStick) ?? this.buttonAimedByStick(rightStick);
     if (target !== null) this.focused.set(target);
 
-    this.root.update(tick);
-  }
-
-  public override render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
-    this.root.x = canvas.width / 2;
-    this.root.y = canvas.height / 2;
-    this.root.render(ctx);
+    super.update(tick);
   }
 
   private buttonAimedByStick(stick: { x: number; y: number }): ButtonId | null {

@@ -7,9 +7,12 @@ import type { SceneUIComponent } from "../Scene";
 import { PAUSE_ACTIONS, type PauseScene } from "./PauseScene";
 
 export const PauseView: SceneUIComponent<PauseScene> = ({ scene }) => {
-  const backdropMotion = useScenePresenceMotion();
-  const titleMotion = useScenePresenceMotion({ y: -12 });
-  const hintMotion = useScenePresenceMotion({ y: 12 });
+  // enterAnimated forces motion to start at opacity 0 on mount. Pause is
+  // pushed without phaseShell's exit-phase wait, so the mount frame would
+  // otherwise see ScenePresence already "in" and skip the fade-in.
+  const backdropMotion = useScenePresenceMotion({ enterAnimated: true });
+  const titleMotion = useScenePresenceMotion({ y: -12, enterAnimated: true });
+  const hintMotion = useScenePresenceMotion({ y: 12, enterAnimated: true });
   const focused = useStore(scene.focused);
 
   return (
@@ -67,7 +70,7 @@ const PauseButton = ({
   onFocus: () => void;
   onClick: () => void;
 }) => {
-  const buttonMotion = useScenePresenceMotion({ y: 16, delay });
+  const buttonMotion = useScenePresenceMotion({ y: 16, delay, enterAnimated: true });
   return (
     <motion.button
       type="button"

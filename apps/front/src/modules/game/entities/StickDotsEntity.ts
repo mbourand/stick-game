@@ -1,4 +1,4 @@
-import type { CircleLayer } from "../engine/layers/CircleLayer";
+import type { CircleLayer } from "./CircleLayer";
 import type { Entity } from "../engine/Entity";
 import type { InputSystem } from "../input/InputSystem";
 

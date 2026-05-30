@@ -1,7 +1,7 @@
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
-import type { CircleLayer } from "../../engine/layers/CircleLayer";
+import type { CircleLayer } from "../../entities/CircleLayer";
 import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
 import { mainMenuToBeatmapSelection } from "../../engine/transitions/factories/mainMenuToBeatmapSelection";

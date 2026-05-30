@@ -11,7 +11,7 @@ import { phaseShell, resizeRing } from "../shells";
  */
 export const beatmapSelectionToMainMenu: TransitionFactory = (ctx) => {
   const resize = resizeRing(ctx, GAME_CIRCLE_DISPLAYED_RADIUS);
-  const fadeOut = ctx.from?.exitFadePlayable(EXIT_FADE_DURATION_MS);
+  const fadeOut = ctx.from?.scenePlayable("exit", EXIT_FADE_DURATION_MS);
   return phaseShell(ctx, {
     duringExit: fadeOut ? sequence([fadeOut, resize]) : resize,
   });

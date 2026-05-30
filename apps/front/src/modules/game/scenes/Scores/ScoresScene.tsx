@@ -1,7 +1,7 @@
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
-import type { CircleLayer } from "../../engine/layers/CircleLayer";
+import type { CircleLayer } from "../../entities/CircleLayer";
 import type { TickContext } from "../../engine/TickContext";
 import type { ScoreCounter } from "../../score/ScoreCounter";
 import { BEATMAP_AUDIO_ID, GameplayScene } from "../Gameplay/GameplayScene";

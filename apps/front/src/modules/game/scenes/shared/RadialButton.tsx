@@ -80,7 +80,7 @@ export const RadialButton = ({
   // the translation follows the side.
   const extraRoom = outerWidth - buttonWidth;
   const retractX = side === "right" ? -extraRoom : extraRoom;
-  const presenceMotion = useScenePresenceMotion({ ...fade({ x: retractX }), delay });
+  const presenceMotion = useScenePresenceMotion({ ...fade({ x: retractX }), enterDelay: delay });
 
   const isRight = side === "right";
   const innerStyle: CSSProperties = isRight

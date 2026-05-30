@@ -7,7 +7,7 @@ import type { Playable } from "../../engine/animation/Playable";
 import { tween } from "../../engine/animation/Tween";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
-import type { CircleLayer } from "../../engine/layers/CircleLayer";
+import type { CircleLayer } from "../../entities/CircleLayer";
 import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
 import { beatmapSelectionToDownloader } from "../../engine/transitions/factories/beatmapSelectionToDownloader";
@@ -19,7 +19,7 @@ import { DownloaderScene } from "../Downloader/DownloaderScene";
 import type { DifficultyFilter } from "../Filter/filterTypes";
 import { FilterScene } from "../Filter/FilterScene";
 import { GameplayScene } from "../Gameplay/GameplayScene";
-import { Scene } from "../Scene";
+import { Scene, type SceneTransitionSlot } from "../Scene";
 import { pickIndexAtY } from "../shared/verticalPicker";
 import { BeatmapSelectionView } from "./BeatmapSelectionView";
 import {
@@ -170,7 +170,8 @@ export class BeatmapSelectionScene extends Scene {
     this.root.destroy();
   }
 
-  public override exitFadePlayable(durationMs: number): Playable {
+  public override scenePlayable(slot: SceneTransitionSlot, durationMs: number): Playable | null {
+    if (slot !== "exit") return null;
     return tween({
       target: this.innerContainer,
       to: { alpha: 0 },

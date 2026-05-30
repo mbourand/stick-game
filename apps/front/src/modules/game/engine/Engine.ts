@@ -1,17 +1,20 @@
 import { Audio } from "../../audio/Audio";
 import { Gamepad } from "../../gamepad/Gamepad";
 import { Settings, settings as defaultSettings } from "../../settings/Settings";
+import { createGamepadAdapter } from "../input/GamepadAdapter";
 import { InputSystem } from "../input/InputSystem";
 import { SceneManager } from "../scenes/SceneManager";
 import { PlayableScheduler } from "./animation/PlayableScheduler";
 import { RealtimeClock } from "./Clock";
-import { CircleLayer } from "./layers/CircleLayer";
+import { CircleLayer } from "../entities/CircleLayer";
 import type { TickContext } from "./TickContext";
 
 export type FrameCallback = (tick: TickContext) => void;
 
 export type EngineOptions = {
   settings?: Settings;
+  /** Color used to clear the canvas before each frame. Defaults to "black". */
+  clearColor?: string;
 };
 
 export class Engine {
@@ -23,6 +26,7 @@ export class Engine {
   private canvas: HTMLCanvasElement | null = null;
 
   private readonly settings: Settings;
+  private readonly clearColor: string;
   private readonly realtimeClock = new RealtimeClock();
   /** The persistent ring referenced by whichever scene is on top. Survives scene swaps. */
   public readonly circle = new CircleLayer();
@@ -35,7 +39,6 @@ export class Engine {
    */
   public readonly playables = new PlayableScheduler();
   private readonly sceneManager = new SceneManager(this);
-  private readonly gamepad: Gamepad;
   private readonly inputSystem: InputSystem;
   private readonly audio = new Audio();
 
@@ -44,8 +47,9 @@ export class Engine {
 
   constructor(opts: EngineOptions = {}) {
     this.settings = opts.settings ?? defaultSettings;
-    this.gamepad = new Gamepad(this.settings);
-    this.inputSystem = new InputSystem(this.gamepad);
+    this.clearColor = opts.clearColor ?? "black";
+    const gamepad = new Gamepad(this.settings);
+    this.inputSystem = new InputSystem([createGamepadAdapter(gamepad)]);
   }
 
   public start(canvas: HTMLCanvasElement) {
@@ -72,7 +76,6 @@ export class Engine {
     this.offSettingChanged = null;
     this.sceneManager.clearScenes();
     this.inputSystem.destroy();
-    this.gamepad.destroy();
     this.audio.destroy();
   }
 
@@ -115,7 +118,6 @@ export class Engine {
       frame: this.frame,
     };
 
-    this.gamepad.tick();
     this.inputSystem.update();
     this.playables.update(dt);
     this.sceneManager.update(tick);
@@ -131,7 +133,7 @@ export class Engine {
     const ctx = this.canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.fillStyle = "black";
+    ctx.fillStyle = this.clearColor;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.sceneManager.render(this.canvas, ctx);
   }

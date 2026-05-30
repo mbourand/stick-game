@@ -68,7 +68,7 @@ const PauseButton = ({
   onFocus: () => void;
   onClick: () => void;
 }) => {
-  const buttonMotion = useScenePresenceMotion({ ...fade({ y: 16 }), delay });
+  const buttonMotion = useScenePresenceMotion({ ...fade({ y: 16 }), enterDelay: delay });
   return (
     <motion.button
       type="button"

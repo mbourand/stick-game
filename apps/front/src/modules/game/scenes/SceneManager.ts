@@ -113,18 +113,29 @@ export class SceneManager {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
 
-    // setPhase("exiting") fires onBeforeExit and tears down `from`'s input
-    // handlers BEFORE the choreography plays, so the user can't drive a
-    // scene that's animating out. Mid-timeline, the playable will call
-    // setPhase("entering") on `to` (no side effect — not the active
-    // boundary). When the playable finishes we commit to "inactive"/"active".
+    // The manager owns every phase flip:
+    //
+    //   - from → exiting: here (fires onBeforeExit, tears down input).
+    //   - to → entering:  fired when the factory calls `markEntering`.
+    //   - from → inactive + to → active: in finalize, below.
+    //
+    // Factories no longer call setPhase themselves — they only describe
+    // visual choreography and signal *when* the entering flip should happen.
     spec.from?.setPhase("exiting");
+
+    let enteringMarked = false;
+    const markEntering = () => {
+      if (enteringMarked) return;
+      enteringMarked = true;
+      spec.to?.setPhase("entering");
+    };
 
     const playable = spec.factory({
       from: spec.from,
       to: spec.to,
       kind: spec.kind,
-      circle: this.engine.circle,
+      engine: this.engine,
+      markEntering,
     });
 
     this.transition = { from: spec.from, to: spec.to, kind: spec.kind, playable };
@@ -178,10 +189,21 @@ export class SceneManager {
     const t = this.transition;
     const topIndex = this.sceneStack.length - 1;
 
+    // Walk top→bottom. Render the top scene; keep going down as long as the
+    // scene above is an overlay (chained overlays allowed). Anything caught
+    // up in the current transition is forced visible regardless.
+    const visibleFromOverlay = new Set<number>();
+    if (topIndex >= 0) {
+      visibleFromOverlay.add(topIndex);
+      for (let i = topIndex; i > 0; i--) {
+        if (!this.sceneStack[i].isOverlay) break;
+        visibleFromOverlay.add(i - 1);
+      }
+    }
     for (let i = 0; i < this.sceneStack.length; i++) {
       const scene = this.sceneStack[i];
       const forcedByTransition = t !== null && (t.from === scene || t.to === scene);
-      if (i !== topIndex && !forcedByTransition && !scene.rendersWhenInactive) continue;
+      if (!visibleFromOverlay.has(i) && !forcedByTransition) continue;
       scene.render(canvas, ctx);
     }
 

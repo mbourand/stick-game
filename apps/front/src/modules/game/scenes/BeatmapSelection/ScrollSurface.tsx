@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 
 type ScrollSurfaceProps = {
@@ -11,7 +12,7 @@ type ScrollSurfaceProps = {
 
 export const ScrollSurface = ({ position, active, onPress }: ScrollSurfaceProps) => {
   const isTop = position === "top";
-  const presenceMotion = useScenePresenceMotion({ y: isTop ? -12 : 12 });
+  const presenceMotion = useScenePresenceMotion(fade({ y: isTop ? -12 : 12 }));
   return (
     <motion.button
       type="button"

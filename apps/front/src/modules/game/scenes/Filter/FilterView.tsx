@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
 import type { SceneUIComponent } from "../Scene";
@@ -10,9 +11,9 @@ import { DIFFICULTY_SLIDER_MAX, type DifficultyFilter } from "./filterTypes";
 const DIFFICULTY_BOUNDS = { min: 0, max: DIFFICULTY_SLIDER_MAX } as const;
 
 export const FilterView: SceneUIComponent<FilterScene> = ({ scene }) => {
-  const backdropMotion = useScenePresenceMotion();
-  const panelMotion = useScenePresenceMotion({ y: 12 });
-  const hintMotion = useScenePresenceMotion({ y: 12 });
+  const backdropMotion = useScenePresenceMotion(fade());
+  const panelMotion = useScenePresenceMotion(fade({ y: 12 }));
+  const hintMotion = useScenePresenceMotion(fade({ y: 12 }));
   const difficultyFilter = useStore(scene.difficultyFilter);
   const current = difficultyFilter ?? DIFFICULTY_BOUNDS;
   const isActive = difficultyFilter !== null;

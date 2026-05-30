@@ -11,6 +11,7 @@ import { motion } from "motion/react";
 import JSZip from "jszip";
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { z } from "zod";
+import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
 import type { SceneUIComponent } from "../Scene";
@@ -19,8 +20,8 @@ import type { DownloaderScene } from "./DownloaderScene";
 type Beatmapset = z.infer<typeof zOsuControllerBeatmapsetsSearchResponse>["beatmapsets"][number];
 
 export const DownloaderView: SceneUIComponent<DownloaderScene> = ({ scene }) => {
-  const backdropMotion = useScenePresenceMotion();
-  const panelMotion = useScenePresenceMotion({ y: 12 });
+  const backdropMotion = useScenePresenceMotion(fade());
+  const panelMotion = useScenePresenceMotion(fade({ y: 12 }));
 
   const focused = useStore(scene.focused);
 

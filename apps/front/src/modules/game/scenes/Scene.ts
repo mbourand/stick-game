@@ -124,54 +124,40 @@ export abstract class Scene {
     for (const listener of this.phaseListeners) listener();
   }
 
+  /**
+   * Lifecycle-bound wrappers around InputSystem. Each one delegates to the
+   * underlying handler factory (which holds the actual shaping/timer logic)
+   * and parks the returned disposer on `activeDisposers`, so the subscription
+   * — and any timers / per-frame polls it owns — clears the moment the scene
+   * leaves `active`.
+   */
   protected onAction(action: ButtonAction, handler: () => void): void {
-    const off = this.inputSystem.onActionDown(action, handler);
-    this.activeDisposers.push(off);
+    this.activeDisposers.push(this.inputSystem.onActionDown(action, handler));
   }
 
   protected onActionUp(action: ButtonAction, handler: () => void): void {
-    const off = this.inputSystem.onActionUp(action, handler);
-    this.activeDisposers.push(off);
+    this.activeDisposers.push(this.inputSystem.onActionUp(action, handler));
   }
 
-  /**
-   * Press-with-repeat: handler fires once on press, then once after
-   * `initialDelayMs`, then every `repeatIntervalMs` until release. Used for
-   * UI list navigation (d-pad up/down) where a single tap moves one item
-   * and a held press passes through items at the repeat rate.
-   *
-   * Tied to the active lifetime — timers are cleared when the scene leaves
-   * active, same as the underlying onAction subscriptions.
-   */
   protected onActionRepeat(
     action: ButtonAction,
     handler: () => void,
-    opts: { initialDelayMs?: number; repeatIntervalMs?: number } = {},
+    opts?: { initialDelayMs?: number; repeatIntervalMs?: number },
   ): void {
-    const initialDelayMs = opts.initialDelayMs ?? 350;
-    const repeatIntervalMs = opts.repeatIntervalMs ?? 60;
-    let initialTimer: ReturnType<typeof setTimeout> | null = null;
-    let repeatTimer: ReturnType<typeof setInterval> | null = null;
-    const clearTimers = () => {
-      if (initialTimer !== null) {
-        clearTimeout(initialTimer);
-        initialTimer = null;
-      }
-      if (repeatTimer !== null) {
-        clearInterval(repeatTimer);
-        repeatTimer = null;
-      }
-    };
-    this.onAction(action, () => {
-      clearTimers();
-      handler();
-      initialTimer = setTimeout(() => {
-        initialTimer = null;
-        repeatTimer = setInterval(handler, repeatIntervalMs);
-      }, initialDelayMs);
-    });
-    this.onActionUp(action, clearTimers);
-    this.activeDisposers.push(clearTimers);
+    this.activeDisposers.push(this.inputSystem.onActionRepeat(action, handler, opts));
+  }
+
+  protected onStickRepeat(
+    axis: "x" | "y",
+    handler: (dir: -1 | 1) => void,
+    opts?: {
+      engageThreshold?: number;
+      releaseThreshold?: number;
+      initialDelayMs?: number;
+      repeatIntervalMs?: number;
+    },
+  ): void {
+    this.activeDisposers.push(this.inputSystem.onStickRepeat(axis, handler, opts));
   }
 
   protected getStick(side: "left" | "right"): { x: number; y: number } {

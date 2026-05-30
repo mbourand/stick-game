@@ -24,7 +24,7 @@ export class MainMenuScene extends Scene {
 
   constructor(engine: Engine) {
     super(engine);
-    this.circle = engine.getPersistentRoot().circle;
+    this.circle = engine.circle;
     this.root.add(this.circle);
     this.root.add(new StickDotsEntity(this.inputSystem, this.circle));
   }

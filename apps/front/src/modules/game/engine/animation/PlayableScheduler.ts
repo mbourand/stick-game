@@ -16,7 +16,7 @@ import type { Playable } from "./Playable";
  * START of the next `update()` — this avoids a playable being mutated by a
  * callback of another playable in the same frame (e.g. `call(() => sched.play(t))`).
  */
-export class TweenScheduler {
+export class PlayableScheduler {
   private active: Playable[] = [];
   private pending: Playable[] = [];
   private paused = false;

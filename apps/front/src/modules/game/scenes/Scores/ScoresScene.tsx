@@ -26,7 +26,7 @@ export class ScoresScene extends Scene {
     super(engine);
     this.parsedMap = parsedMap;
     this.scoreCounter = scoreCounter;
-    this.circle = engine.getPersistentRoot().circle;
+    this.circle = engine.circle;
     this.root.add(this.circle);
   }
 

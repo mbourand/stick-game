@@ -1,18 +1,16 @@
 "use client";
 
 import { motion } from "motion/react";
+import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
 import type { SceneUIComponent } from "../Scene";
-import { PAUSE_ACTIONS, type PauseScene } from "./PauseScene";
+import type { PauseScene } from "./PauseScene";
 
 export const PauseView: SceneUIComponent<PauseScene> = ({ scene }) => {
-  // enterAnimated forces motion to start at opacity 0 on mount. Pause is
-  // pushed without phaseShell's exit-phase wait, so the mount frame would
-  // otherwise see ScenePresence already "in" and skip the fade-in.
-  const backdropMotion = useScenePresenceMotion({ enterAnimated: true });
-  const titleMotion = useScenePresenceMotion({ y: -12, enterAnimated: true });
-  const hintMotion = useScenePresenceMotion({ y: 12, enterAnimated: true });
+  const backdropMotion = useScenePresenceMotion(fade());
+  const titleMotion = useScenePresenceMotion(fade({ y: -12 }));
+  const hintMotion = useScenePresenceMotion(fade({ y: 12 }));
   const focused = useStore(scene.focused);
 
   return (
@@ -29,14 +27,14 @@ export const PauseView: SceneUIComponent<PauseScene> = ({ scene }) => {
       </motion.div>
 
       <div className="flex flex-col gap-3 w-[380px]">
-        {PAUSE_ACTIONS.map((btn, i) => (
+        {scene.entries.map((entry, i) => (
           <PauseButton
-            key={btn.id}
-            label={btn.label}
-            isFocused={focused === btn.id}
+            key={entry.id}
+            label={entry.label}
+            isFocused={focused === i}
             delay={i * 0.05}
-            onFocus={() => scene.focused.set(btn.id)}
-            onClick={() => scene.activate(btn.id)}
+            onFocus={() => scene.focused.set(i)}
+            onClick={entry.run}
           />
         ))}
       </div>
@@ -70,7 +68,7 @@ const PauseButton = ({
   onFocus: () => void;
   onClick: () => void;
 }) => {
-  const buttonMotion = useScenePresenceMotion({ y: 16, delay, enterAnimated: true });
+  const buttonMotion = useScenePresenceMotion({ ...fade({ y: 16 }), delay });
   return (
     <motion.button
       type="button"

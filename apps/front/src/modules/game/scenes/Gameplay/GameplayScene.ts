@@ -22,8 +22,7 @@ import type { TickContext } from "../../engine/TickContext";
 import { gameplayRetry } from "../../engine/transitions/factories/gameplayRetry";
 import { gameplayToBeatmapSelection } from "../../engine/transitions/factories/gameplayToBeatmapSelection";
 import { gameplayToScores } from "../../engine/transitions/factories/gameplayToScores";
-import { pauseEnter } from "../../engine/transitions/factories/pauseEnter";
-import { pauseExit } from "../../engine/transitions/factories/pauseExit";
+import { pauseEnter, pauseExit } from "../Pause/transitions";
 import { ScoresScene } from "../Scores/ScoresScene";
 import type { GameplayEvents } from "../../events/gameplayEvents";
 import type { NoteHoldTickEventType } from "../../events/impl/NoteHoldTickEvent";
@@ -78,7 +77,7 @@ export class GameplayScene extends Scene {
     super(engine);
     this.parsedMap = parsedMap;
     this.settings = engine.getSettings().get();
-    this.circle = engine.getPersistentRoot().circle;
+    this.circle = engine.circle;
 
     const musicContext = engine.getAudio().music.getAudioContext();
     this.clock = new BeatmapClock(musicContext);
@@ -87,6 +86,13 @@ export class GameplayScene extends Scene {
     this.scoreCounter = new ScoreCounter(
       this.parsedMap.notes.length + this.parsedMap.notes.filter((n) => n.isHold).length,
     );
+
+    // SFX preloading lives here (rather than on the engine) because they're
+    // gameplay-specific. Fire-and-forget — the music buffer load in
+    // `onEntered` typically gives them plenty of time to be ready by the
+    // first hit/miss.
+    void engine.getAudio().registerSfx("hit", "/hit.wav", 0.66);
+    void engine.getAudio().registerSfx("miss", "/miss.ogg", 1);
   }
 
   public override async onEntered() {
@@ -146,11 +152,13 @@ export class GameplayScene extends Scene {
     // than 350ms of still-playing music.
     void this.engine.getAudio().music.suspend();
     void this.sceneManager.transitionPush(
-      new PauseScene(this.engine, {
-        onResume: () => void this.sceneManager.transitionPop(pauseExit),
-        onRetry: () => void this.retryBeatmap(),
-        onExit: () => void this.exitToBeatmapSelection(),
-      }),
+      new PauseScene(this.engine, [
+        // Index 0 doubles as the back/pause-key shortcut in PauseScene — keep
+        // "resume" first.
+        { id: "resume", label: "Resume", run: () => void this.sceneManager.transitionPop(pauseExit) },
+        { id: "retry", label: "Retry", run: () => void this.retryBeatmap() },
+        { id: "exit", label: "Exit to selection", run: () => void this.exitToBeatmapSelection() },
+      ]),
       pauseEnter,
     );
   }
@@ -167,9 +175,7 @@ export class GameplayScene extends Scene {
    */
   public async retryBeatmap(): Promise<void> {
     this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
-    void this.engine.getPersistentRoot().transitions.play(
-      this.exitFadePlayable(EXIT_FADE_DURATION_MS),
-    );
+    void this.engine.playables.play(this.exitFadePlayable(EXIT_FADE_DURATION_MS));
     await this.sceneManager.transitionPop(pauseExit);
     const next = new GameplayScene(this.engine, this.parsedMap);
     void this.sceneManager.transitionReplace(next, gameplayRetry);
@@ -177,9 +183,7 @@ export class GameplayScene extends Scene {
 
   public async exitToBeatmapSelection(): Promise<void> {
     this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
-    void this.engine.getPersistentRoot().transitions.play(
-      this.exitFadePlayable(EXIT_FADE_DURATION_MS),
-    );
+    void this.engine.playables.play(this.exitFadePlayable(EXIT_FADE_DURATION_MS));
     await this.sceneManager.transitionPop(pauseExit);
     void this.sceneManager.transitionPop(gameplayToBeatmapSelection);
   }

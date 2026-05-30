@@ -1,49 +1,37 @@
 "use client";
 
 import { SCENE_TRANSITION_DURATION_S } from "../transitions/durations";
-import { SCENE_EASE, useScenePresence } from "./scenePresence";
+import type { Pose } from "./poses";
+import { useScenePresence } from "./scenePresence";
 
 /**
- * Returns motion props (initial/animate/transition) for a leaf component that
- * should fade with the surrounding scene's presence and optionally slide on
- * one axis. Spread the result onto any motion.* element.
- *
- *   - `x` / `y`: pixel offset while presence is "out". 0 while "in".
- *   - `delay`: enter-only delay in seconds (use for staggers). The exit
- *              never delays — components clear together when the scene exits.
- *   - `enterAnimated`: force motion to mount at the "out" pose even when the
- *              scene's presence is already "in" at mount time. Needed for
- *              overlay scenes (pause) pushed without an exit-phase wait, where
- *              same-frame batching means the React mount sees "in" presence
- *              and motion would otherwise start at the final pose with no
- *              fade. For scenes pushed through phaseShell the exit wait
- *              gives React time to mount under "out" naturally — leave the
- *              flag off there.
+ * Canonical curve used for every scene-presence animation. Matches the
+ * canvas-side easing the SceneManager choreography assumes.
  */
-export function useScenePresenceMotion(opts: {
-  x?: number;
-  y?: number;
-  delay?: number;
-  enterAnimated?: boolean;
-} = {}) {
+const SCENE_EASE: readonly [number, number, number, number] = [0.4, 0, 0.2, 1];
+
+/**
+ * Motion props (initial/animate/transition) for a leaf component that should
+ * flip between two poses with the surrounding scene's presence. Spread the
+ * result onto any motion.* element. What gets animated is the caller's
+ * choice — see `fade` in ./poses for the common opacity-fade pattern.
+ *
+ * `initial` is always the `out` pose. When the scene mounts under "out"
+ * presence (the phaseShell case), that pose equals the animate target on the
+ * mount frame so nothing visibly animates until presence flips to "in". When
+ * the scene mounts under "in" presence (overlay scenes like pause, or any
+ * leaf that mounts after its scene is already active), the motion runs the
+ * full enter animation.
+ *
+ * `delay` is enter-only (use for staggers). The exit never delays —
+ * components clear together when the scene exits.
+ */
+export function useScenePresenceMotion(opts: { in: Pose; out: Pose; delay?: number }) {
   const presence = useScenePresence();
   const isIn = presence === "in";
-  const animate: { opacity: number; x?: number; y?: number } = {
-    opacity: isIn ? 1 : 0,
-  };
-  if (opts.x !== undefined) animate.x = isIn ? 0 : opts.x;
-  if (opts.y !== undefined) animate.y = isIn ? 0 : opts.y;
-
-  let initial: false | { opacity: number; x?: number; y?: number } = false;
-  if (opts.enterAnimated) {
-    initial = { opacity: 0 };
-    if (opts.x !== undefined) initial.x = opts.x;
-    if (opts.y !== undefined) initial.y = opts.y;
-  }
-
   return {
-    initial,
-    animate,
+    initial: opts.out,
+    animate: isIn ? opts.in : opts.out,
     transition: {
       duration: SCENE_TRANSITION_DURATION_S,
       ease: SCENE_EASE,

@@ -2,6 +2,7 @@
 
 import { motion, type MotionValue } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
+import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 
 /** Either a fixed value or a MotionValue — both are accepted directly by motion's `style`. */
@@ -79,7 +80,7 @@ export const RadialButton = ({
   // the translation follows the side.
   const extraRoom = outerWidth - buttonWidth;
   const retractX = side === "right" ? -extraRoom : extraRoom;
-  const presenceMotion = useScenePresenceMotion({ x: retractX, delay });
+  const presenceMotion = useScenePresenceMotion({ ...fade({ x: retractX }), delay });
 
   const isRight = side === "right";
   const innerStyle: CSSProperties = isRight

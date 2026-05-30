@@ -1,5 +1,5 @@
 import type { Playable } from "../engine/animation/Playable";
-import type { PersistentRoot } from "../engine/layers/PersistentRoot";
+import type { Engine } from "../engine/Engine";
 import type { TickContext } from "../engine/TickContext";
 import type {
   TransitionFactory,
@@ -29,7 +29,7 @@ export class SceneManager {
   private isTransitioning = false;
   private transition: (TransitionState & { playable: Playable }) | null = null;
 
-  constructor(private readonly persistentRoot: PersistentRoot) {}
+  constructor(private readonly engine: Engine) {}
 
   public subscribe = (listener: Listener) => {
     this.listeners.add(listener);
@@ -124,14 +124,14 @@ export class SceneManager {
       from: spec.from,
       to: spec.to,
       kind: spec.kind,
-      circle: this.persistentRoot.circle,
+      circle: this.engine.circle,
     });
 
     this.transition = { from: spec.from, to: spec.to, kind: spec.kind, playable };
     this.emit();
 
     try {
-      await this.persistentRoot.transitions.play(playable);
+      await this.engine.playables.play(playable);
       finalize();
       spec.from?.setPhase("inactive");
       spec.to?.setPhase("active");

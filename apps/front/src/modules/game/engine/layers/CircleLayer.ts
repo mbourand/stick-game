@@ -5,8 +5,8 @@ import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_STROKE_WIDTH } from "../../ut
 
 /**
  * The persistent ring at the heart of the game's visual identity. Owned by the
- * PersistentRoot and referenced by whichever scene is currently visible —
- * scenes never destroy it.
+ * Engine and referenced by whichever scene is currently visible — scenes
+ * never destroy it.
  *
  * All numeric properties (radius, x, y, alpha, ringAlpha, strokeWidth) are
  * tweenable by the animation system; scene transitions interpolate them to

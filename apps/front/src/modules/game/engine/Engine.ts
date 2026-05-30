@@ -3,8 +3,9 @@ import { Gamepad } from "../../gamepad/Gamepad";
 import { Settings, settings as defaultSettings } from "../../settings/Settings";
 import { InputSystem } from "../input/InputSystem";
 import { SceneManager } from "../scenes/SceneManager";
+import { PlayableScheduler } from "./animation/PlayableScheduler";
 import { RealtimeClock } from "./Clock";
-import { PersistentRoot } from "./layers/PersistentRoot";
+import { CircleLayer } from "./layers/CircleLayer";
 import type { TickContext } from "./TickContext";
 
 export type FrameCallback = (tick: TickContext) => void;
@@ -23,8 +24,17 @@ export class Engine {
 
   private readonly settings: Settings;
   private readonly realtimeClock = new RealtimeClock();
-  private readonly persistentRoot = new PersistentRoot();
-  private readonly sceneManager = new SceneManager(this.persistentRoot);
+  /** The persistent ring referenced by whichever scene is on top. Survives scene swaps. */
+  public readonly circle = new CircleLayer();
+  /**
+   * Engine-level Playable scheduler. Ticked every frame independently of any
+   * per-scene state, so playables scheduled here keep running across scene
+   * swaps. Used by SceneManager to drive transition choreographies and by any
+   * scene that needs a fade/move to outlive its own teardown (see GameplayScene
+   * fading content while the pause scene's DOM exit plays).
+   */
+  public readonly playables = new PlayableScheduler();
+  private readonly sceneManager = new SceneManager(this);
   private readonly gamepad: Gamepad;
   private readonly inputSystem: InputSystem;
   private readonly audio = new Audio();
@@ -42,8 +52,6 @@ export class Engine {
     if (this.running) return;
     this.canvas = canvas;
 
-    void this.audio.registerSfx("hit", "/hit.wav", 0.66);
-    void this.audio.registerSfx("miss", "/miss.ogg", 1);
     this.audio.setMasterVolume(this.settings.get().volume);
     this.offSettingChanged = this.settings.events.on("onSettingChanged", (e) => {
       if (e.key === "volume") this.audio.setMasterVolume(this.settings.get().volume);
@@ -70,10 +78,6 @@ export class Engine {
 
   public getSceneManager(): SceneManager {
     return this.sceneManager;
-  }
-
-  public getPersistentRoot(): PersistentRoot {
-    return this.persistentRoot;
   }
 
   public getInputSystem(): InputSystem {
@@ -112,7 +116,8 @@ export class Engine {
     };
 
     this.gamepad.tick();
-    this.persistentRoot.update(tick);
+    this.inputSystem.update();
+    this.playables.update(dt);
     this.sceneManager.update(tick);
     this.render();
 

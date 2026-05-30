@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { MapLeaderboard } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
 import { useScenePresence } from "../../engine/animation/scenePresence";
+import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
 import type { SceneUIComponent } from "../Scene";
@@ -28,8 +29,8 @@ const CIRCLE_DIAMETER = CIRCLE_RADIUS_PX * 2;
 
 export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ scene }) => {
   const isVisible = useScenePresence() === "in";
-  const searchBarMotion = useScenePresenceMotion({ y: -12 });
-  const emptyStateMotion = useScenePresenceMotion();
+  const searchBarMotion = useScenePresenceMotion(fade({ y: -12 }));
+  const emptyStateMotion = useScenePresenceMotion(fade());
 
   const searchQuery = useStore(scene.searchQuery);
   const difficultyFilter = useStore(scene.difficultyFilter);

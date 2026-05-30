@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { settings } from "@/modules/settings/Settings";
 import { useScenePresence } from "../../engine/animation/scenePresence";
+import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
@@ -20,7 +21,7 @@ export const MainMenuView: SceneUIComponent<MainMenuScene> = ({ scene }) => {
   const playerName = settings.get().playerName || "Guest";
   const hint = focused ? BUTTONS.find((b) => b.id === focused)?.hint : null;
 
-  const playerCardMotion = useScenePresenceMotion();
+  const playerCardMotion = useScenePresenceMotion(fade());
 
   return (
     <div className="absolute inset-0 text-white select-none" style={{ fontFamily: "Rostex" }}>

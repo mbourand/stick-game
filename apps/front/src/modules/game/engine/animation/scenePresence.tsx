@@ -6,12 +6,6 @@ import { useScenePhase } from "../../scenes/useScene";
 
 export type ScenePresence = "in" | "out";
 
-/**
- * Canonical curve used for every scene-presence animation. Matches the
- * canvas-side easing the SceneManager choreography assumes.
- */
-export const SCENE_EASE: readonly [number, number, number, number] = [0.4, 0, 0.2, 1];
-
 const ScenePresenceContext = createContext<ScenePresence>("in");
 
 /**

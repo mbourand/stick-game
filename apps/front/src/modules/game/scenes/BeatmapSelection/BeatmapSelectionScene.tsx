@@ -124,7 +124,7 @@ export class BeatmapSelectionScene extends Scene {
 
   constructor(engine: Engine) {
     super(engine);
-    this.circle = engine.getPersistentRoot().circle;
+    this.circle = engine.circle;
     this.background = new BackgroundCrossfader(engine.getSettings(), {
       radius: CIRCLE_RADIUS_PX,
       fadeDurationMs: BACKGROUND_CROSSFADE_MS,

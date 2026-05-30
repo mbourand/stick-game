@@ -22,6 +22,7 @@ import type { TickContext } from "../../engine/TickContext";
 import { gameplayRetry } from "../../engine/transitions/factories/gameplayRetry";
 import { gameplayToBeatmapSelection } from "../../engine/transitions/factories/gameplayToBeatmapSelection";
 import { gameplayToScores } from "../../engine/transitions/factories/gameplayToScores";
+import { pauseEnter } from "../../engine/transitions/factories/pauseEnter";
 import { pauseExit } from "../../engine/transitions/factories/pauseExit";
 import { ScoresScene } from "../Scores/ScoresScene";
 import type { GameplayEvents } from "../../events/gameplayEvents";
@@ -91,9 +92,13 @@ export class GameplayScene extends Scene {
   public override async onEntered() {
     this.onAction("pause", () => this.openPauseMenu());
 
-    // Bootstrapping is one-shot; on re-activation (resume after pause) the
-    // music's suspend/resume is owned by PauseScene, not us.
-    if (this.hasBootstrapped) return;
+    // Re-activation after pause: resume audio NOW (i.e. after the pause-pop
+    // transition has finished). Resuming earlier (e.g. in pause.onBeforeExit)
+    // would un-pause the music while the overlay is still fading out.
+    if (this.hasBootstrapped) {
+      await this.engine.getAudio().music.resume();
+      return;
+    }
 
     this.buildSceneTree();
     this.registerEvents();
@@ -136,12 +141,17 @@ export class GameplayScene extends Scene {
   }
 
   public openPauseMenu() {
-    this.sceneManager.pushScene(
+    // Suspend the music *before* the transition starts so it cuts when the
+    // user presses pause — the visible fade-in plays over silence rather
+    // than 350ms of still-playing music.
+    void this.engine.getAudio().music.suspend();
+    void this.sceneManager.transitionPush(
       new PauseScene(this.engine, {
         onResume: () => void this.sceneManager.transitionPop(pauseExit),
         onRetry: () => void this.retryBeatmap(),
         onExit: () => void this.exitToBeatmapSelection(),
       }),
+      pauseEnter,
     );
   }
 

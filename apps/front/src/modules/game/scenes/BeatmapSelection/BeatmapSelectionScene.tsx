@@ -66,6 +66,14 @@ export class BeatmapSelectionScene extends Scene {
   public readonly focusedLeftButton = new Store<number | null>(null);
 
   /**
+   * Logical id of the currently/last focused beatmap. Lives on the scene
+   * (not in a view ref) so it survives view remounts — used by reconciliation
+   * to snap focus back to the same beatmap after a filter change or after
+   * returning from an overlay scene that altered the list.
+   */
+  public readonly focusedBeatmapIdv2 = new Store<string | null>(null);
+
+  /**
    * Search and difficulty filter live on the scene (not in the view's useState)
    * so they survive while the view unmounts during gameplay/scores/overlays —
    * when the user pops back here, the list re-renders with the same filter.
@@ -142,6 +150,10 @@ export class BeatmapSelectionScene extends Scene {
     this.onAction("leaderboard-next", () => this.toggleLeaderboardTab());
     this.onActionRepeat("nav-up", () => this.navByDPad(-1));
     this.onActionRepeat("nav-down", () => this.navByDPad(+1));
+    // Returning from an overlay (downloader/filter) — drop the transient
+    // left-column focus so the user lands back on their beatmap. focusedIndex
+    // is preserved through overlays so we restore the same selection.
+    this.focusedLeftButton.set(null);
     // Exit transitions fade innerContainer to 0; reset before showing again.
     this.innerContainer.alpha = 1;
     // Re-arm preview only if it isn't already playing. Coming back from
@@ -327,9 +339,10 @@ export class BeatmapSelectionScene extends Scene {
       const picked = this.pickButtonAtY(stickY);
       if (picked !== null) this.focusedIndex.set(picked);
     } else if (stick.x < -SIDE_COMMIT_THRESHOLD) {
-      // Left side: action buttons.
+      // Left side: action buttons. focusedIndex is intentionally NOT cleared
+      // — it's the "last focused beatmap" we restore to on overlay close. The
+      // view hides the beatmap focus while focusedLeftButton is set.
       if (this.leftActions.length === 0) return;
-      this.focusedIndex.set(null);
       const picked = this.pickLeftButtonAtY(stickY);
       if (picked !== null) this.focusedLeftButton.set(picked);
     }

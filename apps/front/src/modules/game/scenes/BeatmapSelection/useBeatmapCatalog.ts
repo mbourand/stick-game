@@ -44,10 +44,7 @@ const revokeMediaUrls = ({ audioUrl, backgroundUrl }: MediaUrls) => {
  * Filter inputs are passed in (not held inside) so the view can source them
  * from a scene-owned Store and keep them alive while the view unmounts.
  */
-export function useBeatmapCatalog(
-  searchQuery: string,
-  difficultyFilter: DifficultyFilter | null,
-): BeatmapCatalog {
+export function useBeatmapCatalog(searchQuery: string, difficultyFilter: DifficultyFilter | null): BeatmapCatalog {
   // No default value — returns `undefined` until Dexie resolves. We need to
   // tell "not loaded yet" apart from "loaded but empty" so the focus-sync
   // effect doesn't push count=0 into the scene during the first render after
@@ -63,11 +60,8 @@ export function useBeatmapCatalog(
     let result = beatmaps;
     if (difficultyFilter !== null) {
       // Slider parked at the max means "no upper bound" — keep maps above the slider range.
-      const effectiveMax =
-        difficultyFilter.max >= DIFFICULTY_SLIDER_MAX ? Infinity : difficultyFilter.max;
-      result = result.filter(
-        (b) => b.difficulty >= difficultyFilter.min && b.difficulty <= effectiveMax,
-      );
+      const effectiveMax = difficultyFilter.max >= DIFFICULTY_SLIDER_MAX ? Infinity : difficultyFilter.max;
+      result = result.filter((b) => b.difficulty >= difficultyFilter.min && b.difficulty <= effectiveMax);
     }
     const q = searchQuery.trim().toLowerCase();
     if (q !== "") {
@@ -83,28 +77,27 @@ export function useBeatmapCatalog(
 
   const isNoMatch = filteredBeatmaps.length === 0 && beatmaps.length > 0;
 
-  const urlCacheRef = useRef<LruCache<string, MediaUrls>>(
-    new LruCache(MEDIA_URL_CACHE_SIZE, revokeMediaUrls),
-  );
-  const resolveMediaUrls = useCallback(
-    async (beatmap: V3BeatmapEntity): Promise<MediaUrls | null> => {
-      const cache = urlCacheRef.current;
-      const cached = cache.get(beatmap.idv2);
-      if (cached) return cached;
-      const [audioFile, bgFile] = await Promise.all([
-        latestDb.files.get(beatmap.audioId),
-        latestDb.files.get(beatmap.gameplayBackgroundId),
-      ]);
-      if (!audioFile || !bgFile) return null;
-      const urls: MediaUrls = {
-        audioUrl: URL.createObjectURL(audioFile.content),
-        backgroundUrl: URL.createObjectURL(bgFile.content),
-      };
-      cache.set(beatmap.idv2, urls);
-      return urls;
-    },
-    [],
-  );
+  const urlCacheRef = useRef<LruCache<string, MediaUrls>>(new LruCache(MEDIA_URL_CACHE_SIZE, revokeMediaUrls));
+  const resolveMediaUrls = useCallback(async (beatmap: V3BeatmapEntity): Promise<MediaUrls | null> => {
+    const cache = urlCacheRef.current;
+    const cached = cache.get(beatmap.idv2);
+    if (cached) return cached;
+    // Legacy beatmaps in the DB may have null ids if the downloader couldn't
+    // find the referenced audio/background file in the zip. Skip cleanly
+    // instead of letting Dexie throw on Table.get(invalid).
+    if (beatmap.audioId == null || beatmap.gameplayBackgroundId == null) return null;
+    const [audioFile, bgFile] = await Promise.all([
+      latestDb.files.get(beatmap.audioId),
+      latestDb.files.get(beatmap.gameplayBackgroundId),
+    ]);
+    if (!audioFile || !bgFile) return null;
+    const urls: MediaUrls = {
+      audioUrl: URL.createObjectURL(audioFile.content),
+      backgroundUrl: URL.createObjectURL(bgFile.content),
+    };
+    cache.set(beatmap.idv2, urls);
+    return urls;
+  }, []);
 
   return {
     beatmaps,

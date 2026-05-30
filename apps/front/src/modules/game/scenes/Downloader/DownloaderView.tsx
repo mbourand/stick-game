@@ -1,5 +1,6 @@
 "use client";
 
+import { deleteBeatmapAndOrphanedFiles } from "@/modules/db/cleanup";
 import { latestDb } from "@/modules/db/db";
 import { convertFromOsu } from "@/modules/osu/convert/OsuConverter";
 import { beatmapsetsSearchQueryOptions } from "@/modules/fetching/back/queries/beatmapsets-search";
@@ -275,15 +276,35 @@ async function downloadBeatmapset(beatmapset: Beatmapset): Promise<void> {
       const content = await file.async("string");
       const parsedMap = convertFromOsu(content, (path) => path);
 
+      // Re-download = overwrite: drop the existing row + any of its files
+      // that no other beatmap references, then fall through to the normal
+      // import path. The schema only indexes idv2 (no uniqueness constraint)
+      // so without this step a second import would silently duplicate.
+      const existing = await latestDb.beatmaps.where("idv2").equals(parsedMap.id).first();
+      if (existing) {
+        console.log(`Overwriting existing beatmap ${parsedMap.id}`);
+        await deleteBeatmapAndOrphanedFiles(existing);
+      }
+
       const backgroundFile = allFiles.find((f) => f.name === parsedMap.backgroundUrl);
       const audioFile = allFiles.find((f) => f.name === parsedMap.audioUrl);
 
-      let backgroundFileId: number | null =
-        (backgroundFile && alreadyAddedFiles.get(backgroundFile.name)) || null;
-      let audioFileId: number | null =
-        (audioFile && alreadyAddedFiles.get(audioFile.name)) || null;
+      // Skip beatmaps whose .osu references files that aren't in the zip —
+      // they're unplayable and would otherwise be persisted with null
+      // audioId/gameplayBackgroundId, breaking the preview/playback path.
+      if (!backgroundFile || !audioFile) {
+        console.warn(
+          `Skipping beatmap ${parsedMap.id}: missing ${!audioFile ? "audio" : ""}${
+            !audioFile && !backgroundFile ? " + " : ""
+          }${!backgroundFile ? "background" : ""} file in zip`,
+        );
+        continue;
+      }
 
-      if (backgroundFile && !backgroundFileId) {
+      let backgroundFileId = alreadyAddedFiles.get(backgroundFile.name) ?? null;
+      let audioFileId = alreadyAddedFiles.get(audioFile.name) ?? null;
+
+      if (backgroundFileId === null) {
         const fileContent = await backgroundFile.async("arraybuffer");
         backgroundFileId = await latestDb.files.add({
           content: new Blob([fileContent]),
@@ -293,7 +314,7 @@ async function downloadBeatmapset(beatmapset: Beatmapset): Promise<void> {
         alreadyAddedFiles.set(backgroundFile.name, backgroundFileId);
       }
 
-      if (audioFile && !audioFileId) {
+      if (audioFileId === null) {
         const fileContent = await audioFile.async("arraybuffer");
         audioFileId = await latestDb.files.add({
           content: new Blob([fileContent]),
@@ -310,8 +331,8 @@ async function downloadBeatmapset(beatmapset: Beatmapset): Promise<void> {
         creator: parsedMap.creator,
         difficulty: parsedMap.difficulty,
         content: new Blob([content]),
-        gameplayBackgroundId: backgroundFileId!,
-        audioId: audioFileId!,
+        gameplayBackgroundId: backgroundFileId,
+        audioId: audioFileId,
         listBackgroundId: listBackgroundFileId,
         createdAt: new Date(),
       });

@@ -18,6 +18,7 @@ export type PauseEntry = {
 export class PauseScene extends Scene {
   public readonly id = "pause";
   public override readonly UI = PauseView;
+  public override readonly isOverlay = true;
 
   public readonly entries: readonly PauseEntry[];
   // Default to index 0 (typically "Resume") so a quick A from the user

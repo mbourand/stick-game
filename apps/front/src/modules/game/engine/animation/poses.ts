@@ -14,7 +14,7 @@ export type Pose = { opacity?: number; x?: number; y?: number };
  *
  *   useScenePresenceMotion(fade())                // pure fade
  *   useScenePresenceMotion(fade({ y: -12 }))      // fade + slide down
- *   useScenePresenceMotion({ ...fade({ y: 16 }), delay: 0.1 })
+ *   useScenePresenceMotion({ ...fade({ y: 16 }), enterDelay: 0.1 })
  */
 export function fade(offset: { x?: number; y?: number } = {}): { in: Pose; out: Pose } {
   const inPose: Pose = { opacity: 1 };

@@ -1,18 +1,18 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
-import type { Scene } from "../../scenes/Scene";
+import type { Scene, ScenePhase } from "../../scenes/Scene";
 import { useScenePhase } from "../../scenes/useScene";
 
 export type ScenePresence = "in" | "out";
 
-const ScenePresenceContext = createContext<ScenePresence>("in");
-
 /**
- * Translates a scene's lifecycle phase into a simple "in"/"out" presence
- * value and broadcasts it via context. Children call useScenePresence or
- * useScenePresenceMotion to consume it without prop drilling.
+ * The current phase is broadcast through context — leaves and hooks then map
+ * it to whatever shape they need. The canonical "in"/"out" presence used by
+ * `useScenePresenceMotion` is just one such mapping (see `useScenePresence`).
  */
+const ScenePhaseContext = createContext<ScenePhase>("inactive");
+
 export function ScenePresenceProvider({
   scene,
   children,
@@ -21,16 +21,21 @@ export function ScenePresenceProvider({
   children: ReactNode;
 }) {
   const phase = useScenePhase(scene);
-  const presence: ScenePresence =
-    phase === "active" || phase === "entering" ? "in" : "out";
-  return (
-    <ScenePresenceContext.Provider value={presence}>
-      {children}
-    </ScenePresenceContext.Provider>
-  );
+  return <ScenePhaseContext.Provider value={phase}>{children}</ScenePhaseContext.Provider>;
 }
 
-/** Read the nearest scene's presence ("in" while active/entering, "out" otherwise). */
+/** Raw lifecycle phase of the nearest scene. */
+export function useScenePhaseContext(): ScenePhase {
+  return useContext(ScenePhaseContext);
+}
+
+/**
+ * Canonical phase→presence mapping for fade-in/fade-out leaves: active and
+ * entering both read as "in", inactive and exiting as "out". Components that
+ * need a different mapping should read the raw phase via
+ * `useScenePhaseContext` and map it themselves.
+ */
 export function useScenePresence(): ScenePresence {
-  return useContext(ScenePresenceContext);
+  const phase = useScenePhaseContext();
+  return phase === "active" || phase === "entering" ? "in" : "out";
 }

@@ -17,13 +17,14 @@ import { EXIT_FADE_DURATION_MS } from "../../engine/transitions/durations";
 import { BeatmapClock } from "../../engine/BeatmapClock";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
-import type { CircleLayer } from "../../engine/layers/CircleLayer";
+import type { CircleLayer } from "../../entities/CircleLayer";
 import type { TickContext } from "../../engine/TickContext";
 import { gameplayRetry } from "../../engine/transitions/factories/gameplayRetry";
 import { gameplayToBeatmapSelection } from "../../engine/transitions/factories/gameplayToBeatmapSelection";
 import { gameplayToScores } from "../../engine/transitions/factories/gameplayToScores";
 import { pauseEnter, pauseExit } from "../Pause/transitions";
 import { ScoresScene } from "../Scores/ScoresScene";
+import type { SceneTransitionSlot } from "../Scene";
 import type { GameplayEvents } from "../../events/gameplayEvents";
 import type { NoteHoldTickEventType } from "../../events/impl/NoteHoldTickEvent";
 import type { NoteShouldSpawnEventType } from "../../events/impl/NoteShouldSpawnEvent";
@@ -46,7 +47,6 @@ export const BEATMAP_AUDIO_ID = "beatmap_audio";
 
 export class GameplayScene extends Scene {
   public readonly id = "gameplay";
-  public override readonly rendersWhenInactive = true;
 
   private parsedMap: ParsedMap;
   private settings: SettingsListType;
@@ -133,7 +133,12 @@ export class GameplayScene extends Scene {
     this.clock.stop();
   }
 
-  public override exitFadePlayable(durationMs: number): Playable {
+  public override scenePlayable(slot: SceneTransitionSlot, durationMs: number): Playable | null {
+    if (slot !== "exit") return null;
+    return this.buildExitFade(durationMs);
+  }
+
+  private buildExitFade(durationMs: number): Playable {
     // Fade every fadeable surface the scene owns — notes and fx hang off
     // root directly (so they can sit in front of the ring), so the inner
     // container alone wouldn't cover them.
@@ -175,7 +180,7 @@ export class GameplayScene extends Scene {
    */
   public async retryBeatmap(): Promise<void> {
     this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
-    void this.engine.playables.play(this.exitFadePlayable(EXIT_FADE_DURATION_MS));
+    void this.engine.playables.play(this.buildExitFade(EXIT_FADE_DURATION_MS));
     await this.sceneManager.transitionPop(pauseExit);
     const next = new GameplayScene(this.engine, this.parsedMap);
     void this.sceneManager.transitionReplace(next, gameplayRetry);
@@ -183,7 +188,7 @@ export class GameplayScene extends Scene {
 
   public async exitToBeatmapSelection(): Promise<void> {
     this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
-    void this.engine.playables.play(this.exitFadePlayable(EXIT_FADE_DURATION_MS));
+    void this.engine.playables.play(this.buildExitFade(EXIT_FADE_DURATION_MS));
     await this.sceneManager.transitionPop(pauseExit);
     void this.sceneManager.transitionPop(gameplayToBeatmapSelection);
   }

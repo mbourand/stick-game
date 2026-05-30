@@ -1,5 +1,5 @@
+import type { Engine } from "../Engine";
 import type { Scene } from "../../scenes/Scene";
-import type { CircleLayer } from "../layers/CircleLayer";
 import type { Playable } from "../animation/Playable";
 
 /** Which kind of stack mutation a transition is wrapping. */
@@ -15,14 +15,20 @@ export type TransitionKind = "push" | "pop" | "replace";
  *   - `kind` — push / pop / replace. Lets a single factory adapt its
  *     direction (e.g., for radius shrink-vs-grow).
  *
- *   - `circle` — the persistent ring. Mutate `radius`, `ringAlpha`,
- *     `innerAlpha`, etc. and they survive across the scene swap.
+ *   - `engine` — full engine access. Factories reach for whatever persistent
+ *     state they need (circle, playables scheduler, audio, …) without
+ *     forcing this type to enumerate them up front.
+ *
+ *   - `markEntering` — fire exactly once at the moment the `to` scene's UI
+ *     should start its enter animation. The SceneManager owns the actual
+ *     `to.setPhase("entering")` flip; factories only signal *when*.
  */
 export type TransitionContext = {
   from: Scene | null;
   to: Scene | null;
   kind: TransitionKind;
-  circle: CircleLayer;
+  engine: Engine;
+  markEntering: () => void;
 };
 
 /**

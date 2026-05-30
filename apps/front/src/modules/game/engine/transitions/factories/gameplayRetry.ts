@@ -8,5 +8,5 @@ import { phaseShell } from "../shells";
  */
 export const gameplayRetry: TransitionFactory = (ctx) =>
   phaseShell(ctx, {
-    duringExit: ctx.from?.exitFadePlayable(EXIT_FADE_DURATION_MS),
+    duringExit: ctx.from?.scenePlayable("exit", EXIT_FADE_DURATION_MS),
   });

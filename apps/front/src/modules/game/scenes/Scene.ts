@@ -36,6 +36,13 @@ export type SceneUIComponent<TScene extends Scene = Scene> = ComponentType<{ sce
  */
 export type ScenePhase = "inactive" | "entering" | "active" | "exiting";
 
+/**
+ * Named slots a transition factory can ask a scene to fill with a Playable.
+ * Add new slots here as new choreography patterns emerge — scenes opt into
+ * the ones they care about.
+ */
+export type SceneTransitionSlot = "exit" | "enter";
+
 type PhaseListener = () => void;
 
 export abstract class Scene {
@@ -66,8 +73,13 @@ export abstract class Scene {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public readonly UI: SceneUIComponent<any> | null = null;
 
-  /** When false, the scene's render() is skipped while another scene is on top of it. */
-  public readonly rendersWhenInactive: boolean = false;
+  /**
+   * When true, this scene is treated as an overlay — the scene immediately
+   * below it on the stack keeps rendering while this one is on top. Set this
+   * on overlay scenes (pause menus, modals), not on the scene being
+   * overlaid: the overlay knows it overlays.
+   */
+  public readonly isOverlay: boolean = false;
 
   public update(_tick: TickContext): void {}
   public render(_canvas: HTMLCanvasElement, _context: CanvasRenderingContext2D): void {}
@@ -77,15 +89,14 @@ export abstract class Scene {
   public onDestroy(): void | Promise<void> {}
 
   /**
-   * Optional canvas-side fade-out played by transition factories. Override to
-   * return a Playable that fades whatever the scene draws *inside* the ring
-   * (background, HUD, etc.) — the ring itself is owned by the persistent
-   * root and handled separately by the transition.
-   *
-   * Returning `null` (the default) means the scene has no canvas content
-   * worth fading and the transition can skip it.
+   * Optional canvas-side playable a transition factory can pull at a named
+   * slot — "exit" for fade-outs woven into `duringExit`, "enter" for
+   * fade-ins woven into `duringEnter`, or any future slot. Scenes opt into
+   * whichever slots they care about; returning `null` means "I have nothing
+   * for that slot, transition can skip it." `durationMs` is the budget the
+   * caller has reserved; scenes can honour it or use their own pacing.
    */
-  public exitFadePlayable(_durationMs: number): Playable | null {
+  public scenePlayable(_slot: SceneTransitionSlot, _durationMs: number): Playable | null {
     return null;
   }
 

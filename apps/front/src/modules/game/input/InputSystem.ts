@@ -1,5 +1,5 @@
-import type { Gamepad } from "../../gamepad/Gamepad";
 import { DEFAULT_ACTION_BINDINGS, type ActionBindings, type ButtonAction } from "./actions";
+import type { InputDeviceAdapter } from "./InputDeviceAdapter";
 
 type ActionHandler = () => void;
 type HandlerMap = Map<ButtonAction, Set<ActionHandler>>;
@@ -37,8 +37,10 @@ function armRepeat(handler: () => void, opts: RepeatTimingOpts): RepeatTimers {
   };
 }
 
+const ZERO_STICK = { x: 0, y: 0 };
+
 export class InputSystem {
-  private gamepad: Gamepad;
+  private readonly adapters: InputDeviceAdapter[];
   private bindings: ActionBindings;
 
   private downHandlers: HandlerMap = new Map();
@@ -47,8 +49,8 @@ export class InputSystem {
   /** Per-frame stick samplers driving onStickRepeat. Ticked by `update`. */
   private stickPolls = new Set<() => void>();
 
-  constructor(gamepad: Gamepad, bindings: ActionBindings = DEFAULT_ACTION_BINDINGS) {
-    this.gamepad = gamepad;
+  constructor(adapters: InputDeviceAdapter[], bindings: ActionBindings = DEFAULT_ACTION_BINDINGS) {
+    this.adapters = adapters;
     this.bindings = bindings;
     this.wireBindings();
   }
@@ -59,6 +61,7 @@ export class InputSystem {
     this.downHandlers.clear();
     this.upHandlers.clear();
     this.stickPolls.clear();
+    for (const adapter of this.adapters) adapter.destroy?.();
   }
 
   public onActionDown(action: ButtonAction, handler: ActionHandler): () => void {
@@ -69,8 +72,17 @@ export class InputSystem {
     return this.addHandler(this.upHandlers, action, handler);
   }
 
+  /**
+   * First adapter that exposes a stick wins. Stickless adapters (keyboard,
+   * mouse, …) return null and are skipped. With no stick devices, returns
+   * the zero vector.
+   */
   public getStick(side: "left" | "right"): { x: number; y: number } {
-    return this.gamepad.getClampedStickPosition(side);
+    for (const adapter of this.adapters) {
+      const v = adapter.getStick(side);
+      if (v !== null) return v;
+    }
+    return ZERO_STICK;
   }
 
   /**
@@ -162,17 +174,18 @@ export class InputSystem {
 
   /** Ticked by Engine before SceneManager.update so handlers see fresh state. */
   public update(): void {
+    for (const adapter of this.adapters) adapter.tick?.();
     for (const poll of this.stickPolls) poll();
   }
 
   private wireBindings() {
     for (const action of Object.keys(this.bindings) as ButtonAction[]) {
       for (const binding of this.bindings[action]) {
-        if (binding.device === "gamepad") {
-          this.deviceUnsubscribes.push(
-            this.gamepad.onButtonDown(binding.button, () => this.dispatch(this.downHandlers, action)),
-            this.gamepad.onButtonUp(binding.button, () => this.dispatch(this.upHandlers, action)),
-          );
+        for (const adapter of this.adapters) {
+          const offDown = adapter.onButtonDown(binding, () => this.dispatch(this.downHandlers, action));
+          const offUp = adapter.onButtonUp(binding, () => this.dispatch(this.upHandlers, action));
+          if (offDown) this.deviceUnsubscribes.push(offDown);
+          if (offUp) this.deviceUnsubscribes.push(offUp);
         }
       }
     }

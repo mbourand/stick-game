@@ -1,19 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { MapLeaderboard } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
-import { BeatmapsetDownloader } from "@/app/game/_components/BeatmapsetDownloader";
-import { BeatmapFilters } from "@/app/game/_components/BeatmapFilters";
 import { useScenePresence } from "../../engine/animation/scenePresence";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
 import type { SceneUIComponent } from "../Scene";
 import { BeatmapRadialButton } from "./BeatmapRadialButton";
-import type {
-  BeatmapSelectionScene,
-  BeatmapSelectionUIContext,
-} from "./BeatmapSelectionScene";
+import type { BeatmapSelectionScene } from "./BeatmapSelectionScene";
 import { LeftActionButton } from "./LeftActionButton";
 import { ScrollSurface } from "./ScrollSurface";
 import { useGlobalTypeahead } from "./useGlobalTypeahead";
@@ -24,12 +18,10 @@ import {
   RADIAL_LIST_MASK,
 } from "./layout";
 import { useBeatmapCatalog } from "./useBeatmapCatalog";
-import { useBeatmapModals } from "./useBeatmapModals";
 import { usePreviewBeatmap } from "./usePreviewBeatmap";
 import { useSceneFocusSync } from "./useSceneFocusSync";
 import { useScenePreviewBridge } from "./useScenePreviewBridge";
 import { useSceneResolverBridge } from "./useSceneResolverBridge";
-import { useSceneUIContext } from "./useSceneUIContext";
 import { useVisibleBeatmaps } from "./useVisibleBeatmaps";
 
 const CIRCLE_DIAMETER = CIRCLE_RADIUS_PX * 2;
@@ -46,42 +38,12 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
     difficultyFilter,
   );
 
-  const {
-    isFilterPanelOpen,
-    setFilterPanelOpen,
-    isDownloaderOpen,
-    setDownloaderOpen,
-    isAnyOpen: isModalOpen,
-    closeTop: closeTopModal,
-  } = useBeatmapModals();
-
-  useGlobalTypeahead(scene.searchQuery.update, { disabled: isModalOpen });
-
-  const leftButtons = useMemo<{ id: string; label: string; onActivate: () => void }[]>(
-    () => [
-      { id: "filter", label: "Filters", onActivate: () => setFilterPanelOpen(true) },
-      { id: "download", label: "Download maps", onActivate: () => setDownloaderOpen(true) },
-    ],
-    [setFilterPanelOpen, setDownloaderOpen],
-  );
+  useGlobalTypeahead(scene.searchQuery.update);
 
   useSceneResolverBridge(scene, filteredBeatmaps, resolveMediaUrls);
   const { focusedIndex, focusedBeatmap } = useSceneFocusSync(scene, filteredBeatmaps, isNoMatch, isLoaded);
   const previewBeatmap = usePreviewBeatmap(focusedBeatmap);
   useScenePreviewBridge(scene, previewBeatmap, resolveMediaUrls);
-
-  const uiContext = useMemo<BeatmapSelectionUIContext>(
-    () => ({
-      blocked: isModalOpen,
-      backHandler: isModalOpen ? closeTopModal : null,
-      leftActions: {
-        count: leftButtons.length,
-        onConfirm: (index) => leftButtons[index]?.onActivate(),
-      },
-    }),
-    [isModalOpen, closeTopModal, leftButtons],
-  );
-  useSceneUIContext(scene, uiContext);
 
   const scrollZone = useStore(scene.scrollZone);
   const leaderboardTab = useStore(scene.leaderboardTab);
@@ -135,10 +97,10 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
           ))}
         </div>
 
-        {leftButtons.map((btn, index) => (
+        {scene.leftActions.map((btn, index) => (
           <LeftActionButton
             key={btn.id}
-            yCenter={getLeftButtonYCenter(index, leftButtons.length)}
+            yCenter={getLeftButtonYCenter(index, scene.leftActions.length)}
             label={btn.label}
             isFocused={focusedLeftButton === index}
             onFocus={() => {
@@ -237,14 +199,6 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
           </motion.div>
         )}
       </div>
-
-      <BeatmapsetDownloader isVisible={isDownloaderOpen} onClose={() => setDownloaderOpen(false)} />
-      <BeatmapFilters
-        isVisible={isFilterPanelOpen}
-        onClose={() => setFilterPanelOpen(false)}
-        difficultyFilter={difficultyFilter}
-        onDifficultyChange={scene.difficultyFilter.set}
-      />
     </div>
   );
 };

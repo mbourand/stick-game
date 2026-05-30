@@ -14,24 +14,34 @@ const SIDE_DOT_COLOR: Record<Side, string> = {
   right: "blue",
 };
 
+/**
+ * Stick positions are sampled in `update`, not `render` — that way the dots
+ * freeze whenever the owning scene stops being ticked (e.g. when it's
+ * inactive under a modal/overlay scene). If we read in render() the dots
+ * would keep following the stick even while the scene's logic is paused.
+ */
 export class StickDotsEntity implements Entity {
   private inputSystem: InputSystem;
   private circle: CircleLayer;
+  private leftStick = { x: 0, y: 0 };
+  private rightStick = { x: 0, y: 0 };
 
   constructor(inputSystem: InputSystem, circle: CircleLayer) {
     this.inputSystem = inputSystem;
     this.circle = circle;
   }
 
-  public update(): void {}
-
-  public render(ctx: CanvasRenderingContext2D): void {
-    this.drawSide(ctx, "left");
-    this.drawSide(ctx, "right");
+  public update(): void {
+    this.leftStick = this.inputSystem.getStick("left");
+    this.rightStick = this.inputSystem.getStick("right");
   }
 
-  private drawSide(ctx: CanvasRenderingContext2D, side: Side) {
-    const stick = this.inputSystem.getStick(side);
+  public render(ctx: CanvasRenderingContext2D): void {
+    this.drawSide(ctx, "left", this.leftStick);
+    this.drawSide(ctx, "right", this.rightStick);
+  }
+
+  private drawSide(ctx: CanvasRenderingContext2D, side: Side, stick: { x: number; y: number }) {
     const radius = this.circle.radius;
     const tipX = stick.x * radius;
     const tipY = stick.y * radius;

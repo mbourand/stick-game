@@ -60,27 +60,6 @@ export const DownloaderView: SceneUIComponent<DownloaderScene> = ({ scene }) => 
     rowRefs.current[focused]?.scrollIntoView({ block: "nearest" });
   }, [focused]);
 
-  // Keyboard parity for users without a controller.
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        scene.moveFocus(-1);
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        scene.moveFocus(+1);
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        scene.confirmFocused();
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        scene.close();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [scene]);
-
   return (
     <motion.div
       className="absolute inset-0 flex items-center justify-center bg-black/85 backdrop-blur-md select-none"

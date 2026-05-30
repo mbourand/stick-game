@@ -14,7 +14,9 @@ type Options = {
  *
  *   - Printable keys append
  *   - Backspace pops the last char
- *   - Escape clears the query
+ *
+ * Escape is intentionally NOT handled here — it's the `back` action via the
+ * keyboard adapter, and the scene's own `back` handler owns it.
  */
 export function useGlobalTypeahead(
   setValue: (updater: (current: string) => string) => void,
@@ -28,9 +30,6 @@ export function useGlobalTypeahead(
       if (e.ctrlKey || e.altKey || e.metaKey) return;
       if (e.key === "Backspace") {
         setValue((q) => q.slice(0, -1));
-        e.preventDefault();
-      } else if (e.key === "Escape") {
-        setValue(() => "");
         e.preventDefault();
       } else if (e.key.length === 1) {
         setValue((q) => q + e.key);

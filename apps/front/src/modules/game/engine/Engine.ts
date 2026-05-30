@@ -3,6 +3,7 @@ import { Gamepad } from "../../gamepad/Gamepad";
 import { Settings, settings as defaultSettings } from "../../settings/Settings";
 import { CircleLayer } from "../entities/CircleLayer";
 import { createGamepadAdapter } from "../input/GamepadAdapter";
+import { createKeyboardAdapter } from "../input/KeyboardAdapter";
 import { InputSystem } from "../input/InputSystem";
 import { SceneManager } from "../scenes/SceneManager";
 import { PlayableScheduler } from "./animation/PlayableScheduler";
@@ -51,7 +52,10 @@ export class Engine {
   constructor(opts: EngineOptions = {}) {
     this.settings = opts.settings ?? defaultSettings;
     this.clearColor = opts.clearColor ?? "black";
-    this.inputSystem = new InputSystem([createGamepadAdapter(new Gamepad(this.settings))]);
+    this.inputSystem = new InputSystem([
+      createGamepadAdapter(new Gamepad(this.settings)),
+      createKeyboardAdapter(),
+    ]);
   }
 
   public start(canvas: HTMLCanvasElement): void {

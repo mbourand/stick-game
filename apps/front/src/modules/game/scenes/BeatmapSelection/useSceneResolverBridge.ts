@@ -3,8 +3,7 @@
 import { useEffect } from "react";
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
 import { convertFromOsu } from "../../../osu/convert/OsuConverter";
-import type { BeatmapSelectionScene } from "./BeatmapSelectionScene";
-import type { MediaUrls } from "./useBeatmapCatalog";
+import type { BeatmapSelectionScene, MediaUrls } from "./BeatmapSelectionScene";
 
 /**
  * Registers a BeatmapResolver on the scene that parses the .osu blob at the

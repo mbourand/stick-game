@@ -1,4 +1,6 @@
 import { motionValue, type MotionValue } from "motion/react";
+import { latestDb } from "@/modules/db/db";
+import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { BackgroundCrossfader } from "../../entities/BackgroundCrossfader";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
@@ -9,15 +11,19 @@ import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
 import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
+import { LruCache } from "../../utils/LruCache";
 import { beatmapSelectionToDownloader } from "../../engine/transitions/factories/beatmapSelectionToDownloader";
 import { beatmapSelectionToFilter } from "../../engine/transitions/factories/beatmapSelectionToFilter";
 import { beatmapSelectionToGameplay } from "../../engine/transitions/factories/beatmapSelectionToGameplay";
 import { beatmapSelectionToMainMenu } from "../../engine/transitions/factories/beatmapSelectionToMainMenu";
+import { beatmapSelectionToSettings } from "../../engine/transitions/factories/beatmapSelectionToSettings";
+import { settingsToBeatmapSelection } from "../../engine/transitions/factories/settingsToBeatmapSelection";
 import { CircleAudioVisualizer } from "../../flair/CircleAudioVisualizer";
 import { DownloaderScene } from "../Downloader/DownloaderScene";
 import type { DifficultyFilter } from "../Filter/filterTypes";
 import { FilterScene } from "../Filter/FilterScene";
 import { GameplayScene } from "../Gameplay/GameplayScene";
+import { SettingsScene } from "../Settings/SettingsScene";
 import { CanvasScene } from "../CanvasScene";
 import type { SceneTransitionSlot } from "../Scene";
 import { pickIndexAtY } from "../shared/verticalPicker";
@@ -35,6 +41,14 @@ export type ScrollZone = "top" | "bottom" | null;
 export type BeatmapResolver = (index: number) => Promise<ParsedMap | null>;
 export type FocusedBeatmapMedia = { audioUrl: string; backgroundUrl: string };
 export type LeaderboardTab = "global" | "local";
+export type MediaUrls = { audioUrl: string; backgroundUrl: string };
+
+const MEDIA_URL_CACHE_SIZE = 10;
+
+function revokeMediaUrls({ audioUrl, backgroundUrl }: MediaUrls) {
+  URL.revokeObjectURL(audioUrl);
+  URL.revokeObjectURL(backgroundUrl);
+}
 
 export type LeftAction = {
   id: string;
@@ -89,6 +103,7 @@ export class BeatmapSelectionScene extends CanvasScene {
   public readonly leftActions: readonly LeftAction[] = [
     { id: "filter", label: "Filters", onActivate: () => this.openFilter() },
     { id: "download", label: "Download maps", onActivate: () => this.openDownloader() },
+    { id: "settings", label: "Settings", onActivate: () => this.openSettings() },
   ];
 
   /**
@@ -110,6 +125,15 @@ export class BeatmapSelectionScene extends CanvasScene {
 
   private currentMedia: FocusedBeatmapMedia | null = null;
   private mediaGeneration = 0;
+  /**
+   * Cache of blob URLs per beatmap idv2. Lives on the scene (not in a view
+   * `useRef`) so it survives view unmounts — when the user pops back from an
+   * overlay scene (Filter / Downloader / Settings), `resolveMediaUrls` returns
+   * the SAME `MediaUrls` reference it returned before the overlay. The scene's
+   * `setFocusedBeatmapMedia` then short-circuits on `sameMedia`, leaving the
+   * preview audio + background untouched.
+   */
+  private readonly mediaUrlCache = new LruCache<string, MediaUrls>(MEDIA_URL_CACHE_SIZE, revokeMediaUrls);
   /**
    * Whether the preview source is currently playing. Lets us skip the
    * re-arm in onEntered when the audio survived an overlay scene (downloader/
@@ -210,6 +234,31 @@ export class BeatmapSelectionScene extends CanvasScene {
   }
 
   /**
+   * Cached blob-URL lookup for a beatmap's audio + background. Lives on the
+   * scene so the cache survives view remounts — see `mediaUrlCache`. Returns
+   * null if the beatmap is missing its referenced files in the DB.
+   */
+  public async resolveMediaUrls(beatmap: V3BeatmapEntity): Promise<MediaUrls | null> {
+    const cached = this.mediaUrlCache.get(beatmap.idv2);
+    if (cached) return cached;
+    // Legacy beatmaps in the DB may have null ids if the downloader couldn't
+    // find the referenced audio/background file in the zip. Skip cleanly
+    // instead of letting Dexie throw on Table.get(invalid).
+    if (beatmap.audioId == null || beatmap.gameplayBackgroundId == null) return null;
+    const [audioFile, bgFile] = await Promise.all([
+      latestDb.files.get(beatmap.audioId),
+      latestDb.files.get(beatmap.gameplayBackgroundId),
+    ]);
+    if (!audioFile || !bgFile) return null;
+    const urls: MediaUrls = {
+      audioUrl: URL.createObjectURL(audioFile.content),
+      backgroundUrl: URL.createObjectURL(bgFile.content),
+    };
+    this.mediaUrlCache.set(beatmap.idv2, urls);
+    return urls;
+  }
+
+  /**
    * D-pad list navigation. Operates on whichever column is currently focused:
    * if the user is on the left action column, moves within it; otherwise
    * moves within the beatmap list and scrolls the visible window to track
@@ -294,6 +343,16 @@ export class BeatmapSelectionScene extends CanvasScene {
     void this.sceneManager.transitionPush(
       new FilterScene(this.engine, this.difficultyFilter),
       beatmapSelectionToFilter,
+    );
+  }
+
+  public openSettings(): void {
+    // Preview audio keeps playing under the settings overlay (same as the
+    // downloader / filter overlays) — the user is just popping a config panel
+    // on top, not navigating away.
+    void this.sceneManager.transitionPush(
+      new SettingsScene(this.engine, settingsToBeatmapSelection),
+      beatmapSelectionToSettings,
     );
   }
 

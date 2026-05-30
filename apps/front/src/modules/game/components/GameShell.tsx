@@ -30,7 +30,7 @@ export const GameShell = () => {
 
     const instance = new Engine();
     instance.start(canvasRef.current);
-    instance.getSceneManager().pushScene(new MainMenuScene(instance));
+    instance.sceneManager.pushScene(new MainMenuScene(instance));
     setEngine(instance);
 
     return () => {
@@ -58,8 +58,8 @@ export const GameShell = () => {
  * which would otherwise replay its entrance animation a second time.
  */
 const SceneUIOverlay = ({ engine }: { engine: Engine }) => {
-  const topScene = useTopScene(engine.getSceneManager());
-  const transition = useTransition(engine.getSceneManager());
+  const topScene = useTopScene(engine.sceneManager);
+  const transition = useTransition(engine.sceneManager);
 
   const scenes: Scene[] = [];
   if (transition) {

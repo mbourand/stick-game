@@ -1,59 +1,28 @@
+import { LifecyclePlayable } from "./LifecyclePlayable";
 import type { Playable } from "./Playable";
-import type { NumericKeys, TweenTargets } from "./Tween";
+import { collectNumericTargets, type TweenTargets } from "./Tween";
 
-/** Shared lifecycle for compositions of playables. */
-abstract class Composition implements Playable {
-  public readonly done: Promise<void>;
-
+/** Composition base: propagates pause/resume/cancel to children. */
+abstract class Composition extends LifecyclePlayable {
   protected readonly children: Playable[];
-  protected paused = false;
-  protected finished = false;
-  protected cancelled = false;
-  protected resolveDone!: () => void;
 
   constructor(children: Playable[]) {
+    super();
     this.children = children;
-    this.done = new Promise<void>((resolve) => {
-      this.resolveDone = resolve;
-    });
   }
 
-  public abstract update(dt: number): number;
-
-  public isFinished(): boolean {
-    return this.finished;
-  }
-
-  public isCancelled(): boolean {
-    return this.cancelled;
-  }
-
-  public pause(): void {
-    if (this.paused) return;
-    this.paused = true;
+  protected override onPause(): void {
     for (const child of this.children) child.pause();
   }
 
-  public resume(): void {
-    if (!this.paused) return;
-    this.paused = false;
+  protected override onResume(): void {
     for (const child of this.children) child.resume();
   }
 
-  public cancel(): void {
-    if (this.finished) return;
-    this.cancelled = true;
+  protected override onCancel(): void {
     for (const child of this.children) {
       if (!child.isFinished()) child.cancel();
     }
-    this.finished = true;
-    this.resolveDone();
-  }
-
-  protected finish(): void {
-    if (this.finished) return;
-    this.finished = true;
-    this.resolveDone();
   }
 }
 
@@ -65,9 +34,7 @@ abstract class Composition implements Playable {
 export class Sequence extends Composition {
   private index = 0;
 
-  public update(dt: number): number {
-    if (this.finished) return dt;
-    if (this.paused) return 0;
+  protected tick(dt: number): number {
     if (this.children.length === 0) {
       this.finish();
       return dt;
@@ -93,9 +60,7 @@ export class Sequence extends Composition {
  * different points in the frame; returns 0.
  */
 export class Parallel extends Composition {
-  public update(dt: number): number {
-    if (this.finished) return dt;
-    if (this.paused) return 0;
+  protected tick(dt: number): number {
     if (this.children.length === 0) {
       this.finish();
       return dt;
@@ -108,94 +73,43 @@ export class Parallel extends Composition {
       if (!child.isFinished()) allDone = false;
     }
 
-    if (allDone) {
-      this.finish();
-      return 0;
-    }
+    if (allDone) this.finish();
     return 0;
   }
 }
 
 /** Sleeps for `ms` milliseconds. Useful inside a Sequence as a gap. */
-export class Wait implements Playable {
-  public readonly done: Promise<void>;
-
+export class Wait extends LifecyclePlayable {
   private elapsed = 0;
   private readonly duration: number;
-  private paused = false;
-  private finished = false;
-  private resolveDone!: () => void;
 
   constructor(ms: number) {
+    super();
     this.duration = Math.max(0, ms);
-    this.done = new Promise<void>((resolve) => {
-      this.resolveDone = resolve;
-    });
-    if (this.duration === 0) {
-      this.finished = true;
-      this.resolveDone();
-    }
+    if (this.duration === 0) this.finish();
   }
 
-  public update(dt: number): number {
-    if (this.finished) return dt;
-    if (this.paused || dt <= 0) return 0;
+  protected tick(dt: number): number {
     this.elapsed += dt;
     if (this.elapsed >= this.duration) {
       const leftover = this.elapsed - this.duration;
-      this.finished = true;
-      this.resolveDone();
+      this.finish();
       return leftover;
     }
     return 0;
   }
-
-  public isFinished(): boolean {
-    return this.finished;
-  }
-  public pause(): void {
-    this.paused = true;
-  }
-  public resume(): void {
-    this.paused = false;
-  }
-  public cancel(): void {
-    if (this.finished) return;
-    this.finished = true;
-    this.resolveDone();
-  }
 }
 
 /** Fires a callback once, the first frame it is updated. */
-export class Call implements Playable {
-  public readonly done: Promise<void>;
-
-  private finished = false;
-  private resolveDone!: () => void;
-
+export class Call extends LifecyclePlayable {
   constructor(private readonly fn: () => void) {
-    this.done = new Promise<void>((resolve) => {
-      this.resolveDone = resolve;
-    });
+    super();
   }
 
-  public update(dt: number): number {
-    if (this.finished) return dt;
+  protected tick(dt: number): number {
     this.fn();
-    this.finished = true;
-    this.resolveDone();
+    this.finish();
     return dt;
-  }
-
-  public isFinished(): boolean {
-    return this.finished;
-  }
-  public pause(): void {}
-  public resume(): void {}
-  public cancel(): void {
-    if (this.finished) return;
-    this.finished = true;
-    this.resolveDone();
   }
 }
 
@@ -209,77 +123,34 @@ export class Call implements Playable {
  *   somePromise.then(() => g.release());
  *   scheduler.play(sequence([tween(...), g, tween(...)]));
  */
-export class Gate implements Playable {
-  public readonly done: Promise<void>;
-
-  private finished = false;
-  private resolveDone!: () => void;
-
-  constructor() {
-    this.done = new Promise<void>((resolve) => {
-      this.resolveDone = resolve;
-    });
-  }
-
-  public update(dt: number): number {
-    return this.finished ? dt : 0;
+export class Gate extends LifecyclePlayable {
+  protected tick(_dt: number): number {
+    return 0;
   }
 
   public release(): void {
-    if (this.finished) return;
-    this.finished = true;
-    this.resolveDone();
-  }
-
-  public isFinished(): boolean {
-    return this.finished;
-  }
-  public pause(): void {}
-  public resume(): void {}
-  public cancel(): void {
-    if (this.finished) return;
-    this.finished = true;
-    this.resolveDone();
+    this.finish();
   }
 }
 
 /** Snaps the target's properties to the given values in a single frame. */
-export class SetValues<T extends object> implements Playable {
-  public readonly done: Promise<void>;
-
-  private finished = false;
-  private resolveDone!: () => void;
+export class SetValues<T extends object> extends LifecyclePlayable {
+  private readonly values: Map<keyof T, number>;
 
   constructor(
     private readonly target: T,
-    private readonly values: TweenTargets<T>,
+    values: TweenTargets<T>,
   ) {
-    this.done = new Promise<void>((resolve) => {
-      this.resolveDone = resolve;
-    });
+    super();
+    this.values = collectNumericTargets(values);
   }
 
-  public update(dt: number): number {
-    if (this.finished) return dt;
-    for (const key in this.values) {
-      const value = this.values[key as NumericKeys<T>];
-      if (value === undefined) continue;
-      (this.target as Record<string, number>)[key] = value;
+  protected tick(dt: number): number {
+    for (const [key, value] of this.values) {
+      (this.target as Record<keyof T, number>)[key] = value;
     }
-    this.finished = true;
-    this.resolveDone();
+    this.finish();
     return dt;
-  }
-
-  public isFinished(): boolean {
-    return this.finished;
-  }
-  public pause(): void {}
-  public resume(): void {}
-  public cancel(): void {
-    if (this.finished) return;
-    this.finished = true;
-    this.resolveDone();
   }
 }
 

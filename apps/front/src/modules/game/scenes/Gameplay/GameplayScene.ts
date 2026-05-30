@@ -76,10 +76,10 @@ export class GameplayScene extends Scene {
   constructor(engine: Engine, parsedMap: ParsedMap) {
     super(engine);
     this.parsedMap = parsedMap;
-    this.settings = engine.getSettings().get();
+    this.settings = engine.settings.get();
     this.circle = engine.circle;
 
-    const musicContext = engine.getAudio().music.getAudioContext();
+    const musicContext = engine.audio.music.getAudioContext();
     this.clock = new BeatmapClock(musicContext);
     this.audioVisualizer = new CircleAudioVisualizer(musicContext, 40, GAME_CIRCLE_DISPLAYED_RADIUS, 30);
     this.noteSpawner = new NoteSpawner(this.parsedMap.notes, this.events, this.clock, this.settings.scrollDuration);
@@ -91,8 +91,8 @@ export class GameplayScene extends Scene {
     // gameplay-specific. Fire-and-forget — the music buffer load in
     // `onEntered` typically gives them plenty of time to be ready by the
     // first hit/miss.
-    void engine.getAudio().registerSfx("hit", "/hit.wav", 0.66);
-    void engine.getAudio().registerSfx("miss", "/miss.ogg", 1);
+    void engine.audio.registerSfx("hit", "/hit.wav", 0.66);
+    void engine.audio.registerSfx("miss", "/miss.ogg", 1);
   }
 
   public override async onEntered() {
@@ -102,14 +102,14 @@ export class GameplayScene extends Scene {
     // transition has finished). Resuming earlier (e.g. in pause.onBeforeExit)
     // would un-pause the music while the overlay is still fading out.
     if (this.hasBootstrapped) {
-      await this.engine.getAudio().music.resume();
+      await this.engine.audio.music.resume();
       return;
     }
 
     this.buildSceneTree();
     this.registerEvents();
 
-    const music = this.engine.getAudio().music;
+    const music = this.engine.audio.music;
     const buffer = await music.loadBuffer(this.parsedMap.audioUrl);
     const audioStartTimeSec = this.clock.schedule(this.noteSpawner.getInitialOffsetMs());
     const source = music.play(BEATMAP_AUDIO_ID, buffer, { startAt: audioStartTimeSec });
@@ -128,7 +128,7 @@ export class GameplayScene extends Scene {
     // Leave the source playing if we're handing off to scores; otherwise
     // (retry, exit, etc.) stop it cleanly.
     if (!this.retainMusicOnDestroy) {
-      this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
+      this.engine.audio.music.stop(BEATMAP_AUDIO_ID);
     }
     this.clock.stop();
   }
@@ -155,7 +155,7 @@ export class GameplayScene extends Scene {
     // Suspend the music *before* the transition starts so it cuts when the
     // user presses pause — the visible fade-in plays over silence rather
     // than 350ms of still-playing music.
-    void this.engine.getAudio().music.suspend();
+    void this.engine.audio.music.suspend();
     void this.sceneManager.transitionPush(
       new PauseScene(this.engine, [
         // Index 0 doubles as the back/pause-key shortcut in PauseScene — keep
@@ -179,7 +179,7 @@ export class GameplayScene extends Scene {
    *   3. Await the pause pop, then drive the gameplay-side transition.
    */
   public async retryBeatmap(): Promise<void> {
-    this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
+    this.engine.audio.music.stop(BEATMAP_AUDIO_ID);
     void this.engine.playables.play(this.buildExitFade(EXIT_FADE_DURATION_MS));
     await this.sceneManager.transitionPop(pauseExit);
     const next = new GameplayScene(this.engine, this.parsedMap);
@@ -187,7 +187,7 @@ export class GameplayScene extends Scene {
   }
 
   public async exitToBeatmapSelection(): Promise<void> {
-    this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
+    this.engine.audio.music.stop(BEATMAP_AUDIO_ID);
     void this.engine.playables.play(this.buildExitFade(EXIT_FADE_DURATION_MS));
     await this.sceneManager.transitionPop(pauseExit);
     void this.sceneManager.transitionPop(gameplayToBeatmapSelection);
@@ -204,7 +204,7 @@ export class GameplayScene extends Scene {
   }
 
   private buildSceneTree() {
-    this.circleInnerContentContainer.add(new BackgroundEntity(this.parsedMap, this.engine.getSettings()));
+    this.circleInnerContentContainer.add(new BackgroundEntity(this.parsedMap, this.engine.settings));
     this.circleInnerContentContainer.add(this.audioVisualizer);
     this.circleInnerContentContainer.add(new ScoreHUDEntity(this.scoreCounter));
 
@@ -279,7 +279,7 @@ export class GameplayScene extends Scene {
       return;
     }
 
-    this.engine.getAudio().playSfx("hit");
+    this.engine.audio.playSfx("hit");
     this.spawnNoteHitFlair(event.note);
     this.spawnNoteHitGlowFlair(event.note);
     this.scoreCounter.add(event.note.getJudgement());
@@ -356,9 +356,9 @@ export class GameplayScene extends Scene {
       this.events.on("onNoteShouldSpawn", (e) => this.onNoteShouldSpawn(e)),
       this.events.on("onNoteHoldTick", (e) => this.onNoteHoldTick(e)),
       this.events.on("onBeatmapEnded", (e) => this.onBeatmapEnded(e)),
-      this.engine.getSettings().events.on("onSettingChanged", (e) => {
+      this.engine.settings.events.on("onSettingChanged", (e) => {
         if (e.key === "scrollDuration") {
-          this.settings.scrollDuration = this.engine.getSettings().get().scrollDuration;
+          this.settings.scrollDuration = this.engine.settings.get().scrollDuration;
           this.noteSpawner.setScrollDuration(this.settings.scrollDuration);
         }
       }),
@@ -366,7 +366,7 @@ export class GameplayScene extends Scene {
   }
 
   private miss() {
-    if (this.scoreCounter.getCombo() > 5) this.engine.getAudio().playSfx("miss");
+    if (this.scoreCounter.getCombo() > 5) this.engine.audio.playSfx("miss");
     this.scoreCounter.add(JudgmentKind.Miss);
   }
 }

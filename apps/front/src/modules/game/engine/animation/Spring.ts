@@ -1,5 +1,5 @@
-import type { Playable } from "./Playable";
-import type { NumericKeys, TweenTargets } from "./Tween";
+import { LifecyclePlayable } from "./LifecyclePlayable";
+import { collectNumericTargets, type TweenTargets } from "./Tween";
 
 export type SpringOptions<T extends object> = {
   target: T;
@@ -38,9 +38,7 @@ const SUBSTEP_MS = 4;
  * dt is sliced into ~4ms substeps before integration so high-frame-time
  * spikes don't blow up the simulation.
  */
-export class Spring<T extends object> implements Playable {
-  public readonly done: Promise<void>;
-
+export class Spring<T extends object> extends LifecyclePlayable {
   private readonly target: T;
   private readonly explicitFromValues: Map<keyof T, number>;
   private readonly toValues: Map<keyof T, number>;
@@ -56,12 +54,9 @@ export class Spring<T extends object> implements Playable {
 
   private elapsed = 0;
   private captured = false;
-  private paused = false;
-  private finished = false;
-  private cancelled = false;
-  private resolveDone!: () => void;
 
   constructor(opts: SpringOptions<T>) {
+    super();
     this.target = opts.target;
     this.mass = opts.mass ?? 1;
     this.stiffness = opts.stiffness ?? 170;
@@ -71,33 +66,11 @@ export class Spring<T extends object> implements Playable {
     this.delay = Math.max(0, opts.delay ?? 0);
     this.onUpdate = opts.onUpdate;
     this.onComplete = opts.onComplete;
-
-    this.toValues = new Map();
-    this.explicitFromValues = new Map();
-    for (const key in opts.to) {
-      const k = key as unknown as keyof T;
-      const value = opts.to[key as NumericKeys<T>];
-      if (value === undefined) continue;
-      this.toValues.set(k, value);
-    }
-    if (opts.from) {
-      for (const key in opts.from) {
-        const k = key as unknown as keyof T;
-        const value = opts.from[key as NumericKeys<T>];
-        if (value === undefined) continue;
-        this.explicitFromValues.set(k, value);
-      }
-    }
-
-    this.done = new Promise<void>((resolve) => {
-      this.resolveDone = resolve;
-    });
+    this.toValues = collectNumericTargets(opts.to);
+    this.explicitFromValues = collectNumericTargets(opts.from);
   }
 
-  public update(dt: number): number {
-    if (this.finished) return dt;
-    if (this.paused || dt <= 0) return 0;
-
+  protected tick(dt: number): number {
     this.elapsed += dt;
     if (this.elapsed < this.delay) return 0;
 
@@ -122,36 +95,11 @@ export class Spring<T extends object> implements Playable {
         state.position = state.to;
         (this.target as Record<keyof T, number>)[key] = state.to;
       }
-      this.finished = true;
       this.onComplete?.();
-      this.resolveDone();
-      return 0;
+      this.finish();
     }
 
     return 0;
-  }
-
-  public isFinished(): boolean {
-    return this.finished;
-  }
-
-  public isCancelled(): boolean {
-    return this.cancelled;
-  }
-
-  public pause(): void {
-    this.paused = true;
-  }
-
-  public resume(): void {
-    this.paused = false;
-  }
-
-  public cancel(): void {
-    if (this.finished) return;
-    this.cancelled = true;
-    this.finished = true;
-    this.resolveDone();
   }
 
   private capture(): void {

@@ -1,12 +1,13 @@
 import { Audio } from "../../audio/Audio";
 import { Gamepad } from "../../gamepad/Gamepad";
 import { Settings, settings as defaultSettings } from "../../settings/Settings";
+import { CircleLayer } from "../entities/CircleLayer";
 import { createGamepadAdapter } from "../input/GamepadAdapter";
 import { InputSystem } from "../input/InputSystem";
 import { SceneManager } from "../scenes/SceneManager";
 import { PlayableScheduler } from "./animation/PlayableScheduler";
 import { RealtimeClock } from "./Clock";
-import { CircleLayer } from "../entities/CircleLayer";
+import { FrameLoop } from "./FrameLoop";
 import type { TickContext } from "./TickContext";
 
 export type FrameCallback = (tick: TickContext) => void;
@@ -17,82 +18,56 @@ export type EngineOptions = {
   clearColor?: string;
 };
 
+/**
+ * Top-level container for the game runtime. The Engine's job is narrow:
+ *
+ *   - Own the long-lived subsystems (settings, audio, input, scenes,
+ *     scheduler, the persistent ring) and expose them as public readonly
+ *     fields — every caller reaches subsystems the same way.
+ *   - Drive the per-frame tick: ask `FrameLoop` for `dt`, build a
+ *     `TickContext`, then advance input → playables → scenes → render.
+ *   - Forward external frame subscriptions to React via `frameCallbacks`.
+ *
+ * Anything game-specific (note spawning, scoring, music) lives in scenes;
+ * the Engine just makes sure they get ticked.
+ */
 export class Engine {
-  private rafId: number | null = null;
-  private running = false;
-  private lastFrameTime = 0;
-  private frame = 0;
-
-  private canvas: HTMLCanvasElement | null = null;
-
-  private readonly settings: Settings;
-  private readonly clearColor: string;
-  private readonly realtimeClock = new RealtimeClock();
+  public readonly settings: Settings;
+  public readonly audio = new Audio();
+  public readonly inputSystem: InputSystem;
+  public readonly sceneManager = new SceneManager(this);
+  public readonly playables = new PlayableScheduler();
   /** The persistent ring referenced by whichever scene is on top. Survives scene swaps. */
   public readonly circle = new CircleLayer();
-  /**
-   * Engine-level Playable scheduler. Ticked every frame independently of any
-   * per-scene state, so playables scheduled here keep running across scene
-   * swaps. Used by SceneManager to drive transition choreographies and by any
-   * scene that needs a fade/move to outlive its own teardown (see GameplayScene
-   * fading content while the pause scene's DOM exit plays).
-   */
-  public readonly playables = new PlayableScheduler();
-  private readonly sceneManager = new SceneManager(this);
-  private readonly inputSystem: InputSystem;
-  private readonly audio = new Audio();
 
+  private readonly clearColor: string;
+  private readonly realtimeClock = new RealtimeClock();
+  private readonly frameLoop = new FrameLoop();
   private readonly frameCallbacks = new Set<FrameCallback>();
+
+  private canvas: HTMLCanvasElement | null = null;
   private offSettingChanged: (() => void) | null = null;
 
   constructor(opts: EngineOptions = {}) {
     this.settings = opts.settings ?? defaultSettings;
     this.clearColor = opts.clearColor ?? "black";
-    const gamepad = new Gamepad(this.settings);
-    this.inputSystem = new InputSystem([createGamepadAdapter(gamepad)]);
+    this.inputSystem = new InputSystem([createGamepadAdapter(new Gamepad(this.settings))]);
   }
 
-  public start(canvas: HTMLCanvasElement) {
-    if (this.running) return;
+  public start(canvas: HTMLCanvasElement): void {
+    if (this.frameLoop.isRunning()) return;
     this.canvas = canvas;
-
-    this.audio.setMasterVolume(this.settings.get().volume);
-    this.offSettingChanged = this.settings.events.on("onSettingChanged", (e) => {
-      if (e.key === "volume") this.audio.setMasterVolume(this.settings.get().volume);
-    });
-
-    this.running = true;
-    this.lastFrameTime = performance.now();
-    this.rafId = requestAnimationFrame(this.loop);
+    this.offSettingChanged = bindMasterVolumeToSettings(this.audio, this.settings);
+    this.frameLoop.start(this.tick);
   }
 
-  public stop() {
-    this.running = false;
-    if (this.rafId !== null) {
-      cancelAnimationFrame(this.rafId);
-      this.rafId = null;
-    }
+  public stop(): void {
+    this.frameLoop.stop();
     this.offSettingChanged?.();
     this.offSettingChanged = null;
     this.sceneManager.clearScenes();
     this.inputSystem.destroy();
     this.audio.destroy();
-  }
-
-  public getSceneManager(): SceneManager {
-    return this.sceneManager;
-  }
-
-  public getInputSystem(): InputSystem {
-    return this.inputSystem;
-  }
-
-  public getAudio(): Audio {
-    return this.audio;
-  }
-
-  public getSettings(): Settings {
-    return this.settings;
   }
 
   public registerFrameCallback(callback: FrameCallback): () => void {
@@ -102,21 +77,11 @@ export class Engine {
     };
   }
 
-  private loop = () => {
-    if (!this.running || !this.canvas) return;
-
-    const now = performance.now();
-    const dt = now - this.lastFrameTime;
-    this.lastFrameTime = now;
-    this.frame += 1;
+  private tick = (dt: number, frame: number): void => {
+    if (!this.canvas) return;
 
     this.realtimeClock.advance(dt);
-
-    const tick: TickContext = {
-      dt,
-      realtime: this.realtimeClock.now(),
-      frame: this.frame,
-    };
+    const tick: TickContext = { dt, realtime: this.realtimeClock.now(), frame };
 
     this.inputSystem.update();
     this.playables.update(dt);
@@ -124,11 +89,9 @@ export class Engine {
     this.render();
 
     for (const cb of this.frameCallbacks) cb(tick);
-
-    this.rafId = requestAnimationFrame(this.loop);
   };
 
-  private render() {
+  private render(): void {
     if (!this.canvas) return;
     const ctx = this.canvas.getContext("2d");
     if (!ctx) return;
@@ -137,4 +100,15 @@ export class Engine {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.sceneManager.render(this.canvas, ctx);
   }
+}
+
+/**
+ * Keep the audio master volume in sync with the `volume` setting. Returns a
+ * disposer that detaches the subscription.
+ */
+function bindMasterVolumeToSettings(audio: Audio, settings: Settings): () => void {
+  audio.setMasterVolume(settings.get().volume);
+  return settings.events.on("onSettingChanged", (e) => {
+    if (e.key === "volume") audio.setMasterVolume(settings.get().volume);
+  });
 }

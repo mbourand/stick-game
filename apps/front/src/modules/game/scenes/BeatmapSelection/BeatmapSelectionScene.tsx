@@ -125,12 +125,12 @@ export class BeatmapSelectionScene extends Scene {
   constructor(engine: Engine) {
     super(engine);
     this.circle = engine.circle;
-    this.background = new BackgroundCrossfader(engine.getSettings(), {
+    this.background = new BackgroundCrossfader(engine.settings, {
       radius: CIRCLE_RADIUS_PX,
       fadeDurationMs: BACKGROUND_CROSSFADE_MS,
     });
     this.audioVisualizer = new CircleAudioVisualizer(
-      engine.getAudio().music.getAudioContext(),
+      engine.audio.music.getAudioContext(),
       40,
       CIRCLE_RADIUS_PX,
       30,
@@ -389,7 +389,7 @@ export class BeatmapSelectionScene extends Scene {
 
     this.background.setSource(media.backgroundUrl);
 
-    const music = this.engine.getAudio().music;
+    const music = this.engine.audio.music;
     let buffer: AudioBuffer;
     try {
       buffer = await music.loadBuffer(media.audioUrl);
@@ -404,7 +404,7 @@ export class BeatmapSelectionScene extends Scene {
   }
 
   private stopPreviewAudio(): void {
-    this.engine.getAudio().music.stop(PREVIEW_AUDIO_ID);
+    this.engine.audio.music.stop(PREVIEW_AUDIO_ID);
     this.isPreviewArmed = false;
   }
 }

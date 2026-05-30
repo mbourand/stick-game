@@ -9,7 +9,7 @@ export function useAction(action: ButtonAction, handler: () => void): void {
   const engine = useEngine();
   useEffect(() => {
     if (!engine) return;
-    return engine.getInputSystem().onActionDown(action, handler);
+    return engine.inputSystem.onActionDown(action, handler);
   }, [engine, action, handler]);
 }
 
@@ -25,36 +25,13 @@ export function useActionRepeat(
   opts: { initialDelayMs?: number; repeatIntervalMs?: number } = {},
 ): void {
   const engine = useEngine();
-  const initialDelayMs = opts.initialDelayMs ?? 350;
-  const repeatIntervalMs = opts.repeatIntervalMs ?? 60;
+  const initialDelayMs = opts.initialDelayMs;
+  const repeatIntervalMs = opts.repeatIntervalMs;
   useEffect(() => {
     if (!engine) return;
-    const inputSystem = engine.getInputSystem();
-    let initialTimer: ReturnType<typeof setTimeout> | null = null;
-    let repeatTimer: ReturnType<typeof setInterval> | null = null;
-    const clearTimers = () => {
-      if (initialTimer !== null) {
-        clearTimeout(initialTimer);
-        initialTimer = null;
-      }
-      if (repeatTimer !== null) {
-        clearInterval(repeatTimer);
-        repeatTimer = null;
-      }
-    };
-    const offDown = inputSystem.onActionDown(action, () => {
-      clearTimers();
-      handler();
-      initialTimer = setTimeout(() => {
-        initialTimer = null;
-        repeatTimer = setInterval(handler, repeatIntervalMs);
-      }, initialDelayMs);
+    return engine.inputSystem.onActionRepeat(action, handler, {
+      initialDelayMs,
+      repeatIntervalMs,
     });
-    const offUp = inputSystem.onActionUp(action, clearTimers);
-    return () => {
-      offDown();
-      offUp();
-      clearTimers();
-    };
   }, [engine, action, handler, initialDelayMs, repeatIntervalMs]);
 }

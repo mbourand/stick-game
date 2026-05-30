@@ -57,11 +57,11 @@ export abstract class Scene {
   }
 
   protected get sceneManager(): SceneManager {
-    return this.engine.getSceneManager();
+    return this.engine.sceneManager;
   }
 
   protected get inputSystem(): InputSystem {
-    return this.engine.getInputSystem();
+    return this.engine.inputSystem;
   }
 
   public abstract readonly id: string;

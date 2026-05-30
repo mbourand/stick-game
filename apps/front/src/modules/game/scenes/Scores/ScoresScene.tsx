@@ -40,7 +40,7 @@ export class ScoresScene extends Scene {
     // exit doesn't feel like an abrupt cut. The fade is shorter than the
     // outgoing transition + buffer-load time on the next scene, so the
     // source is fully gone before any new audio takes the channel.
-    this.engine.getAudio().music.fadeOut(BEATMAP_AUDIO_ID, MUSIC_FADE_OUT_MS);
+    this.engine.audio.music.fadeOut(BEATMAP_AUDIO_ID, MUSIC_FADE_OUT_MS);
   }
 
   public override onDestroy() {

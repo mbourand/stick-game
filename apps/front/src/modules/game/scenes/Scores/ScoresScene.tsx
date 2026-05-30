@@ -4,11 +4,13 @@ import type { Engine } from "../../engine/Engine";
 import type { CircleLayer } from "../../engine/layers/CircleLayer";
 import type { TickContext } from "../../engine/TickContext";
 import type { ScoreCounter } from "../../score/ScoreCounter";
-import { GameplayScene } from "../Gameplay/GameplayScene";
+import { BEATMAP_AUDIO_ID, GameplayScene } from "../Gameplay/GameplayScene";
 import { Scene } from "../Scene";
 import { ScoresView } from "./ScoresView";
 import { scoresToBeatmapSelection } from "../../engine/transitions/factories/scoresToBeatmapSelection";
 import { scoresToGameplay } from "../../engine/transitions/factories/scoresToGameplay";
+
+const MUSIC_FADE_OUT_MS = 500;
 
 export class ScoresScene extends Scene {
   public readonly id = "scores";
@@ -31,6 +33,14 @@ export class ScoresScene extends Scene {
   public override onEntered() {
     this.onAction("confirm", () => this.retry());
     this.onAction("back", () => this.backToSelection());
+  }
+
+  public override onBeforeExit() {
+    // Music was handed off from gameplay — fade it out as we leave so the
+    // exit doesn't feel like an abrupt cut. The fade is shorter than the
+    // outgoing transition + buffer-load time on the next scene, so the
+    // source is fully gone before any new audio takes the channel.
+    this.engine.getAudio().music.fadeOut(BEATMAP_AUDIO_ID, MUSIC_FADE_OUT_MS);
   }
 
   public override onDestroy() {

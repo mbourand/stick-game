@@ -44,12 +44,21 @@ export class PauseScene extends Scene {
     this.callbacks = callbacks;
   }
 
-  public override onEntered() {
+  public override async onEntered() {
+    // Pause is the canonical "freeze the game audio" boundary — owning the
+    // suspend/resume here keeps gameplay's onBeforeExit free of audio
+    // concerns, which lets the gameplay→scores transition leave the music
+    // playing.
+    await this.engine.getAudio().music.suspend();
     this.onAction("pause", () => this.callbacks.onResume());
     this.onAction("back", () => this.callbacks.onResume());
     this.onAction("confirm", () => this.activate(this.focused.get()));
     this.onActionRepeat("nav-up", () => this.moveFocus(-1));
     this.onActionRepeat("nav-down", () => this.moveFocus(+1));
+  }
+
+  public override async onBeforeExit() {
+    await this.engine.getAudio().music.resume();
   }
 
   public override update(_tick: TickContext): void {

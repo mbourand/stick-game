@@ -42,7 +42,7 @@ import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "../../utils/co
 import { PauseScene } from "../Pause/PauseScene";
 import { Scene } from "../Scene";
 
-const BEATMAP_AUDIO_ID = "beatmap_audio";
+export const BEATMAP_AUDIO_ID = "beatmap_audio";
 
 export class GameplayScene extends Scene {
   public readonly id = "gameplay";
@@ -66,6 +66,12 @@ export class GameplayScene extends Scene {
   private audioVisualizer: CircleAudioVisualizer;
 
   private hasBootstrapped = false;
+  /**
+   * When true, onDestroy leaves the beatmap source playing — used by the
+   * gameplay→scores hand-off so the music keeps going behind the scores UI.
+   * The next scene (scores) is then responsible for stopping it on exit.
+   */
+  private retainMusicOnDestroy = false;
 
   constructor(engine: Engine, parsedMap: ParsedMap) {
     super(engine);
@@ -85,10 +91,9 @@ export class GameplayScene extends Scene {
   public override async onEntered() {
     this.onAction("pause", () => this.openPauseMenu());
 
-    if (this.hasBootstrapped) {
-      await this.engine.getAudio().music.resume();
-      return;
-    }
+    // Bootstrapping is one-shot; on re-activation (resume after pause) the
+    // music's suspend/resume is owned by PauseScene, not us.
+    if (this.hasBootstrapped) return;
 
     this.buildSceneTree();
     this.registerEvents();
@@ -104,20 +109,16 @@ export class GameplayScene extends Scene {
     this.hasBootstrapped = true;
   }
 
-  public override async onBeforeExit() {
-    if (!this.hasBootstrapped) return;
-    await this.engine.getAudio().music.suspend();
-  }
-
   public override async onDestroy() {
     this.eventDisposers.forEach((off) => off());
     this.eventDisposers = [];
     this.root.detach(this.circle);
     this.root.destroy();
-    // Stop the source while the context is still suspended — resuming first
-    // would un-pause it for an audible blip before stop() lands. The next
-    // play() implicitly resumes the context for whoever comes after.
-    this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
+    // Leave the source playing if we're handing off to scores; otherwise
+    // (retry, exit, etc.) stop it cleanly.
+    if (!this.retainMusicOnDestroy) {
+      this.engine.getAudio().music.stop(BEATMAP_AUDIO_ID);
+    }
     this.clock.stop();
   }
 
@@ -288,6 +289,9 @@ export class GameplayScene extends Scene {
   }
 
   private async onBeatmapEnded(_event: BeatmapEndedEventType) {
+    // Hand the music off to scores — it keeps playing through the transition
+    // and behind the score screen until the user navigates away.
+    this.retainMusicOnDestroy = true;
     void this.sceneManager.transitionReplace(
       new ScoresScene(this.engine, this.parsedMap, this.scoreCounter),
       gameplayToScores,

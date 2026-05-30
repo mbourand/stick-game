@@ -61,6 +61,28 @@ export class AudioBus {
     this.playing.delete(id);
   }
 
+  /**
+   * Ramps the source's gain to 0 over `durationMs`, then stops it. If another
+   * `play(id)` takes over the channel mid-fade, it stops the fading source
+   * itself and the deferred stop here becomes a no-op (the map entry no
+   * longer matches the captured one).
+   */
+  public fadeOut(id: string, durationMs: number) {
+    const entry = this.playing.get(id);
+    if (!entry) return;
+    const duration = Math.max(0, durationMs) / 1000;
+    const now = this.audioContext.currentTime;
+    const endTime = now + duration;
+    // Snapshot current gain so any in-flight ramp is replaced, not stacked.
+    const currentGain = entry.gainNode.gain.value;
+    entry.gainNode.gain.cancelScheduledValues(now);
+    entry.gainNode.gain.setValueAtTime(currentGain, now);
+    entry.gainNode.gain.linearRampToValueAtTime(0, endTime);
+    setTimeout(() => {
+      if (this.playing.get(id) === entry) this.stop(id);
+    }, durationMs);
+  }
+
   public setVolume(id: string, volume: number) {
     this.playing.get(id)?.gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
   }

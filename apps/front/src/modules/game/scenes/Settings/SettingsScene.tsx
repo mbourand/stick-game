@@ -1,6 +1,6 @@
 import type { Engine } from "../../engine/Engine";
 import { Store } from "../../engine/state/Store";
-import { settingsToMainMenu } from "../../engine/transitions/factories/settingsToMainMenu";
+import type { TransitionFactory } from "../../engine/transitions/TransitionContext";
 import { Scene } from "../Scene";
 import { SETTINGS_ROWS, type SettingsRow, type SliderRow } from "./fields";
 import { SettingsView } from "./SettingsView";
@@ -31,8 +31,16 @@ export class SettingsScene extends Scene {
    */
   public readonly gamepadOptions = new Store<readonly GamepadOption[]>([{ index: null, label: "None" }]);
 
-  constructor(engine: Engine) {
+  /**
+   * Transition factory used when the user backs out. Supplied by whoever
+   * pushed this scene — the settings scene doesn't need to know its parent,
+   * the caller picks the visual choreography.
+   */
+  private readonly exitFactory: TransitionFactory;
+
+  constructor(engine: Engine, exitFactory: TransitionFactory) {
     super(engine);
+    this.exitFactory = exitFactory;
   }
 
   public override onEntered() {
@@ -111,7 +119,7 @@ export class SettingsScene extends Scene {
       this.isEditingText.set(false);
       return;
     }
-    void this.sceneManager.transitionPop(settingsToMainMenu);
+    void this.sceneManager.transitionPop(this.exitFactory);
   }
 }
 

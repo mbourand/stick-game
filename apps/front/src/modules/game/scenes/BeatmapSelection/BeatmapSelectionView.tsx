@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import { useMemo } from "react";
 import { MapLeaderboard } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
 import { useScenePresence } from "../../engine/animation/scenePresence";
 import { fade } from "../../engine/animation/poses";
@@ -34,12 +35,18 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
 
   const searchQuery = useStore(scene.searchQuery);
   const difficultyFilter = useStore(scene.difficultyFilter);
-  const { beatmaps, filteredBeatmaps, isNoMatch, isLoaded, resolveMediaUrls } = useBeatmapCatalog(
+  const { beatmaps, filteredBeatmaps, isNoMatch, isLoaded } = useBeatmapCatalog(
     searchQuery,
     difficultyFilter,
   );
 
   useGlobalTypeahead(scene.searchQuery.update);
+
+  // The cache backing resolveMediaUrls lives on the scene — taking the method
+  // from there (rather than from a view-local hook) is what lets the URLs
+  // survive view remounts on overlay close. Memoise the bound reference so
+  // the bridges' effect deps don't churn on every render.
+  const resolveMediaUrls = useMemo(() => scene.resolveMediaUrls.bind(scene), [scene]);
 
   useSceneResolverBridge(scene, filteredBeatmaps, resolveMediaUrls);
   const { focusedIndex, focusedBeatmap } = useSceneFocusSync(scene, filteredBeatmaps, isNoMatch, isLoaded);

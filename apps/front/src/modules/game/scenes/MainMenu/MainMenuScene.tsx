@@ -4,6 +4,7 @@ import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
 import { mainMenuToBeatmapSelection } from "../../engine/transitions/factories/mainMenuToBeatmapSelection";
 import { mainMenuToSettings } from "../../engine/transitions/factories/mainMenuToSettings";
+import { settingsToMainMenu } from "../../engine/transitions/factories/settingsToMainMenu";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import { BeatmapSelectionScene } from "../BeatmapSelection/BeatmapSelectionScene";
 import { CanvasScene } from "../CanvasScene";
@@ -58,7 +59,10 @@ export class MainMenuScene extends CanvasScene {
   }
 
   public openSettings() {
-    void this.sceneManager.transitionPush(new SettingsScene(this.engine), mainMenuToSettings);
+    void this.sceneManager.transitionPush(
+      new SettingsScene(this.engine, settingsToMainMenu),
+      mainMenuToSettings,
+    );
   }
 
   public override update(tick: TickContext) {

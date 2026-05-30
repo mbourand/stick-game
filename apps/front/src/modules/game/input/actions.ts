@@ -7,7 +7,9 @@ export type ButtonAction =
   | "leaderboard-prev"
   | "leaderboard-next"
   | "nav-up"
-  | "nav-down";
+  | "nav-down"
+  | "nav-left"
+  | "nav-right";
 
 export type ButtonBinding =
   | { device: "gamepad"; button: GamepadButton }
@@ -49,5 +51,13 @@ export const DEFAULT_ACTION_BINDINGS: ActionBindings = {
   "nav-down": [
     { device: "gamepad", button: GamepadButton.DPadDown },
     { device: "keyboard", key: "ArrowDown" },
+  ],
+  "nav-left": [
+    { device: "gamepad", button: GamepadButton.DPadLeft },
+    { device: "keyboard", key: "ArrowLeft" },
+  ],
+  "nav-right": [
+    { device: "gamepad", button: GamepadButton.DPadRight },
+    { device: "keyboard", key: "ArrowRight" },
   ],
 };

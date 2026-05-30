@@ -3,9 +3,11 @@ import type { Engine } from "../../engine/Engine";
 import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
 import { mainMenuToBeatmapSelection } from "../../engine/transitions/factories/mainMenuToBeatmapSelection";
+import { mainMenuToSettings } from "../../engine/transitions/factories/mainMenuToSettings";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import { BeatmapSelectionScene } from "../BeatmapSelection/BeatmapSelectionScene";
 import { CanvasScene } from "../CanvasScene";
+import { SettingsScene } from "../Settings/SettingsScene";
 import { BUTTON_HEIGHT_PX, BUTTONS, getButtonYOffsetFromCenter, type ButtonId } from "./layout";
 import { MainMenuView } from "./MainMenuView";
 
@@ -56,7 +58,7 @@ export class MainMenuScene extends CanvasScene {
   }
 
   public openSettings() {
-    // Settings submenu wiring comes next iteration.
+    void this.sceneManager.transitionPush(new SettingsScene(this.engine), mainMenuToSettings);
   }
 
   public override update(tick: TickContext) {

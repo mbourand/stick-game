@@ -83,7 +83,10 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
               artist={beatmap.artist}
               creator={beatmap.creator}
               difficulty={beatmap.difficulty}
-              isFocused={focusedIndex === index}
+              // Hide beatmap focus while the left column is active so the two
+              // focus states stay mutually exclusive *visually*, even though
+              // focusedIndex is preserved underneath as "last focused".
+              isFocused={focusedIndex === index && focusedLeftButton === null}
               onFocus={() => {
                 scene.focusedLeftButton.set(null);
                 scene.focusedIndex.set(index);
@@ -103,12 +106,11 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
             yCenter={getLeftButtonYCenter(index, scene.leftActions.length)}
             label={btn.label}
             isFocused={focusedLeftButton === index}
-            onFocus={() => {
-              scene.focusedIndex.set(null);
-              scene.focusedLeftButton.set(index);
-            }}
+            // focusedIndex is intentionally NOT cleared here — keeping it
+            // preserved is what lets the overlay close restore the user to
+            // the beatmap they were on.
+            onFocus={() => scene.focusedLeftButton.set(index)}
             onClick={() => {
-              scene.focusedIndex.set(null);
               scene.focusedLeftButton.set(index);
               btn.onActivate();
             }}

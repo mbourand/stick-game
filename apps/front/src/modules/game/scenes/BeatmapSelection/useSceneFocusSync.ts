@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
 import { useStore } from "../../engine/state/useStore";
 import type { BeatmapSelectionScene } from "./BeatmapSelectionScene";
 
 /**
  * Subscribes to `scene.focusedIndex`, pushes count to the scene, and
- * reconciles focus across filter changes by remembering the focused
- * beatmap's id. If the prior focus is still in the list after a filter
- * change, we keep it; otherwise we snap to the first match. While
- * `isNoMatch` is true we leave focus + preview alone (the user is
+ * reconciles focus across filter changes (or other list mutations) by
+ * matching the scene-persisted `focusedBeatmapIdv2`. If the prior focus is
+ * still in the list, we keep it; otherwise we snap to the first match.
+ *
+ * The remembered id lives on the scene (not a view ref) so reconciliation
+ * also works after the view unmounts and remounts — e.g. when the user
+ * pops back from the downloader/filter overlay scenes.
+ *
+ * While `isNoMatch` is true we leave focus + preview alone (the user is
  * mid-typing and we don't want to tear the preview down). While
  * `isLoaded` is false (Dexie's first resolution hasn't landed) we skip
  * entirely — otherwise a remount would push count=0 into the scene
@@ -27,8 +32,6 @@ export function useSceneFocusSync(
   const focusedIndex = useStore(scene.focusedIndex);
   const focusedBeatmap = focusedIndex !== null ? filteredBeatmaps[focusedIndex] ?? null : null;
 
-  const focusedBeatmapIdRef = useRef<string | null>(null);
-
   // Reconciliation runs BEFORE the id-sync effect below so it sees the prior id.
   useEffect(() => {
     if (!isLoaded || isNoMatch) return;
@@ -37,7 +40,7 @@ export function useSceneFocusSync(
       scene.focusedIndex.set(null);
       return;
     }
-    const remembered = focusedBeatmapIdRef.current;
+    const remembered = scene.focusedBeatmapIdv2.get();
     if (remembered === null) return;
     const newIndex = filteredBeatmaps.findIndex((b) => b.idv2 === remembered);
     const target = newIndex >= 0 ? newIndex : 0;
@@ -48,8 +51,8 @@ export function useSceneFocusSync(
   useEffect(() => {
     if (focusedIndex === null) return;
     const beatmap = filteredBeatmaps[focusedIndex];
-    if (beatmap) focusedBeatmapIdRef.current = beatmap.idv2;
-  }, [focusedIndex, filteredBeatmaps]);
+    if (beatmap) scene.focusedBeatmapIdv2.set(beatmap.idv2);
+  }, [focusedIndex, filteredBeatmaps, scene]);
 
   return { focusedIndex, focusedBeatmap };
 }

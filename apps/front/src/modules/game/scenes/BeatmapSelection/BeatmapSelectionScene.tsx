@@ -7,7 +7,6 @@ import type { Playable } from "../../engine/animation/Playable";
 import { tween } from "../../engine/animation/Tween";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
-import type { CircleLayer } from "../../entities/CircleLayer";
 import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
 import { beatmapSelectionToDownloader } from "../../engine/transitions/factories/beatmapSelectionToDownloader";
@@ -19,7 +18,8 @@ import { DownloaderScene } from "../Downloader/DownloaderScene";
 import type { DifficultyFilter } from "../Filter/filterTypes";
 import { FilterScene } from "../Filter/FilterScene";
 import { GameplayScene } from "../Gameplay/GameplayScene";
-import { Scene, type SceneTransitionSlot } from "../Scene";
+import { CanvasScene } from "../CanvasScene";
+import type { SceneTransitionSlot } from "../Scene";
 import { pickIndexAtY } from "../shared/verticalPicker";
 import { BeatmapSelectionView } from "./BeatmapSelectionView";
 import {
@@ -56,7 +56,7 @@ const BACKGROUND_CROSSFADE_MS = 300;
  */
 const SIDE_COMMIT_THRESHOLD = 0.3;
 
-export class BeatmapSelectionScene extends Scene {
+export class BeatmapSelectionScene extends CanvasScene {
   public readonly id = "beatmap-selection";
   public override readonly UI = BeatmapSelectionView;
 
@@ -103,10 +103,8 @@ export class BeatmapSelectionScene extends Scene {
 
   private lastGameplayScene: GameplayScene | null = null;
 
-  private root = new Container();
   /** Holds the background crossfader + audio visualizer; fades to 0 during exit transitions. */
   private innerContainer = new Container();
-  private circle: CircleLayer;
   private background: BackgroundCrossfader;
   private audioVisualizer: CircleAudioVisualizer;
 
@@ -124,7 +122,6 @@ export class BeatmapSelectionScene extends Scene {
 
   constructor(engine: Engine) {
     super(engine);
-    this.circle = engine.circle;
     this.background = new BackgroundCrossfader(engine.settings, {
       radius: CIRCLE_RADIUS_PX,
       fadeDurationMs: BACKGROUND_CROSSFADE_MS,
@@ -139,8 +136,8 @@ export class BeatmapSelectionScene extends Scene {
     this.innerContainer.add(this.background);
     this.innerContainer.add(this.audioVisualizer);
     this.root.add(this.innerContainer);
-    this.root.add(this.circle);
-    this.root.add(new StickDotsEntity(this.inputSystem, this.circle));
+    this.root.add(engine.circle);
+    this.root.add(new StickDotsEntity(this.inputSystem, engine.circle));
   }
 
   public override onEntered() {
@@ -166,8 +163,7 @@ export class BeatmapSelectionScene extends Scene {
 
   public override onDestroy() {
     this.stopPreviewAudio();
-    this.root.detach(this.circle);
-    this.root.destroy();
+    super.onDestroy();
   }
 
   public override scenePlayable(slot: SceneTransitionSlot, durationMs: number): Playable | null {
@@ -303,13 +299,7 @@ export class BeatmapSelectionScene extends Scene {
 
   public override update(tick: TickContext): void {
     if (this.beatmapCount > 0) this.processStickInput(tick.dt);
-    this.root.update(tick);
-  }
-
-  public override render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
-    this.root.x = canvas.width / 2;
-    this.root.y = canvas.height / 2;
-    this.root.render(ctx);
+    super.update(tick);
   }
 
   private processStickInput(dt: number): void {

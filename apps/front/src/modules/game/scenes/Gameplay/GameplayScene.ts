@@ -17,13 +17,12 @@ import { EXIT_FADE_DURATION_MS } from "../../engine/transitions/durations";
 import { BeatmapClock } from "../../engine/BeatmapClock";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
-import type { CircleLayer } from "../../entities/CircleLayer";
-import type { TickContext } from "../../engine/TickContext";
 import { gameplayRetry } from "../../engine/transitions/factories/gameplayRetry";
 import { gameplayToBeatmapSelection } from "../../engine/transitions/factories/gameplayToBeatmapSelection";
 import { gameplayToScores } from "../../engine/transitions/factories/gameplayToScores";
 import { pauseEnter, pauseExit } from "../Pause/transitions";
 import { ScoresScene } from "../Scores/ScoresScene";
+import { CanvasScene } from "../CanvasScene";
 import type { SceneTransitionSlot } from "../Scene";
 import type { GameplayEvents } from "../../events/gameplayEvents";
 import type { NoteHoldTickEventType } from "../../events/impl/NoteHoldTickEvent";
@@ -41,11 +40,10 @@ import { NoteSpawner } from "../../note/NoteSpawner";
 import { ScoreCounter } from "../../score/ScoreCounter";
 import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "../../utils/constants";
 import { PauseScene } from "../Pause/PauseScene";
-import { Scene } from "../Scene";
 
 export const BEATMAP_AUDIO_ID = "beatmap_audio";
 
-export class GameplayScene extends Scene {
+export class GameplayScene extends CanvasScene {
   public readonly id = "gameplay";
 
   private parsedMap: ParsedMap;
@@ -54,11 +52,9 @@ export class GameplayScene extends Scene {
   private events = new EventEmitter<GameplayEvents>();
   private eventDisposers: (() => void)[] = [];
 
-  private root = new Container();
   private notesContainer = new Container();
   private fxContainer = new Container();
   private circleInnerContentContainer = new Container();
-  private circle: CircleLayer;
 
   private clock: BeatmapClock;
   private scoreCounter: ScoreCounter;
@@ -77,7 +73,6 @@ export class GameplayScene extends Scene {
     super(engine);
     this.parsedMap = parsedMap;
     this.settings = engine.settings.get();
-    this.circle = engine.circle;
 
     const musicContext = engine.audio.music.getAudioContext();
     this.clock = new BeatmapClock(musicContext);
@@ -123,14 +118,13 @@ export class GameplayScene extends Scene {
   public override async onDestroy() {
     this.eventDisposers.forEach((off) => off());
     this.eventDisposers = [];
-    this.root.detach(this.circle);
-    this.root.destroy();
     // Leave the source playing if we're handing off to scores; otherwise
     // (retry, exit, etc.) stop it cleanly.
     if (!this.retainMusicOnDestroy) {
       this.engine.audio.music.stop(BEATMAP_AUDIO_ID);
     }
     this.clock.stop();
+    await super.onDestroy();
   }
 
   public override scenePlayable(slot: SceneTransitionSlot, durationMs: number): Playable | null {
@@ -156,51 +150,46 @@ export class GameplayScene extends Scene {
     // user presses pause — the visible fade-in plays over silence rather
     // than 350ms of still-playing music.
     void this.engine.audio.music.suspend();
+    const resume = () => void this.sceneManager.transitionPop(pauseExit);
     void this.sceneManager.transitionPush(
-      new PauseScene(this.engine, [
-        // Index 0 doubles as the back/pause-key shortcut in PauseScene — keep
-        // "resume" first.
-        { id: "resume", label: "Resume", run: () => void this.sceneManager.transitionPop(pauseExit) },
-        { id: "retry", label: "Retry", run: () => void this.retryBeatmap() },
-        { id: "exit", label: "Exit to selection", run: () => void this.exitToBeatmapSelection() },
-      ]),
+      new PauseScene(this.engine, {
+        onResume: resume,
+        entries: [
+          { id: "resume", label: "Resume", run: resume },
+          { id: "retry", label: "Retry", run: () => void this.retryBeatmap() },
+          { id: "exit", label: "Exit to selection", run: () => void this.exitToBeatmapSelection() },
+        ],
+      }),
       pauseEnter,
     );
   }
 
-  /**
-   * Retry/exit flow:
-   *   1. Stop the source (the brief resume/suspend dance during phase
-   *      changes between pause's pop and gameplay's next transition would
-   *      otherwise produce an audible blip).
-   *   2. Start the canvas-content fade on the persistent tween scheduler so
-   *      it runs *in parallel* with the pause UI's DOM fade — by the time
-   *      pause is gone, the notes are gone too.
-   *   3. Await the pause pop, then drive the gameplay-side transition.
-   */
   public async retryBeatmap(): Promise<void> {
-    this.engine.audio.music.stop(BEATMAP_AUDIO_ID);
-    void this.engine.playables.play(this.buildExitFade(EXIT_FADE_DURATION_MS));
-    await this.sceneManager.transitionPop(pauseExit);
+    await this.closePauseWithFade();
     const next = new GameplayScene(this.engine, this.parsedMap);
     void this.sceneManager.transitionReplace(next, gameplayRetry);
   }
 
   public async exitToBeatmapSelection(): Promise<void> {
-    this.engine.audio.music.stop(BEATMAP_AUDIO_ID);
-    void this.engine.playables.play(this.buildExitFade(EXIT_FADE_DURATION_MS));
-    await this.sceneManager.transitionPop(pauseExit);
+    await this.closePauseWithFade();
     void this.sceneManager.transitionPop(gameplayToBeatmapSelection);
   }
 
-  public override update(tick: TickContext): void {
-    this.root.update(tick);
-  }
-
-  public override render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
-    this.root.x = canvas.width / 2;
-    this.root.y = canvas.height / 2;
-    this.root.render(ctx);
+  /**
+   * Retry / exit-to-selection prelude:
+   *   1. Stop the source so the brief resume/suspend dance during phase
+   *      changes between pause's pop and gameplay's next transition can't
+   *      produce an audible blip.
+   *   2. Start the canvas-content fade on the persistent scheduler so it
+   *      runs *in parallel* with the pause UI's DOM fade — by the time
+   *      pause is gone, the notes are gone too.
+   *   3. Await the pause pop. The caller then drives the gameplay-side
+   *      transition (replace for retry, pop for exit).
+   */
+  private async closePauseWithFade(): Promise<void> {
+    this.engine.audio.music.stop(BEATMAP_AUDIO_ID);
+    void this.engine.playables.play(this.buildExitFade(EXIT_FADE_DURATION_MS));
+    await this.sceneManager.transitionPop(pauseExit);
   }
 
   private buildSceneTree() {
@@ -210,10 +199,10 @@ export class GameplayScene extends Scene {
 
     // Children render in insertion order (back -> front).
     this.root.add(this.circleInnerContentContainer);
-    this.root.add(this.circle);
+    this.root.add(this.engine.circle);
     this.root.add(this.notesContainer);
     this.root.add(this.fxContainer);
-    this.root.add(new StickDotsEntity(this.inputSystem, this.circle));
+    this.root.add(new StickDotsEntity(this.inputSystem, this.engine.circle));
     // NoteSpawner is added after the clock is scheduled (in onEntered).
   }
 

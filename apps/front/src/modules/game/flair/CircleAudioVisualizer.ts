@@ -1,5 +1,6 @@
 import type { Entity } from "../engine/Entity";
 import type { TickContext } from "../engine/TickContext";
+import type { Settings } from "../../settings/Settings";
 import type { KickEvent } from "../../audio/kick-analysis/analyze";
 
 /**
@@ -130,9 +131,6 @@ const BASS_BAR_FRACTION = 0.18;
 // don't pump 5x harder than a normal kick and saturate the visual.
 const KICK_MAGNITUDE_CLAMP = 1.2;
 
-// --- Rendering ---------------------------------------------------------------
-const BAR_FILL_BASE_ALPHA = 0.22;
-
 function dbToAmp(db: number): number {
   if (!isFinite(db)) return 0;
   return Math.pow(10, db / 20);
@@ -171,7 +169,17 @@ export class CircleAudioVisualizer implements Entity {
   private kickCursor = 0;
   private songTimeMs: () => number = () => 0;
 
-  constructor(audioContext: AudioContext, barAmount: number, radius: number, maxAmplitude: number) {
+  // Opacity multiplier on the bar fill, cached from settings and refreshed on
+  // change (rather than cloning settings every frame in render).
+  private opacity: number;
+  private readonly offSettingChanged: () => void;
+
+  constructor(audioContext: AudioContext, barAmount: number, radius: number, maxAmplitude: number, settings: Settings) {
+    this.opacity = settings.get().audioVisualizerOpacity;
+    this.offSettingChanged = settings.events.on("onSettingChanged", (e) => {
+      if (e.key === "audioVisualizerOpacity") this.opacity = settings.get().audioVisualizerOpacity;
+    });
+
     this.analyser = audioContext.createAnalyser();
     this.analyser.fftSize = FFT_SIZE;
     this.analyser.smoothingTimeConstant = ANALYSER_SMOOTHING;
@@ -371,7 +379,11 @@ export class CircleAudioVisualizer implements Entity {
       ctx.closePath();
     }
 
-    ctx.fillStyle = `rgba(255, 255, 255, ${BAR_FILL_BASE_ALPHA})`;
+    ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
     ctx.fill();
+  }
+
+  public destroy(): void {
+    this.offSettingChanged();
   }
 }

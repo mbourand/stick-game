@@ -155,6 +155,7 @@ export class BeatmapSelectionScene extends CanvasScene {
       40,
       CIRCLE_RADIUS_PX,
       30,
+      engine.settings,
     );
     // Inner content renders behind the circle, like in gameplay: background → visualizer.
     this.innerContainer.add(this.background);

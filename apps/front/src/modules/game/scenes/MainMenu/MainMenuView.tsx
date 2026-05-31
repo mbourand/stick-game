@@ -4,6 +4,7 @@ import { useScenePresence } from "../../engine/animation/scenePresence";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
+import { useViewport } from "../../engine/state/useViewport";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import type { SceneUIComponent } from "../Scene";
 import { BUTTONS, getButtonYOffsetFromCenter } from "./layout";
@@ -14,6 +15,7 @@ const CIRCLE_DIAMETER = GAME_CIRCLE_DISPLAYED_RADIUS * 2;
 
 export const MainMenuView: SceneUIComponent<MainMenuScene> = ({ scene }) => {
   const focused = useStore(scene.focused);
+  const { scale } = useViewport();
   const isVisible = useScenePresence() === "in";
 
   const playerName = settings.get().playerName || "Guest";
@@ -30,7 +32,7 @@ export const MainMenuView: SceneUIComponent<MainMenuScene> = ({ scene }) => {
           top: "50%",
           width: `${CIRCLE_DIAMETER}px`,
           height: `${CIRCLE_DIAMETER}px`,
-          transform: "translate(-50%, -50%)",
+          transform: `translate(-50%, -50%) scale(${scale})`,
         }}
       >
         {BUTTONS.map((button, i) => {

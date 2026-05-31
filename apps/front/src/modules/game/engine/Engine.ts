@@ -10,6 +10,7 @@ import { PlayableScheduler } from "./animation/PlayableScheduler";
 import { RealtimeClock } from "./Clock";
 import { FrameLoop } from "./FrameLoop";
 import type { TickContext } from "./TickContext";
+import { computeViewportScale, createViewportStore } from "./Viewport";
 
 export type FrameCallback = (tick: TickContext) => void;
 
@@ -40,6 +41,12 @@ export class Engine {
   public readonly playables = new PlayableScheduler();
   /** The persistent ring referenced by whichever scene is on top. Survives scene swaps. */
   public readonly circle = new CircleLayer();
+  /**
+   * Live viewport metrics (size, dpr, design→screen scale). The Engine keeps
+   * the canvas backing store and this store in sync on every resize; canvas
+   * scenes and the DOM overlay both read `scale` so they stay pixel-locked.
+   */
+  public readonly viewport = createViewportStore();
 
   private readonly clearColor: string;
   private readonly realtimeClock = new RealtimeClock();
@@ -61,17 +68,48 @@ export class Engine {
   public start(canvas: HTMLCanvasElement): void {
     if (this.frameLoop.isRunning()) return;
     this.canvas = canvas;
+    this.syncViewport();
+    window.addEventListener("resize", this.onResize);
     this.offSettingChanged = bindMasterVolumeToSettings(this.audio, this.settings);
     this.frameLoop.start(this.tick);
   }
 
   public stop(): void {
     this.frameLoop.stop();
+    window.removeEventListener("resize", this.onResize);
     this.offSettingChanged?.();
     this.offSettingChanged = null;
     this.sceneManager.clearScenes();
     this.inputSystem.destroy();
     this.audio.destroy();
+  }
+
+  private onResize = (): void => this.syncViewport();
+
+  /**
+   * Resize the canvas backing store to the viewport at full device-pixel
+   * resolution (crisp on HiDPI) and publish the new metrics. The backing store
+   * is `css * dpr` device px while the element stays `css` px on screen; canvas
+   * scenes fold `dpr * scale` into their root transform so design-space content
+   * lands at the right on-screen size.
+   */
+  private syncViewport(): void {
+    if (!this.canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = window.innerWidth;
+    const cssHeight = window.innerHeight;
+
+    this.canvas.style.width = `${cssWidth}px`;
+    this.canvas.style.height = `${cssHeight}px`;
+    this.canvas.width = Math.max(1, Math.round(cssWidth * dpr));
+    this.canvas.height = Math.max(1, Math.round(cssHeight * dpr));
+
+    this.viewport.set({
+      cssWidth,
+      cssHeight,
+      dpr,
+      scale: computeViewportScale(cssWidth, cssHeight),
+    });
   }
 
   public registerFrameCallback(callback: FrameCallback): () => void {

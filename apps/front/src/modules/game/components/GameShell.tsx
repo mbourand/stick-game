@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScenePresenceProvider } from "../engine/animation/scenePresence";
 import { Engine } from "../engine/Engine";
 import { EngineContext } from "../engine/EngineContext";
@@ -11,23 +11,12 @@ export const GameShell = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [engine, setEngine] = useState<Engine | null>(null);
 
-  const onResize = useCallback(() => {
-    if (!canvasRef.current) return;
-    canvasRef.current.width = window.innerWidth;
-    canvasRef.current.height = window.innerHeight;
-  }, []);
-
-  useEffect(() => {
-    const ac = new AbortController();
-    window.addEventListener("resize", onResize, { signal: ac.signal });
-    onResize();
-    return () => ac.abort();
-  }, [onResize]);
-
   useEffect(() => {
     if (!canvasRef.current) return;
 
     const instance = new Engine();
+    // Engine.start sizes the canvas to the viewport (with dpr) and keeps it in
+    // sync on resize, so the shell no longer manages canvas dimensions.
     instance.start(canvasRef.current);
     instance.sceneManager.pushScene(new MainMenuScene(instance));
     setEngine(instance);

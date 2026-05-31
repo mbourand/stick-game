@@ -3,6 +3,8 @@ import { browserQueryClient } from "@/components/QueryProvider";
 import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
 import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/queries/scores-beatmap-leaderboard";
 import { submitScore } from "@/modules/score/submit-score";
+import { runKickAnalysis } from "@/modules/audio/kick-analysis/runKickAnalysis";
+import type { KickEvent } from "@/modules/audio/kick-analysis/analyze";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { type SettingsListType } from "../../../settings/Settings";
 import { EventEmitter } from "../../../utils/EventEmitter";
@@ -76,7 +78,7 @@ export class GameplayScene extends CanvasScene {
 
     const musicContext = engine.audio.music.getAudioContext();
     this.clock = new BeatmapClock(musicContext);
-    this.audioVisualizer = new CircleAudioVisualizer(musicContext, 40, GAME_CIRCLE_DISPLAYED_RADIUS, 30);
+    this.audioVisualizer = new CircleAudioVisualizer(musicContext, 40, GAME_CIRCLE_DISPLAYED_RADIUS, 25);
     this.noteSpawner = new NoteSpawner(this.parsedMap.notes, this.events, this.clock, this.settings.scrollDuration);
     this.scoreCounter = new ScoreCounter(
       this.parsedMap.notes.length + this.parsedMap.notes.filter((n) => n.isHold).length,
@@ -106,9 +108,22 @@ export class GameplayScene extends CanvasScene {
 
     const music = this.engine.audio.music;
     const buffer = await music.loadBuffer(this.parsedMap.audioUrl);
+
+    // Precompute the kick timeline from the whole waveform (HPSS onset
+    // analysis, off the main thread) before playback starts, so the visualizer
+    // can pulse on every percussive hit synced to the song clock. Failure here
+    // is non-fatal — the spectrum bars still react to the live FFT.
+    let kickEvents: KickEvent[] = [];
+    try {
+      kickEvents = await runKickAnalysis(buffer, this.parsedMap.audioUrl);
+    } catch {
+      kickEvents = [];
+    }
+
     const audioStartTimeSec = this.clock.schedule(this.noteSpawner.getInitialOffsetMs());
     const source = music.play(BEATMAP_AUDIO_ID, buffer, { startAt: audioStartTimeSec });
     this.audioVisualizer.connectSource(source);
+    this.audioVisualizer.setKickTimeline(kickEvents, () => this.clock.now());
 
     this.root.add(this.noteSpawner);
 
@@ -138,11 +153,7 @@ export class GameplayScene extends CanvasScene {
     // container alone wouldn't cover them.
     const fade = (target: { alpha: number }) =>
       tween({ target, to: { alpha: 0 }, duration: durationMs, easing: easeInOutCubic });
-    return parallel([
-      fade(this.circleInnerContentContainer),
-      fade(this.notesContainer),
-      fade(this.fxContainer),
-    ]);
+    return parallel([fade(this.circleInnerContentContainer), fade(this.notesContainer), fade(this.fxContainer)]);
   }
 
   public openPauseMenu() {

@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import { fade } from "../../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../../engine/animation/useScenePresenceMotion";
-import { computeGrade, GRADE_COLOR } from "../grade";
+import { computeGrade, GRADE_COLOR } from "../../../score/grade";
 
 type HeroStatsProps = {
   score: number;

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ScoreCounter } from "../../../score/ScoreCounter";
-import { GRADE_COLOR, GRADE_THRESHOLDS } from "../grade";
+import { GRADE_COLOR, GRADE_THRESHOLDS } from "../../../score/grade";
 
 const W = 480;
 const H = 170;

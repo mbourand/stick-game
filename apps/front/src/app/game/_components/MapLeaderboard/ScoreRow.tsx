@@ -1,14 +1,19 @@
+import { computeGrade, GRADE_COLOR } from "@/modules/game/score/grade";
+
 type ScoreRowProps = {
   rank: number;
   playerName: string;
   score: number;
   accuracy: number;
   maxCombo: number;
+  /** Miss count for the play — used (with accuracy) to derive the displayed grade. */
+  missCount: number;
   /** Highlights the row as the local player's own score (e.g. the just-played run). */
   highlighted?: boolean;
 };
 
-export const ScoreRow = ({ rank, playerName, score, accuracy, maxCombo, highlighted = false }: ScoreRowProps) => {
+export const ScoreRow = ({ rank, playerName, score, accuracy, maxCombo, missCount, highlighted = false }: ScoreRowProps) => {
+  const grade = computeGrade(accuracy, missCount);
   return (
     <li
       className={`flex items-center gap-3 px-2 py-1.5 rounded ${
@@ -18,6 +23,12 @@ export const ScoreRow = ({ rank, playerName, score, accuracy, maxCombo, highligh
       }`}
     >
       <span className="text-xs text-white/40 tabular-nums w-5 text-right">{rank}</span>
+      <span
+        className="w-9 text-center text-sm font-bold"
+        style={{ color: GRADE_COLOR[grade], textShadow: `0 0 10px ${GRADE_COLOR[grade]}66` }}
+      >
+        {grade}
+      </span>
       <span className="flex-1 truncate text-sm text-white/90 tracking-wide">{playerName}</span>
       <span className="text-sm text-white/90 tabular-nums">{formatScore(score)}</span>
       <span className="text-xs text-white/50 tabular-nums w-12 text-right">{accuracy.toFixed(1)}%</span>

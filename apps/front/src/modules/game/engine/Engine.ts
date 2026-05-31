@@ -10,7 +10,7 @@ import { PlayableScheduler } from "./animation/PlayableScheduler";
 import { RealtimeClock } from "./Clock";
 import { FrameLoop } from "./FrameLoop";
 import type { TickContext } from "./TickContext";
-import { computeViewportScale, createViewportStore } from "./Viewport";
+import { computeViewportScale, createViewportStore, effectiveDpr } from "./Viewport";
 
 export type FrameCallback = (tick: TickContext) => void;
 
@@ -95,7 +95,7 @@ export class Engine {
    */
   private syncViewport(): void {
     if (!this.canvas) return;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = effectiveDpr(window.devicePixelRatio || 1);
     const cssWidth = window.innerWidth;
     const cssHeight = window.innerHeight;
 

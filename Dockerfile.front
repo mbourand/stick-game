@@ -24,6 +24,12 @@ FROM nginx:1.27-alpine AS runtime
 # SPA-aware NGINX config (catch-all -> index.html).
 COPY nginx.front.conf /etc/nginx/conf.d/default.conf
 
+# Runtime env injection: nginx:alpine auto-runs executable scripts in
+# /docker-entrypoint.d/ before starting. The script reads every VITE_* env
+# var and writes env-config.js — no per-var config anywhere in the image.
+COPY docker/front-entrypoint.sh /docker-entrypoint.d/40-front-env-config.sh
+RUN chmod +x /docker-entrypoint.d/40-front-env-config.sh
+
 # Built assets.
 COPY --from=build /app/apps/front/dist /usr/share/nginx/html
 

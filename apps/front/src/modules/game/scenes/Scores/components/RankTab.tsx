@@ -12,7 +12,7 @@ import type { ScoresScene, SubmissionState } from "../ScoresScene";
 /** Approximate per-row stride (row height + gap) for centering the player's row. */
 const ROW_STRIDE = 36;
 
-type Row = { key: string; playerName: string; score: number; accuracy: number; maxCombo: number };
+type Row = { key: string; playerName: string; score: number; accuracy: number; maxCombo: number; missCount: number };
 
 export const RankTab = ({ scene }: { scene: ScoresScene }) => {
   const tab = useStore(scene.leaderboardTab);
@@ -36,6 +36,7 @@ export const RankTab = ({ scene }: { scene: ScoresScene }) => {
         score: e.score,
         accuracy: e.accuracy,
         maxCombo: e.maxCombo,
+        missCount: e.missCount,
       }))
     : (localQuery.data ?? []).map((e) => ({
         key: String(e.id),
@@ -43,6 +44,7 @@ export const RankTab = ({ scene }: { scene: ScoresScene }) => {
         score: e.score,
         accuracy: e.accuracy,
         maxCombo: e.maxCombo,
+        missCount: e.missCount,
       }));
 
   const playerIndex = isGlobal
@@ -130,6 +132,7 @@ const LeaderboardList = ({ rows, playerIndex }: { rows: Row[]; playerIndex: numb
           score={row.score}
           accuracy={row.accuracy}
           maxCombo={row.maxCombo}
+          missCount={row.missCount}
           highlighted={i === playerIndex}
         />
       ))}

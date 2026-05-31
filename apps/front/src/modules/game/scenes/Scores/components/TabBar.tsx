@@ -1,5 +1,3 @@
-"use client";
-
 import { motion } from "motion/react";
 import { useStore } from "../../../engine/state/useStore";
 import type { ScoresScene, ScoresTab } from "../ScoresScene";

@@ -1,5 +1,3 @@
-"use client";
-
 import { createContext, useContext, type ReactNode } from "react";
 import type { Scene, ScenePhase } from "../../scenes/Scene";
 import { useScenePhase } from "../../scenes/useScene";

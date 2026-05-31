@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { DIFFICULTY_SLIDER_MAX, type DifficultyFilter } from "../Filter/filterTypes";

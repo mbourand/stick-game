@@ -1,5 +1,3 @@
-"use client";
-
 import { motion } from "motion/react";
 import { Fragment, useEffect } from "react";
 import { fade } from "../../engine/animation/poses";

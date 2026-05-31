@@ -51,7 +51,7 @@ export const fetchBackend = async <const Route extends keyof typeof BACK_ROUTES>
   params: ParamsType<Route>,
 ) => {
   return fetchData({
-    baseUrl: Env.NEXT_PUBLIC_BACKEND_URL,
+    baseUrl: Env.BACKEND_URL,
     params: params.params,
     route: route,
     queryParams: params.queryParams,

@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./out-tsc/jest",
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "types": ["jest", "node"]
   },
   "include": [

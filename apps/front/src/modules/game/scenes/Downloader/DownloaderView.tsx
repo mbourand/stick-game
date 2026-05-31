@@ -1,5 +1,3 @@
-"use client";
-
 import { beatmapsetsSearchQueryOptions } from "@/modules/fetching/back/queries/beatmapsets-search";
 import { debounce } from "@/modules/utils/debounce";
 import type { zOsuControllerBeatmapsetsSearchResponse } from "@tau/back-schemas";

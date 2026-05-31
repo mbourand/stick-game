@@ -1,5 +1,3 @@
-"use client";
-
 import { AnimatePresence, motion } from "motion/react";
 import { settings } from "@/modules/settings/Settings";
 import { useScenePresence } from "../../engine/animation/scenePresence";

@@ -1,5 +1,3 @@
-"use client";
-
 import { motion } from "motion/react";
 import { fade } from "../../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../../engine/animation/useScenePresenceMotion";

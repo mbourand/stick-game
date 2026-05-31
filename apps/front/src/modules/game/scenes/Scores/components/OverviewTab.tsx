@@ -1,5 +1,3 @@
-"use client";
-
 import { JudgmentKind } from "../../../judge/constants";
 import type { ScoreCounter } from "../../../score/ScoreCounter";
 

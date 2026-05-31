@@ -19,8 +19,15 @@ export abstract class CanvasScene extends Scene {
   }
 
   public override render(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
+    // Centre the design-space content in the (device-pixel) backing store and
+    // fold in dpr * design→screen scale, so everything is authored in design px
+    // yet rendered crisply and fitted to the viewport. The DOM overlay applies
+    // the same `scale` around the viewport centre to stay pixel-locked.
+    const { dpr, scale } = this.engine.viewport.get();
     this.root.x = canvas.width / 2;
     this.root.y = canvas.height / 2;
+    this.root.scaleX = dpr * scale;
+    this.root.scaleY = dpr * scale;
     this.root.render(ctx);
   }
 

@@ -3,6 +3,7 @@ import { Fragment, useEffect } from "react";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
+import { useViewport } from "../../engine/state/useViewport";
 import { useSettings } from "../../engine/state/useSettings";
 import { useGlobalTypeahead } from "../BeatmapSelection/useGlobalTypeahead";
 import type { SceneUIComponent } from "../Scene";
@@ -18,6 +19,7 @@ export const SettingsView: SceneUIComponent<SettingsScene> = ({ scene }) => {
   const isEditingText = useStore(scene.isEditingText);
   const liveSettings = useSettings();
   const gamepadOptions = useStore(scene.gamepadOptions);
+  const { scale } = useViewport();
 
   useGamepadOptionsSync(scene);
 
@@ -25,10 +27,7 @@ export const SettingsView: SceneUIComponent<SettingsScene> = ({ scene }) => {
   // Letters/digits append, Backspace pops — Escape/Enter exit edit mode
   // through the InputSystem's back/confirm actions, not this hook. The scene
   // owns the actual mutation so the view doesn't reach for engine.settings.
-  useGlobalTypeahead(
-    (updater) => scene.applyTypingToFocusedTextRow(updater),
-    { disabled: !isEditingText },
-  );
+  useGlobalTypeahead((updater) => scene.applyTypingToFocusedTextRow(updater), { disabled: !isEditingText });
 
   return (
     <motion.div
@@ -36,55 +35,57 @@ export const SettingsView: SceneUIComponent<SettingsScene> = ({ scene }) => {
       style={{ fontFamily: "Rostex" }}
       {...backdropMotion}
     >
-      <motion.div
-        className="w-[560px] flex flex-col text-white p-7 rounded border border-white/10 bg-white/[0.02]"
-        {...panelMotion}
-      >
-        <header className="mb-6">
-          <h2 className="text-2xl tracking-[0.35em] uppercase">Settings</h2>
-        </header>
+      <div className="flex flex-col items-center" style={{ transform: `scale(${scale})` }}>
+        <motion.div
+          className="w-[560px] flex flex-col text-white p-7 rounded border border-white/10 bg-white/[0.02]"
+          {...panelMotion}
+        >
+          <header className="mb-6">
+            <h2 className="text-2xl tracking-[0.35em] uppercase">Settings</h2>
+          </header>
 
-        <ul className="flex flex-col gap-1.5">
-          {scene.rows.map((row, i) => {
-            const showHeader = i === 0 || scene.rows[i - 1].section !== row.section;
-            return (
-              <Fragment key={row.id}>
-                {showHeader && <SectionHeader title={row.section} first={i === 0} />}
-                <SettingsRowItem
-                  row={row}
-                  index={i}
-                  isFocused={focused === i}
-                  isEditing={isEditingText && focused === i && row.kind === "text"}
-                  liveSettings={liveSettings}
-                  gamepadOptions={gamepadOptions}
-                  onFocus={() => scene.setFocused(i)}
-                />
-              </Fragment>
-            );
-          })}
-        </ul>
-      </motion.div>
+          <ul className="flex flex-col gap-1.5">
+            {scene.rows.map((row, i) => {
+              const showHeader = i === 0 || scene.rows[i - 1].section !== row.section;
+              return (
+                <Fragment key={row.id}>
+                  {showHeader && <SectionHeader title={row.section} first={i === 0} />}
+                  <SettingsRowItem
+                    row={row}
+                    index={i}
+                    isFocused={focused === i}
+                    isEditing={isEditingText && focused === i && row.kind === "text"}
+                    liveSettings={liveSettings}
+                    gamepadOptions={gamepadOptions}
+                    onFocus={() => scene.setFocused(i)}
+                  />
+                </Fragment>
+              );
+            })}
+          </ul>
+        </motion.div>
 
-      <motion.div
-        className="mt-7 flex items-center gap-5 text-[11px] text-white/40 tracking-[0.35em] uppercase"
-        {...hintMotion}
-      >
-        <span>
-          <KeyHint label="↑↓" /> Navigate
-        </span>
-        <span className="text-white/20">|</span>
-        <span>
-          <KeyHint label="←→" /> Adjust
-        </span>
-        <span className="text-white/20">|</span>
-        <span>
-          <KeyHint label="A" /> {isEditingText ? "Done" : "Edit"}
-        </span>
-        <span className="text-white/20">|</span>
-        <span>
-          <KeyHint label="B" /> Back
-        </span>
-      </motion.div>
+        <motion.div
+          className="mt-7 flex items-center gap-5 text-[11px] text-white/40 tracking-[0.35em] uppercase"
+          {...hintMotion}
+        >
+          <span>
+            <KeyHint label="↑↓" /> Navigate
+          </span>
+          <span className="text-white/20">|</span>
+          <span>
+            <KeyHint label="←→" /> Adjust
+          </span>
+          <span className="text-white/20">|</span>
+          <span>
+            <KeyHint label="A" /> {isEditingText ? "Done" : "Edit"}
+          </span>
+          <span className="text-white/20">|</span>
+          <span>
+            <KeyHint label="B" /> Back
+          </span>
+        </motion.div>
+      </div>
     </motion.div>
   );
 };
@@ -153,7 +154,9 @@ const SettingsRowItem = ({ row, index, isFocused, isEditing, liveSettings, gamep
       <span className="text-[12px] tracking-[0.3em] uppercase text-white/80">{row.label}</span>
       <div className="flex items-center gap-3 text-white">
         {row.kind === "slider" && <SliderControl row={row} value={row.read(liveSettings)} isFocused={isFocused} />}
-        {row.kind === "text" && <TextControl row={row} value={row.read(liveSettings)} isFocused={isFocused} isEditing={isEditing} />}
+        {row.kind === "text" && (
+          <TextControl row={row} value={row.read(liveSettings)} isFocused={isFocused} isEditing={isEditing} />
+        )}
         {row.kind === "gamepad" && (
           <GamepadControl selected={liveSettings.selectedGamepadIndex} options={gamepadOptions} isFocused={isFocused} />
         )}
@@ -180,7 +183,17 @@ const SliderControl = ({ row, value, isFocused }: { row: SliderRow; value: numbe
   );
 };
 
-const TextControl = ({ row, value, isFocused, isEditing }: { row: TextRow; value: string; isFocused: boolean; isEditing: boolean }) => (
+const TextControl = ({
+  row,
+  value,
+  isFocused,
+  isEditing,
+}: {
+  row: TextRow;
+  value: string;
+  isFocused: boolean;
+  isEditing: boolean;
+}) => (
   <div className="flex flex-col items-end">
     <div className={`flex items-center gap-1 text-sm ${isEditing ? "text-white" : "text-white/90"}`}>
       <span className="max-w-[220px] truncate">{value || <em className="text-white/40">unset</em>}</span>
@@ -201,7 +214,10 @@ const GamepadControl = ({
   options: readonly GamepadOption[];
   isFocused: boolean;
 }) => {
-  const currentIdx = Math.max(0, options.findIndex((o) => o.index === selected));
+  const currentIdx = Math.max(
+    0,
+    options.findIndex((o) => o.index === selected),
+  );
   const currentLabel = options[currentIdx]?.label ?? "—";
   return (
     <div className="flex items-center gap-3">

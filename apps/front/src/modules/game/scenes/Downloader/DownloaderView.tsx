@@ -8,16 +8,10 @@ import type { z } from "zod";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
+import { useViewport } from "../../engine/state/useViewport";
 import type { SceneUIComponent } from "../Scene";
-import {
-  getInstallStatusStore,
-  startBeatmapsetInstall,
-} from "./beatmapInstallStore";
-import {
-  InstallStatusIcon,
-  installPhaseLabel,
-  RowProgressBar,
-} from "./BeatmapsetInstallProgress";
+import { getInstallStatusStore, startBeatmapsetInstall } from "./beatmapInstallStore";
+import { InstallStatusIcon, installPhaseLabel, RowProgressBar } from "./BeatmapsetInstallProgress";
 import type { DownloaderScene } from "./DownloaderScene";
 
 type Beatmapset = z.infer<typeof zOsuControllerBeatmapsetsSearchResponse>["beatmapsets"][number];
@@ -27,13 +21,11 @@ export const DownloaderView: SceneUIComponent<DownloaderScene> = ({ scene }) => 
   const panelMotion = useScenePresenceMotion(fade({ y: 12 }));
 
   const focused = useStore(scene.focused);
+  const { scale } = useViewport();
 
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
-  const debouncedSetQuery = useMemo(
-    () => debounce((s: string) => setQuery(s), 300),
-    [],
-  );
+  const debouncedSetQuery = useMemo(() => debounce((s: string) => setQuery(s), 300), []);
   const searchResults = useQuery(beatmapsetsSearchQueryOptions(query));
   const beatmapsets = searchResults.data?.beatmapsets ?? [];
 
@@ -69,61 +61,63 @@ export const DownloaderView: SceneUIComponent<DownloaderScene> = ({ scene }) => 
       style={{ fontFamily: "Rostex" }}
       {...backdropMotion}
     >
-      <motion.div
-        className="w-[640px] h-[640px] flex flex-col text-white p-6 rounded border border-white/10 bg-white/[0.02]"
-        {...panelMotion}
-      >
-        <header className="mb-5">
-          <h2 className="text-2xl tracking-[0.3em] uppercase">Download maps</h2>
-          <p className="mt-1 text-[10px] text-white/40 tracking-[0.3em] uppercase">
-            Browse and import beatmapsets from the osu! catalogue
-          </p>
-        </header>
+      <div style={{ transform: `scale(${scale})` }}>
+        <motion.div
+          className="w-[640px] h-[640px] flex flex-col text-white p-6 rounded border border-white/10 bg-white/[0.02]"
+          {...panelMotion}
+        >
+          <header className="mb-5">
+            <h2 className="text-2xl tracking-[0.3em] uppercase">Download maps</h2>
+            <p className="mt-1 text-[10px] text-white/40 tracking-[0.3em] uppercase">
+              Browse and import beatmapsets from the osu! catalogue
+            </p>
+          </header>
 
-        <input
-          type="text"
-          autoFocus
-          value={searchInput}
-          onChange={(e) => {
-            setSearchInput(e.target.value);
-            debouncedSetQuery(e.target.value);
-          }}
-          placeholder="Search title, artist, mapper…"
-          className="w-full bg-black/30 backdrop-blur-sm border border-white/20 text-white text-xs tracking-[0.15em] uppercase placeholder-white/40 px-4 py-2 rounded focus:bg-black/50 focus:border-white/60 outline-none text-center"
-        />
+          <input
+            type="text"
+            autoFocus
+            value={searchInput}
+            onChange={(e) => {
+              setSearchInput(e.target.value);
+              debouncedSetQuery(e.target.value);
+            }}
+            placeholder="Search title, artist, mapper…"
+            className="w-full bg-black/30 backdrop-blur-sm border border-white/20 text-white text-xs tracking-[0.15em] uppercase placeholder-white/40 px-4 py-2 rounded focus:bg-black/50 focus:border-white/60 outline-none text-center"
+          />
 
-        <div className="flex-1 overflow-y-auto mt-4 -mx-1 px-1">
-          {searchResults.isLoading && <CenteredHint label="Loading…" />}
-          {!searchResults.isLoading && beatmapsets.length === 0 && (
-            <CenteredHint label={query.trim() ? "No results" : "Type to search"} />
-          )}
-          {beatmapsets.map((set, i) => (
-            <BeatmapsetRow
-              key={set.id}
-              ref={(el) => {
-                rowRefs.current[i] = el;
-              }}
-              beatmapset={set}
-              isFocused={focused === i}
-              onFocus={() => scene.focused.set(i)}
-            />
-          ))}
-        </div>
+          <div className="flex-1 overflow-y-auto mt-4 -mx-1 px-1">
+            {searchResults.isLoading && <CenteredHint label="Loading…" />}
+            {!searchResults.isLoading && beatmapsets.length === 0 && (
+              <CenteredHint label={query.trim() ? "No results" : "Type to search"} />
+            )}
+            {beatmapsets.map((set, i) => (
+              <BeatmapsetRow
+                key={set.id}
+                ref={(el) => {
+                  rowRefs.current[i] = el;
+                }}
+                beatmapset={set}
+                isFocused={focused === i}
+                onFocus={() => scene.focused.set(i)}
+              />
+            ))}
+          </div>
 
-        <footer className="mt-4 pt-4 border-t border-white/10 flex items-center justify-center gap-5 text-[10px] text-white/40 tracking-[0.3em] uppercase">
-          <span>
-            <KeyHint label="↑↓" /> Navigate
-          </span>
-          <span className="text-white/20">|</span>
-          <span>
-            <KeyHint label="A" /> Download
-          </span>
-          <span className="text-white/20">|</span>
-          <span>
-            <KeyHint label="B" /> Close
-          </span>
-        </footer>
-      </motion.div>
+          <footer className="mt-4 pt-4 border-t border-white/10 flex items-center justify-center gap-5 text-[10px] text-white/40 tracking-[0.3em] uppercase">
+            <span>
+              <KeyHint label="↑↓" /> Navigate
+            </span>
+            <span className="text-white/20">|</span>
+            <span>
+              <KeyHint label="A" /> Download
+            </span>
+            <span className="text-white/20">|</span>
+            <span>
+              <KeyHint label="B" /> Close
+            </span>
+          </footer>
+        </motion.div>
+      </div>
     </motion.div>
   );
 };
@@ -148,10 +142,7 @@ const BeatmapsetRow = forwardRef<HTMLButtonElement, RowProps>(function Beatmapse
   const maxDiff = diffs.length > 0 ? Math.max(...diffs.map((d) => d.difficulty_rating)) : 0;
 
   // No-ops while already downloading/done; retries on error (see the store).
-  const handleClick = useCallback(
-    () => startBeatmapsetInstall(beatmapset.id),
-    [beatmapset.id],
-  );
+  const handleClick = useCallback(() => startBeatmapsetInstall(beatmapset.id), [beatmapset.id]);
 
   const phaseLabel = installPhaseLabel(status);
 
@@ -170,12 +161,12 @@ const BeatmapsetRow = forwardRef<HTMLButtonElement, RowProps>(function Beatmapse
     >
       <div
         className="w-16 h-16 rounded bg-cover bg-center shrink-0 border border-white/10"
-        style={{ backgroundImage: `url(${beatmapset.covers["list"] ?? beatmapset.covers["card"] ?? beatmapset.covers["cover"] ?? ""})` }}
+        style={{
+          backgroundImage: `url(${beatmapset.covers["list"] ?? beatmapset.covers["card"] ?? beatmapset.covers["cover"] ?? ""})`,
+        }}
       />
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold tracking-[0.18em] uppercase truncate">
-          {beatmapset.title}
-        </div>
+        <div className="text-sm font-semibold tracking-[0.18em] uppercase truncate">{beatmapset.title}</div>
         <div className="text-[11px] text-white/60 tracking-[0.1em] truncate mt-1">
           {beatmapset.artist}
           <span className="text-white/30"> · mapped by </span>
@@ -190,8 +181,7 @@ const BeatmapsetRow = forwardRef<HTMLButtonElement, RowProps>(function Beatmapse
         >
           {phaseLabel ?? (
             <>
-              {minDiff.toFixed(1)} — {maxDiff.toFixed(1)} ★ · {diffs.length}{" "}
-              {diffs.length === 1 ? "map" : "maps"}
+              {minDiff.toFixed(1)} — {maxDiff.toFixed(1)} ★ · {diffs.length} {diffs.length === 1 ? "map" : "maps"}
             </>
           )}
         </div>

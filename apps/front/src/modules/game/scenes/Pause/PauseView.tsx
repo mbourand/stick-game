@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
+import { useViewport } from "../../engine/state/useViewport";
 import type { SceneUIComponent } from "../Scene";
 import type { PauseScene } from "./PauseScene";
 
@@ -10,6 +11,7 @@ export const PauseView: SceneUIComponent<PauseScene> = ({ scene }) => {
   const titleMotion = useScenePresenceMotion(fade({ y: -12 }));
   const hintMotion = useScenePresenceMotion(fade({ y: 12 }));
   const focused = useStore(scene.focused);
+  const { scale } = useViewport();
 
   return (
     <motion.div
@@ -17,38 +19,40 @@ export const PauseView: SceneUIComponent<PauseScene> = ({ scene }) => {
       style={{ fontFamily: "Rostex" }}
       {...backdropMotion}
     >
-      <motion.div
-        className="text-7xl tracking-[0.4em] uppercase text-white mb-14 drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]"
-        {...titleMotion}
-      >
-        Paused
-      </motion.div>
+      <div className="flex flex-col items-center" style={{ transform: `scale(${scale})` }}>
+        <motion.div
+          className="text-7xl tracking-[0.4em] uppercase text-white mb-14 drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)]"
+          {...titleMotion}
+        >
+          Paused
+        </motion.div>
 
-      <div className="flex flex-col gap-3 w-[380px]">
-        {scene.entries.map((entry, i) => (
-          <PauseButton
-            key={entry.id}
-            label={entry.label}
-            isFocused={focused === i}
-            delay={i * 0.05}
-            onFocus={() => scene.focused.set(i)}
-            onClick={entry.run}
-          />
-        ))}
+        <div className="flex flex-col gap-3 w-[380px]">
+          {scene.entries.map((entry, i) => (
+            <PauseButton
+              key={entry.id}
+              label={entry.label}
+              isFocused={focused === i}
+              delay={i * 0.05}
+              onFocus={() => scene.focused.set(i)}
+              onClick={entry.run}
+            />
+          ))}
+        </div>
+
+        <motion.div
+          className="mt-14 flex items-center gap-5 text-[11px] text-white/40 tracking-[0.35em] uppercase"
+          {...hintMotion}
+        >
+          <span>
+            <KeyHint label="A" /> Confirm
+          </span>
+          <span className="text-white/20">|</span>
+          <span>
+            <KeyHint label="B" /> Resume
+          </span>
+        </motion.div>
       </div>
-
-      <motion.div
-        className="mt-14 flex items-center gap-5 text-[11px] text-white/40 tracking-[0.35em] uppercase"
-        {...hintMotion}
-      >
-        <span>
-          <KeyHint label="A" /> Confirm
-        </span>
-        <span className="text-white/20">|</span>
-        <span>
-          <KeyHint label="B" /> Resume
-        </span>
-      </motion.div>
     </motion.div>
   );
 };

@@ -5,6 +5,7 @@ import { useScenePresence } from "../../engine/animation/scenePresence";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
+import { useViewport } from "../../engine/state/useViewport";
 import type { SceneUIComponent } from "../Scene";
 import { difficultyColor, difficultyColorRgba } from "../shared/difficultyColor";
 import { BeatmapRadialButton } from "./BeatmapRadialButton";
@@ -29,6 +30,7 @@ const CIRCLE_DIAMETER = CIRCLE_RADIUS_PX * 2;
 
 export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ scene }) => {
   const isVisible = useScenePresence() === "in";
+  const { scale } = useViewport();
   const searchBarMotion = useScenePresenceMotion(fade({ y: -12 }));
   const emptyStateMotion = useScenePresenceMotion(fade());
 
@@ -66,7 +68,7 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
           top: "50%",
           width: `${CIRCLE_DIAMETER}px`,
           height: `${CIRCLE_DIAMETER}px`,
-          transform: "translate(-50%, -50%)",
+          transform: `translate(-50%, -50%) scale(${scale})`,
         }}
       >
         <div

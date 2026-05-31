@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
+import { useViewport } from "../../engine/state/useViewport";
 import { difficultyColor, difficultyGradientCss } from "../shared/difficultyColor";
 import type { SceneUIComponent } from "../Scene";
 import type { FilterScene } from "./FilterScene";
@@ -13,6 +14,7 @@ export const FilterView: SceneUIComponent<FilterScene> = ({ scene }) => {
   const backdropMotion = useScenePresenceMotion(fade());
   const panelMotion = useScenePresenceMotion(fade({ y: 12 }));
   const hintMotion = useScenePresenceMotion(fade({ y: 12 }));
+  const { scale } = useViewport();
   const difficultyFilter = useStore(scene.difficultyFilter);
   const current = difficultyFilter ?? DIFFICULTY_BOUNDS;
   const isActive = difficultyFilter !== null;
@@ -26,92 +28,96 @@ export const FilterView: SceneUIComponent<FilterScene> = ({ scene }) => {
       style={{ fontFamily: "Rostex" }}
       {...backdropMotion}
     >
-      <motion.div
-        className="w-[480px] flex flex-col gap-8 text-white p-6 rounded border border-white/10 bg-white/[0.02]"
-        {...panelMotion}
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl tracking-[0.3em] uppercase">Filters</h2>
-          <button
-            type="button"
-            onClick={() => scene.close()}
-            className="text-[10px] uppercase tracking-[0.3em] px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded"
-          >
-            Close
-          </button>
-        </div>
-
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs tracking-[0.3em] uppercase text-white/70">Difficulty</h3>
-            {isActive && (
-              <button
-                type="button"
-                onClick={() => setFilter(null)}
-                className="text-[10px] tracking-[0.25em] uppercase text-white/60 hover:text-white underline"
-              >
-                Reset
-              </button>
-            )}
+      <div className="flex flex-col items-center" style={{ transform: `scale(${scale})` }}>
+        <motion.div
+          className="w-[480px] flex flex-col gap-8 text-white p-6 rounded border border-white/10 bg-white/[0.02]"
+          {...panelMotion}
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl tracking-[0.3em] uppercase">Filters</h2>
+            <button
+              type="button"
+              onClick={() => scene.close()}
+              className="text-[10px] uppercase tracking-[0.3em] px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded"
+            >
+              Close
+            </button>
           </div>
 
-          <div className="text-center text-base tracking-wider mb-4 tabular-nums">
-            <span style={{ color: difficultyColor(current.min) }}>{current.min.toFixed(1)} ★</span>
-            <span className="text-white/40"> — </span>
-            {maxIsInfinite ? (
-              <span style={{ color: difficultyColor(DIFFICULTY_SLIDER_MAX) }}>10+ ★</span>
-            ) : (
-              <span style={{ color: difficultyColor(current.max) }}>{current.max.toFixed(1)} ★</span>
-            )}
-          </div>
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs tracking-[0.3em] uppercase text-white/70">Difficulty</h3>
+              {isActive && (
+                <button
+                  type="button"
+                  onClick={() => setFilter(null)}
+                  className="text-[10px] tracking-[0.25em] uppercase text-white/60 hover:text-white underline"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
 
-          <DualRangeSlider
-            min={DIFFICULTY_BOUNDS.min}
-            max={DIFFICULTY_BOUNDS.max}
-            step={0.1}
-            value={current}
-            onChange={setFilter}
-          />
+            <div className="text-center text-base tracking-wider mb-4 tabular-nums">
+              <span style={{ color: difficultyColor(current.min) }}>{current.min.toFixed(1)} ★</span>
+              <span className="text-white/40"> — </span>
+              {maxIsInfinite ? (
+                <span style={{ color: difficultyColor(DIFFICULTY_SLIDER_MAX) }}>10+ ★</span>
+              ) : (
+                <span style={{ color: difficultyColor(current.max) }}>{current.max.toFixed(1)} ★</span>
+              )}
+            </div>
 
-          <div className="flex justify-between mt-2 text-[10px] tabular-nums tracking-[0.2em]">
-            <span style={{ color: difficultyColor(DIFFICULTY_BOUNDS.min) }}>{DIFFICULTY_BOUNDS.min.toFixed(1)} ★</span>
-            <span style={{ color: difficultyColor(DIFFICULTY_SLIDER_MAX) }}>{DIFFICULTY_SLIDER_MAX}+ ★</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mt-6">
-            <NumberField
-              label="Min"
-              value={current.min}
+            <DualRangeSlider
               min={DIFFICULTY_BOUNDS.min}
-              max={current.max}
-              step={0.1}
-              onChange={(v) =>
-                setFilter({
-                  min: clamp(v, DIFFICULTY_BOUNDS.min, current.max),
-                  max: current.max,
-                })
-              }
-            />
-            <NumberField
-              label="Max"
-              value={current.max}
-              min={current.min}
               max={DIFFICULTY_BOUNDS.max}
               step={0.1}
-              onChange={(v) =>
-                setFilter({
-                  min: current.min,
-                  max: clamp(v, current.min, DIFFICULTY_BOUNDS.max),
-                })
-              }
+              value={current}
+              onChange={setFilter}
             />
-          </div>
-        </section>
-      </motion.div>
 
-      <motion.div className="mt-8 text-[10px] text-white/40 tracking-[0.3em] uppercase" {...hintMotion}>
-        <KeyHint label="B" /> Close
-      </motion.div>
+            <div className="flex justify-between mt-2 text-[10px] tabular-nums tracking-[0.2em]">
+              <span style={{ color: difficultyColor(DIFFICULTY_BOUNDS.min) }}>
+                {DIFFICULTY_BOUNDS.min.toFixed(1)} ★
+              </span>
+              <span style={{ color: difficultyColor(DIFFICULTY_SLIDER_MAX) }}>{DIFFICULTY_SLIDER_MAX}+ ★</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-6">
+              <NumberField
+                label="Min"
+                value={current.min}
+                min={DIFFICULTY_BOUNDS.min}
+                max={current.max}
+                step={0.1}
+                onChange={(v) =>
+                  setFilter({
+                    min: clamp(v, DIFFICULTY_BOUNDS.min, current.max),
+                    max: current.max,
+                  })
+                }
+              />
+              <NumberField
+                label="Max"
+                value={current.max}
+                min={current.min}
+                max={DIFFICULTY_BOUNDS.max}
+                step={0.1}
+                onChange={(v) =>
+                  setFilter({
+                    min: current.min,
+                    max: clamp(v, current.min, DIFFICULTY_BOUNDS.max),
+                  })
+                }
+              />
+            </div>
+          </section>
+        </motion.div>
+
+        <motion.div className="mt-8 text-[10px] text-white/40 tracking-[0.3em] uppercase" {...hintMotion}>
+          <KeyHint label="B" /> Close
+        </motion.div>
+      </div>
     </motion.div>
   );
 };

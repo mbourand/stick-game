@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
+import { useViewport } from "../../engine/state/useViewport";
 import { JudgmentKind } from "../../judge/constants";
 import { SCORES_CIRCLE_RADIUS } from "../../utils/constants";
 import type { SceneUIComponent } from "../Scene";
@@ -27,6 +28,7 @@ const CIRCLE_DIAMETER = SCORES_CIRCLE_RADIUS * 2;
 
 export const ScoresView: SceneUIComponent<ScoresScene> = ({ scene }) => {
   const shellMotion = useScenePresenceMotion(fade());
+  const { scale } = useViewport();
   const activeTab = useStore(scene.activeTab);
 
   const sc = scene.scoreCounter;
@@ -53,7 +55,13 @@ export const ScoresView: SceneUIComponent<ScoresScene> = ({ scene }) => {
     >
       <div
         className="relative flex items-center justify-center"
-        style={{ width: CIRCLE_DIAMETER, height: CIRCLE_DIAMETER, borderRadius: "50%", overflow: "hidden" }}
+        style={{
+          width: CIRCLE_DIAMETER,
+          height: CIRCLE_DIAMETER,
+          borderRadius: "50%",
+          overflow: "hidden",
+          transform: `scale(${scale})`,
+        }}
       >
         <div className="flex flex-col items-center" style={{ width: CONTENT_WIDTH }}>
           <ResultHeader parsedMap={scene.parsedMap} />

@@ -1,0 +1,26 @@
+# Host-installed deps (platform-specific; reinstalled inside the image)
+**/node_modules
+
+# Build artifacts (rebuilt inside the image)
+**/dist
+**/.next
+**/out
+**/out-tsc
+**/.turbo
+**/.swc
+**/*.tsbuildinfo
+**/coverage
+**/test-output
+
+# Secrets / local env — provided at runtime by Dokploy, never baked into the image
+**/.env
+**/.env.*
+
+# VCS & tooling
+.git
+.github
+.vscode
+**/*.log
+
+# Local Dokploy API scratch dump
+a.json

@@ -2,6 +2,7 @@
 
 import { useTransform, type MotionValue } from "motion/react";
 import { RadialButton } from "../shared/RadialButton";
+import { difficultyColor } from "../shared/difficultyColor";
 import { computeRadialButtonLayout } from "../shared/radialButtonLayout";
 import {
   BUTTON_HEIGHT_PX,
@@ -57,6 +58,8 @@ export const BeatmapRadialButton = ({
   const left = useTransform(layout, (l) => l.left);
   const paddingNear = useTransform(layout, (l) => l.paddingNear);
 
+  const color = difficultyColor(difficulty);
+
   return (
     <RadialButton
       side="right"
@@ -67,6 +70,7 @@ export const BeatmapRadialButton = ({
       buttonHeight={BUTTON_HEIGHT_PX}
       paddingNear={paddingNear}
       isFocused={isFocused}
+      accentColor={color}
       delay={Math.max(0, staggerSlot) * BUTTON_STAGGER_S}
       onFocus={onFocus}
       onClick={onClick}
@@ -78,9 +82,11 @@ export const BeatmapRadialButton = ({
           {artist} · mapped by {creator}
         </span>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-2xl font-bold tabular-nums">{difficulty.toFixed(1)}</span>
-        <span className="text-xs text-white/60 uppercase tracking-[0.2em]">★</span>
+      <div className="flex items-center gap-2 shrink-0" style={{ color }}>
+        <span className="text-2xl font-bold tabular-nums drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
+          {difficulty.toFixed(1)}
+        </span>
+        <span className="text-xs uppercase tracking-[0.2em]">★</span>
       </div>
     </RadialButton>
   );

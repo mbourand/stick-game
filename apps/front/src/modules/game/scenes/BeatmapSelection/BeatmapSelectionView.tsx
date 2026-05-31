@@ -8,6 +8,7 @@ import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
 import type { SceneUIComponent } from "../Scene";
+import { difficultyColor, difficultyColorRgba } from "../shared/difficultyColor";
 import { BeatmapRadialButton } from "./BeatmapRadialButton";
 import type { BeatmapSelectionScene } from "./BeatmapSelectionScene";
 import { LeftActionButton } from "./LeftActionButton";
@@ -174,9 +175,20 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
                 <span className="text-white/40"> · mapped by </span>
                 {previewBeatmap.creator}
               </div>
-              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm">
-                <span className="text-white/70 text-xs">★</span>
-                <span className="text-white font-bold tabular-nums text-sm">
+              <div
+                className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm"
+                style={{
+                  border: `1px solid ${difficultyColor(previewBeatmap.difficulty)}`,
+                  boxShadow: `0 0 16px ${difficultyColorRgba(previewBeatmap.difficulty, 0.3)}`,
+                }}
+              >
+                <span className="text-xs" style={{ color: difficultyColor(previewBeatmap.difficulty) }}>
+                  ★
+                </span>
+                <span
+                  className="font-bold tabular-nums text-sm"
+                  style={{ color: difficultyColor(previewBeatmap.difficulty) }}
+                >
                   {previewBeatmap.difficulty.toFixed(2)}
                 </span>
               </div>

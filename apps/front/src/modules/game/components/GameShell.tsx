@@ -7,6 +7,7 @@ import { EngineContext } from "../engine/EngineContext";
 import { MainMenuScene } from "../scenes/MainMenu/MainMenuScene";
 import type { Scene } from "../scenes/Scene";
 import { useTopScene, useTransition } from "../scenes/useScene";
+import { FirstRunImportOverlay } from "./FirstRunImportOverlay";
 
 export const GameShell = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -44,6 +45,7 @@ export const GameShell = () => {
       <div className="absolute inset-0 pointer-events-none">
         {engine && <SceneUIOverlay engine={engine} />}
       </div>
+      {engine && <FirstRunImportOverlay engine={engine} />}
     </EngineContext.Provider>
   );
 };

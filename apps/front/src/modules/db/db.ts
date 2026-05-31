@@ -12,3 +12,7 @@ v3DexieDatabase();
 // One-shot cleanup of pre-existing duplicates (idempotent — safe to run on
 // every boot; no-op once the DB is clean).
 void pruneDuplicateBeatmaps();
+
+// Note: the one-time import of the built-in default maps (seedDefaultMaps) is
+// kicked off from the UI at boot — see FirstRunImportOverlay — so it can lock
+// input and show progress while it runs.

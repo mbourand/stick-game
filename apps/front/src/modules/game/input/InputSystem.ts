@@ -48,6 +48,8 @@ export class InputSystem {
   private deviceUnsubscribes: (() => void)[] = [];
   /** Per-frame stick samplers driving onStickRepeat. Ticked by `update`. */
   private stickPolls = new Set<() => void>();
+  /** When true, all input is suppressed (see `setLocked`). */
+  private locked = false;
 
   constructor(adapters: InputDeviceAdapter[], bindings: ActionBindings = DEFAULT_ACTION_BINDINGS) {
     this.adapters = adapters;
@@ -172,9 +174,20 @@ export class InputSystem {
     };
   }
 
+  /**
+   * Suppress all input while `locked` is true: button actions stop dispatching
+   * and stick polls stop running, so no scene handler fires. Adapters keep
+   * ticking so device state stays fresh and input resumes cleanly on unlock.
+   * Used to freeze the game behind a blocking overlay (e.g. first-run import).
+   */
+  public setLocked(locked: boolean): void {
+    this.locked = locked;
+  }
+
   /** Ticked by Engine before SceneManager.update so handlers see fresh state. */
   public update(): void {
     for (const adapter of this.adapters) adapter.tick?.();
+    if (this.locked) return;
     for (const poll of this.stickPolls) poll();
   }
 
@@ -204,6 +217,7 @@ export class InputSystem {
   }
 
   private dispatch(map: HandlerMap, action: ButtonAction) {
+    if (this.locked) return;
     const handlers = map.get(action);
     if (!handlers) return;
     for (const handler of [...handlers]) handler();

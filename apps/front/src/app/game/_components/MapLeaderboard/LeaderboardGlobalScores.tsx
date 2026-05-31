@@ -1,8 +1,8 @@
 import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/queries/scores-beatmap-leaderboard";
+import { LATEST_SCORE_VERSION } from "@/modules/score/constants";
 import { useQuery } from "@tanstack/react-query";
 import { ScoreRow } from "./ScoreRow";
 
-const LATEST_SCORE_VERSION = 3;
 const VISIBLE_ROWS = 5;
 
 type LeaderboardGlobalScoresProps = {

@@ -11,6 +11,13 @@ export class ScoreCounter {
     [JudgmentKind.Meh]: 0,
     [JudgmentKind.Miss]: 0,
   };
+  /**
+   * Ordered record of every judged note (in `add` order, i.e. exactly the hits
+   * that feed `getAccuracy`). Holds the song-clock `time` so the scores screen
+   * can plot how accuracy evolved over the play. Hold ticks are intentionally
+   * absent — like `getAccuracy`, they don't move the accuracy needle.
+   */
+  private timeline: { time: number; judgment: JudgmentKind }[] = [];
   private totalNotes: number;
   private playedNotes = 0;
 
@@ -28,11 +35,12 @@ export class ScoreCounter {
     this.playedNotes = 0;
   }
 
-  public add(judgmentKind: JudgmentKind, options?: { updateBonus?: boolean }) {
-    const { updateBonus = true } = options || {};
+  public add(judgmentKind: JudgmentKind, options?: { updateBonus?: boolean; time?: number }) {
+    const { updateBonus = true, time = 0 } = options || {};
 
     this.hitTracker[judgmentKind] += 1;
     this.playedNotes += 1;
+    this.timeline.push({ time, judgment: judgmentKind });
 
     if (judgmentKind === JudgmentKind.Miss) {
       this.combo = 0;
@@ -100,5 +108,22 @@ export class ScoreCounter {
 
   public getJudgmentCount(kind: JudgmentKind) {
     return this.hitTracker[kind];
+  }
+
+  /**
+   * Cumulative accuracy after each judged note, in play order. Uses the same
+   * formula as `getAccuracy`, so the final sample equals `getAccuracy()`.
+   * Empty until at least one note has been judged.
+   */
+  public getAccuracyTimeline(): { time: number; accuracy: number }[] {
+    const maxJudgmentValue = JUDGEMENTS_CONFIG[JudgmentKind.Perfect].hitValue;
+    let scoreWithoutCombo = 0;
+    let count = 0;
+    return this.timeline.map(({ time, judgment }) => {
+      scoreWithoutCombo += JUDGEMENTS_CONFIG[judgment].hitValue;
+      count += 1;
+      const accuracy = Math.round((scoreWithoutCombo / (count * maxJudgmentValue)) * 10000) / 100;
+      return { time, accuracy };
+    });
   }
 }

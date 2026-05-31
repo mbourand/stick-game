@@ -346,24 +346,29 @@ export class CircleAudioVisualizer implements Entity {
 
   public render(ctx: CanvasRenderingContext2D): void {
     const angleStep = (Math.PI * 2) / this.barAmount;
+    // Widen each sector by ~1px of arc on each side so neighbours overlap and
+    // fuse into one filled region. Abutting sectors otherwise leave a 1px
+    // anti-aliased seam — a thin radial line from centre to edge — at every
+    // junction. Single fill() means the overlap doesn't double the alpha.
+    const overlap = 1 / this.radius;
 
-    // Single path: full disk + N pie-slice cutouts to (radius - amp). With
-    // the default nonzero winding this leaves the "bars" as the unsubtracted
-    // annulus between (radius - amp) and radius for each angular slice.
+    // Additive: each bar is an annular sector between (radius - amp) and radius.
+    // The union of all sectors (single nonzero-wound path, one fill) is the
+    // ring of bars; the centre stays empty.
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-
     for (let i = 0; i < this.barAmount; i++) {
       // Bar 0 (lowest frequency) sits at the bottom; subsequent bars
       // alternate left/right so the spectrum mirrors symmetrically.
       const indexedI = i > 0 ? i + 1 : i;
       const angle = Math.floor(indexedI / 2) * angleStep * (indexedI % 2 === 0 ? 1 : -1) + Math.PI / 2 + angleStep / 2;
-      const startAngle = (angle - angleStep / 2 + Math.PI * 2) % (Math.PI * 2);
-      const endAngle = (angle + angleStep / 2 + Math.PI * 2) % (Math.PI * 2);
+      const startAngle = angle - angleStep / 2 - overlap;
+      const endAngle = angle + angleStep / 2 + overlap;
+      const inner = this.radius - this.barAmplitude[i];
 
-      ctx.moveTo(0, 0);
-      ctx.arc(0, 0, this.radius - this.barAmplitude[i], endAngle, startAngle, true);
+      ctx.moveTo(Math.cos(startAngle) * this.radius, Math.sin(startAngle) * this.radius);
+      ctx.arc(0, 0, this.radius, startAngle, endAngle);
+      ctx.arc(0, 0, inner, endAngle, startAngle, true);
+      ctx.closePath();
     }
 
     ctx.fillStyle = `rgba(255, 255, 255, ${BAR_FILL_BASE_ALPHA})`;

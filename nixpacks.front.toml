@@ -3,8 +3,5 @@
 [phases.build]
 cmds = ["pnpm front:build:production"]
 
-[start]
-cmd = "pnpm front:start:production"
-
 [variables]
 NIXPACKS_NODE_VERSION = "22"

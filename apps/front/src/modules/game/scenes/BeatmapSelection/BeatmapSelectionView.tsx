@@ -15,9 +15,9 @@ import { LeftActionButton } from "./LeftActionButton";
 import { ScrollSurface } from "./ScrollSurface";
 import { useGlobalTypeahead } from "./useGlobalTypeahead";
 import {
-  BUTTON_WIDTH_PX,
   CIRCLE_RADIUS_PX,
   getLeftButtonYCenter,
+  LIST_RIGHT_OVERHANG_PX,
   RADIAL_LIST_MASK,
 } from "./layout";
 import { useBeatmapCatalog } from "./useBeatmapCatalog";
@@ -77,7 +77,7 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
             top: 0,
             bottom: 0,
             left: 0,
-            right: -BUTTON_WIDTH_PX,
+            right: -LIST_RIGHT_OVERHANG_PX,
             maskImage: RADIAL_LIST_MASK,
             WebkitMaskImage: RADIAL_LIST_MASK,
           }}

@@ -1,4 +1,5 @@
-import { BEATMAP_SELECTION_CIRCLE_RADIUS } from "../../utils/constants";
+import { BEATMAP_SELECTION_CIRCLE_RADIUS, GAME_CIRCLE_STROKE_WIDTH } from "../../utils/constants";
+import { RADIAL_BUTTON_GLOW_BLUR_PX } from "../shared/RadialButton";
 import { computeRadialButtonLayout } from "../shared/radialButtonLayout";
 
 export const BUTTON_HEIGHT_PX = 92;
@@ -8,6 +9,24 @@ export const VERTICAL_PITCH_PX = BUTTON_HEIGHT_PX + BUTTON_Y_GAP_PX;
 
 /** Circle radius this scene uses — exported so the view / scene stay in sync. */
 export const CIRCLE_RADIUS_PX = BEATMAP_SELECTION_CIRCLE_RADIUS;
+
+/**
+ * The ring's *visible* outer edge. The canvas stroke straddles the path radius,
+ * so the painted ring reaches half a stroke-width beyond `CIRCLE_RADIUS_PX`.
+ * Buttons hug and are clipped at this radius so their (colored) borders sit
+ * flush against the ring rather than overlapping its outer half-stroke.
+ */
+export const CIRCLE_EDGE_RADIUS_PX = CIRCLE_RADIUS_PX + GAME_CIRCLE_STROKE_WIDTH / 2;
+
+/**
+ * How far the scrolling list container extends past the circle box on the right.
+ * A curve-hugging button reaches one button-width beyond the box, plus the
+ * half-stroke the buttons are pushed out by to clear the ring, plus the focus
+ * glow's blur radius — without that extra the rightmost (most centred) button,
+ * or its glow, gets clipped by the container's `overflow-hidden`.
+ */
+export const LIST_RIGHT_OVERHANG_PX =
+  BUTTON_WIDTH_PX + (CIRCLE_EDGE_RADIUS_PX - CIRCLE_RADIUS_PX) + RADIAL_BUTTON_GLOW_BLUR_PX;
 
 /**
  * Extra room on the curve-facing side of each radial-button's outer wrapper.
@@ -65,8 +84,8 @@ export function getVisibleIndexRange(
  * gradient must stay aligned to the ring, not to the container.
  */
 export const RADIAL_LIST_MASK = `radial-gradient(circle at ${CIRCLE_RADIUS_PX}px 50%, transparent ${
-  CIRCLE_RADIUS_PX - 0.5
-}px, black ${CIRCLE_RADIUS_PX + 0.5}px)`;
+  CIRCLE_EDGE_RADIUS_PX - 0.5
+}px, black ${CIRCLE_EDGE_RADIUS_PX + 0.5}px)`;
 
 /**
  * Vertical position of the index-th left button when there are `count` total,
@@ -85,6 +104,7 @@ export function computeLeftRadialLayout(
     side: "left",
     yCenter,
     radius: r,
+    edgeRadius: CIRCLE_EDGE_RADIUS_PX,
     buttonW: BUTTON_WIDTH_PX,
     buttonH: BUTTON_HEIGHT_PX,
     outerExtraPx: OUTER_LEFT_EXTRA_PX,

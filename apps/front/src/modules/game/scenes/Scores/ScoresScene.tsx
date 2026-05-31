@@ -88,6 +88,7 @@ export class ScoresScene extends CanvasScene {
       new BackgroundEntity(parsedMap, engine.settings, {
         radius: SCORES_CIRCLE_RADIUS,
         clipRadius: () => engine.circle.radius,
+        variant: "menu",
       }),
     );
     this.root.add(this.background);

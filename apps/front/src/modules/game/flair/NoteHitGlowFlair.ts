@@ -8,13 +8,21 @@ export class NoteHitGlowFlair implements Entity {
   private duration: number;
   private color: string;
   private elapsedTime: number;
+  private radius: number;
 
-  constructor(startAngle: number, endAngle: number, duration: number, color: string) {
+  constructor(
+    startAngle: number,
+    endAngle: number,
+    duration: number,
+    color: string,
+    radius: number = GAME_CIRCLE_DISPLAYED_RADIUS,
+  ) {
     this.startAngle = startAngle;
     this.endAngle = endAngle;
     this.duration = duration;
     this.color = color;
     this.elapsedTime = 0;
+    this.radius = radius;
   }
 
   public isAlive(): boolean {
@@ -29,20 +37,14 @@ export class NoteHitGlowFlair implements Entity {
     const progress = Math.min(this.elapsedTime / this.duration, 1);
     const alpha = 0.5 - progress * 0.5;
 
+    const innerRadius = this.radius + GAME_CIRCLE_STROKE_WIDTH / 2;
     ctx.globalAlpha = alpha;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.arc(0, 0, GAME_CIRCLE_DISPLAYED_RADIUS + GAME_CIRCLE_STROKE_WIDTH / 2 + 200, this.startAngle, this.endAngle);
-    ctx.arc(0, 0, GAME_CIRCLE_DISPLAYED_RADIUS + GAME_CIRCLE_STROKE_WIDTH / 2, this.endAngle, this.startAngle, true);
+    ctx.arc(0, 0, innerRadius + 200, this.startAngle, this.endAngle);
+    ctx.arc(0, 0, innerRadius, this.endAngle, this.startAngle, true);
     ctx.closePath();
-    const gradient = ctx.createRadialGradient(
-      0,
-      0,
-      GAME_CIRCLE_DISPLAYED_RADIUS + GAME_CIRCLE_STROKE_WIDTH / 2,
-      0,
-      0,
-      GAME_CIRCLE_DISPLAYED_RADIUS + GAME_CIRCLE_STROKE_WIDTH / 2 + 200,
-    );
+    const gradient = ctx.createRadialGradient(0, 0, innerRadius, 0, 0, innerRadius + 200);
     gradient.addColorStop(0, this.color);
     gradient.addColorStop(1, "transparent");
     ctx.fillStyle = gradient;

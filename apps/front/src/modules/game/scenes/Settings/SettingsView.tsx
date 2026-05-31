@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { useEffect } from "react";
+import { Fragment, useEffect } from "react";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
@@ -47,18 +47,23 @@ export const SettingsView: SceneUIComponent<SettingsScene> = ({ scene }) => {
         </header>
 
         <ul className="flex flex-col gap-1.5">
-          {scene.rows.map((row, i) => (
-            <SettingsRowItem
-              key={row.id}
-              row={row}
-              index={i}
-              isFocused={focused === i}
-              isEditing={isEditingText && focused === i && row.kind === "text"}
-              liveSettings={liveSettings}
-              gamepadOptions={gamepadOptions}
-              onFocus={() => scene.setFocused(i)}
-            />
-          ))}
+          {scene.rows.map((row, i) => {
+            const showHeader = i === 0 || scene.rows[i - 1].section !== row.section;
+            return (
+              <Fragment key={row.id}>
+                {showHeader && <SectionHeader title={row.section} first={i === 0} />}
+                <SettingsRowItem
+                  row={row}
+                  index={i}
+                  isFocused={focused === i}
+                  isEditing={isEditingText && focused === i && row.kind === "text"}
+                  liveSettings={liveSettings}
+                  gamepadOptions={gamepadOptions}
+                  onFocus={() => scene.setFocused(i)}
+                />
+              </Fragment>
+            );
+          })}
         </ul>
       </motion.div>
 
@@ -111,6 +116,15 @@ function useGamepadOptionsSync(scene: SettingsScene): void {
     };
   }, [scene]);
 }
+
+const SectionHeader = ({ title, first }: { title: string; first: boolean }) => (
+  <li
+    className={`px-1 mb-0.5 text-[10px] tracking-[0.35em] uppercase text-white/35 pointer-events-none ${first ? "" : "mt-4"}`}
+    aria-hidden
+  >
+    {title}
+  </li>
+);
 
 type RowItemProps = {
   row: SettingsRow;

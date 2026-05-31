@@ -8,13 +8,21 @@ export class NoteHitFlair implements Entity {
   private elapsedTime: number;
   private duration: number;
   private color: string;
+  private radius: number;
 
-  constructor(startAngle: number, endAngle: number, duration: number, color: string) {
+  constructor(
+    startAngle: number,
+    endAngle: number,
+    duration: number,
+    color: string,
+    radius: number = GAME_CIRCLE_DISPLAYED_RADIUS,
+  ) {
     this.startAngle = startAngle;
     this.endAngle = endAngle;
     this.duration = duration;
     this.elapsedTime = 0;
     this.color = color;
+    this.radius = radius;
   }
 
   public update(tick: TickContext) {
@@ -39,7 +47,7 @@ export class NoteHitFlair implements Entity {
     ctx.strokeStyle = this.color;
     ctx.lineWidth = currentAmplitude;
     ctx.beginPath();
-    ctx.arc(0, 0, GAME_CIRCLE_DISPLAYED_RADIUS - currentAmplitude, this.startAngle, this.endAngle);
+    ctx.arc(0, 0, this.radius - currentAmplitude, this.startAngle, this.endAngle);
     ctx.stroke();
   }
 }

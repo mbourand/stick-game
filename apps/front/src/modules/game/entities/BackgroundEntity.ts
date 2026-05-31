@@ -8,6 +8,17 @@ export type BackgroundSource = Pick<
   "backgroundUrl" | "backgroundOffsetX" | "backgroundOffsetY"
 >;
 
+/** Which settings the background reads its brightness/blur from. */
+export type BackgroundVariant = "gameplay" | "menu";
+
+const VARIANT_KEYS: Record<
+  BackgroundVariant,
+  { brightness: keyof SettingsListType; blur: keyof SettingsListType }
+> = {
+  gameplay: { brightness: "backgroundBrightness", blur: "backgroundBlurriness" },
+  menu: { brightness: "menuBackgroundBrightness", blur: "menuBackgroundBlurriness" },
+};
+
 export type BackgroundEntityOptions = {
   /** Radius of the circular crop in screen px. Defaults to the gameplay circle. */
   radius?: number;
@@ -17,6 +28,8 @@ export type BackgroundEntityOptions = {
    * spilling past the ring while it animates. Falls back to the static crop.
    */
   clipRadius?: () => number;
+  /** Which brightness/blur settings to honour. Defaults to the gameplay ones. */
+  variant?: BackgroundVariant;
 };
 
 export class BackgroundEntity implements Entity {
@@ -24,6 +37,7 @@ export class BackgroundEntity implements Entity {
   private settings: Settings;
   private radius: number;
   private clipRadius?: () => number;
+  private keys: { brightness: keyof SettingsListType; blur: keyof SettingsListType };
   private texture: HTMLCanvasElement | null = null;
   private offSettingChanged: () => void;
 
@@ -32,10 +46,11 @@ export class BackgroundEntity implements Entity {
     this.settings = settings;
     this.radius = options.radius ?? GAME_CIRCLE_DISPLAYED_RADIUS;
     this.clipRadius = options.clipRadius;
+    this.keys = VARIANT_KEYS[options.variant ?? "gameplay"];
     void this.rebuildTexture();
 
     this.offSettingChanged = settings.events.on("onSettingChanged", (e) => {
-      if (e.key === "backgroundBlurriness" || e.key === "backgroundBrightness") {
+      if (e.key === this.keys.brightness || e.key === this.keys.blur) {
         void this.rebuildTexture();
       }
     });
@@ -81,7 +96,9 @@ export class BackgroundEntity implements Entity {
     const imageMinSize = Math.min(image.width, image.height);
     const scale = (this.radius * 2) / imageMinSize;
 
-    ctx.filter = `blur(${settings.backgroundBlurriness}px) brightness(${settings.backgroundBrightness})`;
+    const blur = settings[this.keys.blur] as number;
+    const brightness = settings[this.keys.brightness] as number;
+    ctx.filter = `blur(${blur}px) brightness(${brightness})`;
     ctx.beginPath();
     ctx.arc(this.radius, this.radius, this.radius, 0, Math.PI * 2);
     ctx.closePath();

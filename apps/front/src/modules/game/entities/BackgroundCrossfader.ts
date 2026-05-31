@@ -90,7 +90,7 @@ export class BackgroundCrossfader extends Container implements Entity {
     const entity = new BackgroundEntity(
       { backgroundUrl, backgroundOffsetX: 0, backgroundOffsetY: 0 },
       this.settings,
-      { radius: this.radius },
+      { radius: this.radius, variant: "menu" },
     );
     const container = new Container({ alpha: 0 });
     container.add(entity);

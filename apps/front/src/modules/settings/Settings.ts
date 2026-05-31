@@ -5,7 +5,12 @@ export type SettingsListType = {
   volume: number;
   backgroundBrightness: number;
   backgroundBlurriness: number;
+  /** Background brightness/blur used by menu screens (selection, scores), kept separate from gameplay. */
+  menuBackgroundBrightness: number;
+  menuBackgroundBlurriness: number;
   scrollDuration: number;
+  /** Multiplier on the gameplay circle's size (1 = default). Purely visual — hit detection is angle-based. */
+  gameplayCircleScale: number;
   playerName: string;
   selectedGamepadIndex: number | null;
 };
@@ -13,8 +18,11 @@ export type SettingsListType = {
 export const DEFAULT_SETTINGS: SettingsListType = {
   volume: 0.2,
   backgroundBrightness: 0.15,
-  backgroundBlurriness: 4,
+  backgroundBlurriness: 6,
+  menuBackgroundBrightness: 0.4,
+  menuBackgroundBlurriness: 6,
   scrollDuration: 850,
+  gameplayCircleScale: 1,
   playerName: "Guest",
   selectedGamepadIndex: null,
 };

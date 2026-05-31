@@ -62,6 +62,10 @@ export class GameplayScene extends CanvasScene {
   private noteSpawner: NoteSpawner;
   private audioVisualizer: CircleAudioVisualizer;
 
+  /** Circle sizing for this play, scaled by the user's "circle size" setting (visual only). */
+  private readonly displayedRadius: number;
+  private readonly noteRadius: number;
+
   private hasBootstrapped = false;
   /**
    * When true, onDestroy leaves the beatmap source playing — used by the
@@ -75,9 +79,13 @@ export class GameplayScene extends CanvasScene {
     this.parsedMap = parsedMap;
     this.settings = engine.settings.get();
 
+    const scale = this.settings.gameplayCircleScale;
+    this.displayedRadius = GAME_CIRCLE_DISPLAYED_RADIUS * scale;
+    this.noteRadius = GAME_CIRCLE_RADIUS * scale;
+
     const musicContext = engine.audio.music.getAudioContext();
     this.clock = new BeatmapClock(musicContext);
-    this.audioVisualizer = new CircleAudioVisualizer(musicContext, 40, GAME_CIRCLE_DISPLAYED_RADIUS, 25);
+    this.audioVisualizer = new CircleAudioVisualizer(musicContext, 40, this.displayedRadius, 25);
     this.noteSpawner = new NoteSpawner(this.parsedMap.notes, this.events, this.clock, this.settings.scrollDuration);
     this.scoreCounter = new ScoreCounter(
       this.parsedMap.notes.length + this.parsedMap.notes.filter((n) => n.isHold).length,
@@ -219,7 +227,9 @@ export class GameplayScene extends CanvasScene {
   }
 
   private buildSceneTree() {
-    this.circleInnerContentContainer.add(new BackgroundEntity(this.parsedMap, this.engine.settings));
+    this.circleInnerContentContainer.add(
+      new BackgroundEntity(this.parsedMap, this.engine.settings, { radius: this.displayedRadius }),
+    );
     this.circleInnerContentContainer.add(this.audioVisualizer);
     this.circleInnerContentContainer.add(new ScoreHUDEntity(this.scoreCounter));
 
@@ -243,7 +253,7 @@ export class GameplayScene extends CanvasScene {
           parsedNote.hitTime,
           this.settings.scrollDuration,
           this.clock,
-          GAME_CIRCLE_RADIUS,
+          this.noteRadius,
           parsedNote.color,
           parsedNote.angle,
           angleSpan,
@@ -259,7 +269,7 @@ export class GameplayScene extends CanvasScene {
           parsedNote.hitTime,
           this.settings.scrollDuration,
           this.clock,
-          GAME_CIRCLE_RADIUS,
+          this.noteRadius,
           parsedNote.color,
           parsedNote.angle,
           angleSpan,
@@ -301,7 +311,7 @@ export class GameplayScene extends CanvasScene {
   }
 
   private spawnNoteHitFlair(note: Note | HoldNote) {
-    this.fxContainer.add(new NoteHitFlair(note.getStartAngle(), note.getEndAngle(), 400, "white"));
+    this.fxContainer.add(new NoteHitFlair(note.getStartAngle(), note.getEndAngle(), 400, "white", this.displayedRadius));
   }
 
   private spawnNoteHitGlowFlair(note: Note | HoldNote) {
@@ -319,7 +329,7 @@ export class GameplayScene extends CanvasScene {
           throw new Error("Invalid judgment kind for flair color");
       }
     })();
-    this.fxContainer.add(new NoteHitGlowFlair(note.getStartAngle(), note.getEndAngle(), 400, color));
+    this.fxContainer.add(new NoteHitGlowFlair(note.getStartAngle(), note.getEndAngle(), 400, color, this.displayedRadius));
   }
 
   private onBeatmapEnded(_event: BeatmapEndedEventType) {

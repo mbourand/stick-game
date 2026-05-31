@@ -1,5 +1,3 @@
-"use client";
-
 import type { ScoreCounter } from "../../../score/ScoreCounter";
 import { GRADE_COLOR, GRADE_THRESHOLDS } from "../../../score/grade";
 

@@ -1,5 +1,3 @@
-"use client";
-
 import { motion, type MotionValue } from "motion/react";
 import type { CSSProperties, ReactNode } from "react";
 import { fade } from "../../engine/animation/poses";

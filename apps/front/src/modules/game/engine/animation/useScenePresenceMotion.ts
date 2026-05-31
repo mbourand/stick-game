@@ -1,5 +1,3 @@
-"use client";
-
 import { SCENE_TRANSITION_DURATION_S } from "../transitions/durations";
 import type { Pose } from "./poses";
 import { useScenePresence } from "./scenePresence";

@@ -1,5 +1,3 @@
-"use client";
-
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import { RadialButton as SharedRadialButton } from "../shared/RadialButton";
 import { computeRadialButtonLayout } from "../shared/radialButtonLayout";

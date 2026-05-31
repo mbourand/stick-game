@@ -1,5 +1,3 @@
-"use client";
-
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect } from "react";
 import { seedDefaultMaps } from "@/modules/db/seedDefaultMaps";

@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect } from "react";
 import { useEngine } from "../engine/useEngine";
 import type { ButtonAction } from "../input/actions";

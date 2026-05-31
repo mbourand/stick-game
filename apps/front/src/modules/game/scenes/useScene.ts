@@ -1,5 +1,3 @@
-"use client";
-
 import { useSyncExternalStore } from "react";
 import type { Scene } from "./Scene";
 import type { SceneManager } from "./SceneManager";

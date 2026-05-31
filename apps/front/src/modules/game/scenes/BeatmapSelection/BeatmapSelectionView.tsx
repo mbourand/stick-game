@@ -1,5 +1,3 @@
-"use client";
-
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo } from "react";
 import { MapLeaderboard } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";

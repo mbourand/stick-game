@@ -1,5 +1,3 @@
-"use client";
-
 import { ScoreRow } from "@/app/game/_components/MapLeaderboard/ScoreRow";
 import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
 import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/queries/scores-beatmap-leaderboard";

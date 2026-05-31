@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ScenePresenceProvider } from "../engine/animation/scenePresence";
 import { Engine } from "../engine/Engine";

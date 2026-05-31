@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect } from "react";
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
 import { useStore } from "../../engine/state/useStore";

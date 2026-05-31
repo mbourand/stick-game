@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo, useState } from "react";
 import { useMotionValueEvent, type MotionValue } from "motion/react";
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";

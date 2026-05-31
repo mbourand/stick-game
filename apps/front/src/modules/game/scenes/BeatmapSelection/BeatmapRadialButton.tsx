@@ -1,5 +1,3 @@
-"use client";
-
 import { useTransform, type MotionValue } from "motion/react";
 import { RadialButton } from "../shared/RadialButton";
 import { difficultyColor } from "../shared/difficultyColor";

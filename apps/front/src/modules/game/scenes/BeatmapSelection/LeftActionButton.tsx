@@ -1,5 +1,3 @@
-"use client";
-
 import { RadialButton } from "../shared/RadialButton";
 import {
   BUTTON_HEIGHT_PX,

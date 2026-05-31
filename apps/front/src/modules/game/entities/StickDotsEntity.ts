@@ -37,25 +37,29 @@ export class StickDotsEntity implements Entity {
   }
 
   public render(ctx: CanvasRenderingContext2D): void {
-    this.drawSide(ctx, "left", this.leftStick);
-    this.drawSide(ctx, "right", this.rightStick);
+    // Both lines first, then both dots — otherwise the second side's line is
+    // drawn over the first side's dot.
+    this.drawLine(ctx, "left", this.leftStick);
+    this.drawLine(ctx, "right", this.rightStick);
+    this.drawDot(ctx, "left", this.leftStick);
+    this.drawDot(ctx, "right", this.rightStick);
   }
 
-  private drawSide(ctx: CanvasRenderingContext2D, side: Side, stick: { x: number; y: number }) {
+  private drawLine(ctx: CanvasRenderingContext2D, side: Side, stick: { x: number; y: number }) {
     const radius = this.circle.radius;
-    const tipX = stick.x * radius;
-    const tipY = stick.y * radius;
-
     ctx.strokeStyle = SIDE_LINE_COLOR[side];
     ctx.lineWidth = 6;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(tipX, tipY);
+    ctx.lineTo(stick.x * radius, stick.y * radius);
     ctx.stroke();
+  }
 
+  private drawDot(ctx: CanvasRenderingContext2D, side: Side, stick: { x: number; y: number }) {
+    const radius = this.circle.radius;
     ctx.fillStyle = SIDE_DOT_COLOR[side];
     ctx.beginPath();
-    ctx.arc(tipX, tipY, 15, 0, Math.PI * 2);
+    ctx.arc(stick.x * radius, stick.y * radius, 15, 0, Math.PI * 2);
     ctx.fill();
   }
 }

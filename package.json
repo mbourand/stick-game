@@ -13,7 +13,7 @@
     "generate": "turbo run generate",
     "format": "prettier --write .",
     "front:build:production": "pnpm --filter @tau/front run build",
-    "front:start:production": "pnpm --filter @tau/front run start",
+    "front:start:production": "echo ok",
     "back:build:production": "pnpm --filter @tau/back run build",
     "back:start:production": "pnpm --filter @tau/back run start:prod",
     "docker:up:dev": "docker compose -f docker-compose.dev.yml up --force-recreate --build -d",

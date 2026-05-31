@@ -85,7 +85,8 @@ export class GameplayScene extends CanvasScene {
 
     const musicContext = engine.audio.music.getAudioContext();
     this.clock = new BeatmapClock(musicContext);
-    this.audioVisualizer = new CircleAudioVisualizer(musicContext, 40, this.displayedRadius, 25);
+    // Bar height scales with the circle so the visualizer keeps its proportions.
+    this.audioVisualizer = new CircleAudioVisualizer(musicContext, 40, this.displayedRadius, 25 * scale);
     this.noteSpawner = new NoteSpawner(this.parsedMap.notes, this.events, this.clock, this.settings.scrollDuration);
     this.scoreCounter = new ScoreCounter(
       this.parsedMap.notes.length + this.parsedMap.notes.filter((n) => n.isHold).length,

@@ -1,5 +1,6 @@
 import { latestDb } from "@/modules/db/versions";
 import { fetchBackend } from "@/modules/fetching/back/fetchBackend";
+import { LATEST_SCORE_VERSION } from "@/modules/score/constants";
 
 type SubmitScoreParams = {
   accuracy: number;
@@ -29,7 +30,7 @@ export const submitScore = async (params: SubmitScoreParams) => {
       greatCount: params.greatCount,
       perfectCount: params.perfectCount,
       submissionTime: new Date(),
-      scoreVersion: 3,
+      scoreVersion: LATEST_SCORE_VERSION,
     }),
   ]);
 

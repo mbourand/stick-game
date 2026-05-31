@@ -11,12 +11,19 @@ export type BackgroundSource = Pick<
 export type BackgroundEntityOptions = {
   /** Radius of the circular crop in screen px. Defaults to the gameplay circle. */
   radius?: number;
+  /**
+   * Optional live clip radius, read every frame. When the surrounding ring is
+   * being resized (e.g. the gameplay→scores grow), this keeps the texture from
+   * spilling past the ring while it animates. Falls back to the static crop.
+   */
+  clipRadius?: () => number;
 };
 
 export class BackgroundEntity implements Entity {
   private source: BackgroundSource;
   private settings: Settings;
   private radius: number;
+  private clipRadius?: () => number;
   private texture: HTMLCanvasElement | null = null;
   private offSettingChanged: () => void;
 
@@ -24,6 +31,7 @@ export class BackgroundEntity implements Entity {
     this.source = source;
     this.settings = settings;
     this.radius = options.radius ?? GAME_CIRCLE_DISPLAYED_RADIUS;
+    this.clipRadius = options.clipRadius;
     void this.rebuildTexture();
 
     this.offSettingChanged = settings.events.on("onSettingChanged", (e) => {
@@ -37,6 +45,18 @@ export class BackgroundEntity implements Entity {
 
   public render(ctx: CanvasRenderingContext2D): void {
     if (!this.texture) return;
+
+    const clip = this.clipRadius?.();
+    if (clip !== undefined && clip < this.radius) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(0, clip), 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(this.texture, -this.radius, -this.radius);
+      ctx.restore();
+      return;
+    }
+
     ctx.drawImage(this.texture, -this.radius, -this.radius);
   }
 

@@ -1,8 +1,4 @@
 import { BeatmapEndedEventType } from "@/modules/game/events/impl/BeatmapEndedEvent";
-import { browserQueryClient } from "@/components/QueryProvider";
-import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
-import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/queries/scores-beatmap-leaderboard";
-import { submitScore } from "@/modules/score/submit-score";
 import { runKickAnalysis } from "@/modules/audio/kick-analysis/runKickAnalysis";
 import type { KickEvent } from "@/modules/audio/kick-analysis/analyze";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
@@ -44,6 +40,9 @@ import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "../../utils/co
 import { PauseScene } from "../Pause/PauseScene";
 
 export const BEATMAP_AUDIO_ID = "beatmap_audio";
+
+/** How long the circle's inner content (background, visualizer, HUD) eases in when gameplay begins. */
+const BACKGROUND_FADE_IN_MS = 400;
 
 export class GameplayScene extends CanvasScene {
   public readonly id = "gameplay";
@@ -106,6 +105,20 @@ export class GameplayScene extends CanvasScene {
     this.buildSceneTree();
     this.registerEvents();
 
+    // Enter with the circle's inner content hidden and ease it in, so the
+    // background (plus visualizer + HUD) fades up rather than popping into
+    // view. Runs concurrently with the buffer load + kick analysis, but is
+    // awaited before scheduling playback so it finishes before the song begins.
+    this.circleInnerContentContainer.alpha = 0;
+    const fadeIn = this.engine.playables.play(
+      tween({
+        target: this.circleInnerContentContainer,
+        to: { alpha: 1 },
+        duration: BACKGROUND_FADE_IN_MS,
+        easing: easeInOutCubic,
+      }),
+    );
+
     const music = this.engine.audio.music;
     const buffer = await music.loadBuffer(this.parsedMap.audioUrl);
 
@@ -119,6 +132,8 @@ export class GameplayScene extends CanvasScene {
     } catch {
       kickEvents = [];
     }
+
+    await fadeIn;
 
     const audioStartTimeSec = this.clock.schedule(this.noteSpawner.getInitialOffsetMs());
     const source = music.play(BEATMAP_AUDIO_ID, buffer, { startAt: audioStartTimeSec });
@@ -282,7 +297,7 @@ export class GameplayScene extends CanvasScene {
     this.engine.audio.playSfx("hit");
     this.spawnNoteHitFlair(event.note);
     this.spawnNoteHitGlowFlair(event.note);
-    this.scoreCounter.add(event.note.getJudgement());
+    this.scoreCounter.add(event.note.getJudgement(), { time: this.clock.now() });
   }
 
   private spawnNoteHitFlair(note: Note | HoldNote) {
@@ -307,47 +322,15 @@ export class GameplayScene extends CanvasScene {
     this.fxContainer.add(new NoteHitGlowFlair(note.getStartAngle(), note.getEndAngle(), 400, color));
   }
 
-  private async onBeatmapEnded(_event: BeatmapEndedEventType) {
+  private onBeatmapEnded(_event: BeatmapEndedEventType) {
     // Hand the music off to scores — it keeps playing through the transition
-    // and behind the score screen until the user navigates away.
+    // and behind the score screen until the user navigates away. The scores
+    // scene owns score submission + leaderboard display from here on.
     this.retainMusicOnDestroy = true;
     void this.sceneManager.transitionReplace(
       new ScoresScene(this.engine, this.parsedMap, this.scoreCounter),
       gameplayToScores,
     );
-
-    const { backendResult, localResult } = await submitScore({
-      accuracy: this.scoreCounter.getAccuracy(),
-      score: this.scoreCounter.getScore(),
-      maxCombo: this.scoreCounter.getMaxCombo(),
-      playerName: this.settings.playerName,
-      missCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Miss),
-      mehCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Meh),
-      goodCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Good),
-      greatCount: 0,
-      perfectCount: this.scoreCounter.getJudgmentCount(JudgmentKind.Perfect),
-      beatmapId: this.parsedMap.id,
-    });
-
-    if (backendResult.status === "fulfilled" && backendResult.value.wasUploaded) {
-      const queryKey = scoresBeatmapLeaderboardQueryOptions(this.parsedMap.id, 3).queryKey;
-      browserQueryClient?.invalidateQueries({ queryKey });
-    }
-
-    if (localResult.status === "fulfilled") {
-      const queryKey = localScoresBeatmapLeaderboardQueryOptions(this.parsedMap.id, 3).queryKey;
-      browserQueryClient?.invalidateQueries({ queryKey });
-    }
-
-    if (backendResult.status === "rejected") {
-      console.error("Failed to submit score to backend:", backendResult.reason);
-      alert("Score submission on global leaderboard failed, check the console for more details");
-    }
-
-    if (localResult.status === "rejected") {
-      console.error("Failed to save score locally:", localResult.reason);
-      alert("Score submission on local leaderboard failed, check the console for more details");
-    }
   }
 
   private registerEvents() {
@@ -367,6 +350,6 @@ export class GameplayScene extends CanvasScene {
 
   private miss() {
     if (this.scoreCounter.getCombo() > 5) this.engine.audio.playSfx("miss");
-    this.scoreCounter.add(JudgmentKind.Miss);
+    this.scoreCounter.add(JudgmentKind.Miss, { time: this.clock.now() });
   }
 }

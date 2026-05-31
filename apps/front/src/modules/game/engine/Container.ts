@@ -84,11 +84,20 @@ export class Container implements Entity {
   }
 
   public render(ctx: CanvasRenderingContext2D): void {
-    const composited = this.filter !== null || this.alpha !== 1;
+    // A group offscreen is only needed to (a) apply a filter to the children as
+    // one image, or (b) fade MULTIPLE overlapping children by a shared alpha
+    // without their overlaps double-blending. With a filter absent and at most
+    // one child, applying alpha straight to globalAlpha is identical — a single
+    // child can't double-blend against itself — and skips a full-canvas-sized
+    // offscreen alloc + clear + blit every frame (the dominant cost of an
+    // alpha crossfade, e.g. the menu background).
+    const needsGroupOffscreen = this.filter !== null || (this.alpha !== 1 && this.children.length > 1);
 
-    if (!composited) {
+    if (!needsGroupOffscreen) {
+      if (this.alpha <= 0) return;
       ctx.save();
       this.applyTransform(ctx);
+      if (this.alpha !== 1) ctx.globalAlpha *= this.alpha;
       for (const child of this.children) child.render(ctx);
       ctx.restore();
       return;

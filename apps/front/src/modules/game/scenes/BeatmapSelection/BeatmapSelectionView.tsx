@@ -4,6 +4,7 @@ import { MapLeaderboard } from "@/app/game/_components/MapLeaderboard/MapLeaderb
 import { useScenePresence } from "../../engine/animation/scenePresence";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
+import { useDebouncedValue } from "../../engine/state/useDebouncedValue";
 import { useStore } from "../../engine/state/useStore";
 import { useViewport } from "../../engine/state/useViewport";
 import type { SceneUIComponent } from "../Scene";
@@ -13,12 +14,7 @@ import type { BeatmapSelectionScene } from "./BeatmapSelectionScene";
 import { LeftActionButton } from "./LeftActionButton";
 import { ScrollSurface } from "./ScrollSurface";
 import { useGlobalTypeahead } from "./useGlobalTypeahead";
-import {
-  CIRCLE_RADIUS_PX,
-  getLeftButtonYCenter,
-  LIST_RIGHT_OVERHANG_PX,
-  RADIAL_LIST_MASK,
-} from "./layout";
+import { CIRCLE_RADIUS_PX, getLeftButtonYCenter, LIST_RIGHT_OVERHANG_PX, RADIAL_LIST_MASK } from "./layout";
 import { useBeatmapCatalog } from "./useBeatmapCatalog";
 import { usePreviewBeatmap } from "./usePreviewBeatmap";
 import { useSceneFocusSync } from "./useSceneFocusSync";
@@ -36,10 +32,7 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
 
   const searchQuery = useStore(scene.searchQuery);
   const difficultyFilter = useStore(scene.difficultyFilter);
-  const { beatmaps, filteredBeatmaps, isNoMatch, isLoaded } = useBeatmapCatalog(
-    searchQuery,
-    difficultyFilter,
-  );
+  const { beatmaps, filteredBeatmaps, isNoMatch, isLoaded } = useBeatmapCatalog(searchQuery, difficultyFilter);
 
   useGlobalTypeahead(scene.searchQuery.update);
 
@@ -52,7 +45,12 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
   useSceneResolverBridge(scene, filteredBeatmaps, resolveMediaUrls);
   const { focusedIndex, focusedBeatmap } = useSceneFocusSync(scene, filteredBeatmaps, isNoMatch, isLoaded);
   const previewBeatmap = usePreviewBeatmap(focusedBeatmap);
-  useScenePreviewBridge(scene, previewBeatmap, resolveMediaUrls);
+  // Gate the expensive preview side effects (audio restart + background
+  // crossfade) on focus settling, so fast scrolling through maps doesn't fire
+  // one per intermediate map. The info card / leaderboard keep tracking the
+  // immediate `previewBeatmap` so the visible selection stays responsive.
+  const debouncedPreviewBeatmap = useDebouncedValue(previewBeatmap, 50);
+  useScenePreviewBridge(scene, debouncedPreviewBeatmap, resolveMediaUrls);
 
   const scrollZone = useStore(scene.scrollZone);
   const leaderboardTab = useStore(scene.leaderboardTab);
@@ -126,16 +124,8 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
           />
         ))}
 
-        <ScrollSurface
-          position="top"
-          active={scrollZone === "top"}
-          onPress={() => scene.scrollBy(-3)}
-        />
-        <ScrollSurface
-          position="bottom"
-          active={scrollZone === "bottom"}
-          onPress={() => scene.scrollBy(+3)}
-        />
+        <ScrollSurface position="top" active={scrollZone === "top"} onPress={() => scene.scrollBy(-3)} />
+        <ScrollSurface position="bottom" active={scrollZone === "bottom"} onPress={() => scene.scrollBy(+3)} />
 
         <motion.div
           className="absolute left-1/2 -translate-x-1/2 pointer-events-auto"
@@ -150,9 +140,7 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
             className="w-full bg-black/30 backdrop-blur-sm border border-white/20 text-white text-xs tracking-[0.15em] uppercase placeholder-white/40 px-4 py-2 rounded focus:bg-black/50 focus:border-white/60 outline-none text-center"
           />
           {isNoMatch && (
-            <div className="mt-2 text-center text-[10px] tracking-[0.25em] uppercase text-white/50">
-              No matches
-            </div>
+            <div className="mt-2 text-center text-[10px] tracking-[0.25em] uppercase text-white/50">No matches</div>
           )}
         </motion.div>
 

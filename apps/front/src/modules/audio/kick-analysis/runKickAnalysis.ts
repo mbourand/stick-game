@@ -8,11 +8,18 @@ const cache = new Map<string, KickEvent[]>();
 /**
  * Analyze a decoded song into a kick timeline. Runs the DSP in a Web Worker so
  * the ~1-2s analysis doesn't block the main thread during loading; falls back
- * to a synchronous main-thread run if the worker can't be created (older
+ * to a synchronous main-thread run only when no Worker exists (older
  * bundler/runtime, SSR, etc.).
  *
- * The AudioBuffer's channel data is COPIED before being handed to the worker —
- * transferring the live backing store would detach it and corrupt playback.
+ * We make ONE copy of each channel (the live AudioBuffer backing store can't be
+ * detached without corrupting playback), then TRANSFER that copy to the worker
+ * — zero-copy, so the whole waveform (~80MB for a long stereo song) isn't
+ * structured-clone-serialized on the main thread, which was a multi-hundred-ms
+ * stall mid-load. Once transferred the copy is detached on our side, but we
+ * never reuse it: a worker that errors mid-run yields an empty timeline, which
+ * the caller already treats as non-fatal (the visualizer falls back to live
+ * FFT). The synchronous main-thread DSP path is reserved for the no-Worker
+ * case, decided up front before any transfer.
  *
  * Pass `cacheKey` (the audio URL) to memoize across scene rebuilds (retry).
  */
@@ -29,12 +36,19 @@ export async function runKickAnalysis(buffer: AudioBuffer, cacheKey?: string): P
   const sampleRate = buffer.sampleRate;
 
   let events: KickEvent[];
-  try {
-    events = await analyzeInWorker(channels, sampleRate);
-  } catch {
-    // Fallback: run on the main thread. Still correct, just briefly blocking.
-    // `channels` are intact here because we do NOT transfer them to the worker.
+  if (typeof Worker === "undefined") {
+    // No worker available — run on the main thread (briefly blocking, but
+    // correct). `channels` are intact since nothing transferred them.
     events = analyzeKicks(channels, sampleRate);
+  } else {
+    try {
+      events = await analyzeInWorker(channels, sampleRate);
+    } catch {
+      // Worker existed but failed mid-run; `channels` are now detached, so the
+      // main-thread fallback can't reuse them. Kick analysis is non-fatal —
+      // an empty timeline just leaves the visualizer on its live-FFT path.
+      events = [];
+    }
   }
 
   if (cacheKey) cache.set(cacheKey, events);
@@ -43,10 +57,6 @@ export async function runKickAnalysis(buffer: AudioBuffer, cacheKey?: string): P
 
 function analyzeInWorker(channels: Float32Array[], sampleRate: number): Promise<KickEvent[]> {
   return new Promise((resolve, reject) => {
-    if (typeof Worker === "undefined") {
-      reject(new Error("Worker unavailable"));
-      return;
-    }
     const worker = new Worker(new URL("./kick-analyzer.worker.ts", import.meta.url));
     worker.onmessage = (e: MessageEvent<KickAnalyzerResponse>) => {
       worker.terminate();
@@ -58,9 +68,12 @@ function analyzeInWorker(channels: Float32Array[], sampleRate: number): Promise<
       reject(new Error(e.message || "Worker error"));
     };
     const req: KickAnalyzerRequest = { channels, sampleRate };
-    // NOTE: do NOT transfer the channel buffers — structured-clone copies them
-    // instead. Transferring would detach `channels` and break the main-thread
-    // fallback if the worker errors after this point.
-    worker.postMessage(req);
+    // Transfer the channel buffers (zero-copy) rather than letting postMessage
+    // structured-clone them — copying ~80MB synchronously here was the stall.
+    // Safe because we own these copies and never read them again on this side.
+    worker.postMessage(
+      req,
+      channels.map((channel) => channel.buffer),
+    );
   });
 }

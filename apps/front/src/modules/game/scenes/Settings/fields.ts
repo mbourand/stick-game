@@ -100,6 +100,18 @@ export const SETTINGS_ROWS: readonly SettingsRow[] = [
   },
   {
     kind: "slider",
+    id: "audioVisualizerOpacity",
+    section: "Gameplay",
+    label: "Visualizer opacity",
+    min: 0,
+    max: 100,
+    step: 1,
+    read: (s) => Math.round(s.audioVisualizerOpacity * 100),
+    write: (sv, v) => sv.set("audioVisualizerOpacity", v / 100),
+    format: (v) => `${v}%`,
+  },
+  {
+    kind: "slider",
     id: "backgroundBrightness",
     section: "Gameplay",
     label: "Background brightness",

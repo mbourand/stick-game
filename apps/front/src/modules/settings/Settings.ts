@@ -11,6 +11,8 @@ export type SettingsListType = {
   scrollDuration: number;
   /** Multiplier on the gameplay circle's size (1 = default). Purely visual — hit detection is angle-based. */
   gameplayCircleScale: number;
+  /** Opacity multiplier for the circular audio visualizer (1 = default look, 0 = hidden). */
+  audioVisualizerOpacity: number;
   playerName: string;
   selectedGamepadIndex: number | null;
 };
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: SettingsListType = {
   menuBackgroundBlurriness: 6,
   scrollDuration: 850,
   gameplayCircleScale: 1,
+  audioVisualizerOpacity: 0.2,
   playerName: "Guest",
   selectedGamepadIndex: null,
 };

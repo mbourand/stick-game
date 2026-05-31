@@ -1,20 +1,25 @@
 "use client";
 
-import { deleteBeatmapAndOrphanedFiles } from "@/modules/db/cleanup";
-import { latestDb } from "@/modules/db/db";
-import { convertFromOsu } from "@/modules/osu/convert/OsuConverter";
 import { beatmapsetsSearchQueryOptions } from "@/modules/fetching/back/queries/beatmapsets-search";
 import { debounce } from "@/modules/utils/debounce";
 import type { zOsuControllerBeatmapsetsSearchResponse } from "@tau/back-schemas";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import JSZip from "jszip";
 import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { z } from "zod";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
 import type { SceneUIComponent } from "../Scene";
+import {
+  getInstallStatusStore,
+  startBeatmapsetInstall,
+} from "./beatmapInstallStore";
+import {
+  InstallStatusIcon,
+  installPhaseLabel,
+  RowProgressBar,
+} from "./BeatmapsetInstallProgress";
 import type { DownloaderScene } from "./DownloaderScene";
 
 type Beatmapset = z.infer<typeof zOsuControllerBeatmapsetsSearchResponse>["beatmapsets"][number];
@@ -135,23 +140,22 @@ const BeatmapsetRow = forwardRef<HTMLButtonElement, RowProps>(function Beatmapse
   { beatmapset, isFocused, onFocus },
   ref,
 ) {
-  const [state, setState] = useState<"idle" | "loading" | "done">("idle");
+  // Install state lives module-level (keyed by set id), so it survives this row
+  // unmounting — leaving/reopening the downloader or re-searching shows the true
+  // progress instead of resetting to idle.
+  const status = useStore(getInstallStatusStore(beatmapset.id));
 
   const diffs = beatmapset.beatmaps;
   const minDiff = diffs.length > 0 ? Math.min(...diffs.map((d) => d.difficulty_rating)) : 0;
   const maxDiff = diffs.length > 0 ? Math.max(...diffs.map((d) => d.difficulty_rating)) : 0;
 
-  const handleClick = useCallback(async () => {
-    if (state !== "idle") return;
-    setState("loading");
-    try {
-      await downloadBeatmapset(beatmapset);
-      setState("done");
-    } catch (e) {
-      console.error("Failed to download beatmapset", e);
-      setState("idle");
-    }
-  }, [beatmapset, state]);
+  // No-ops while already downloading/done; retries on error (see the store).
+  const handleClick = useCallback(
+    () => startBeatmapsetInstall(beatmapset.id),
+    [beatmapset.id],
+  );
+
+  const phaseLabel = installPhaseLabel(status);
 
   return (
     <button
@@ -160,7 +164,7 @@ const BeatmapsetRow = forwardRef<HTMLButtonElement, RowProps>(function Beatmapse
       onMouseEnter={onFocus}
       onFocus={onFocus}
       onClick={handleClick}
-      className={`w-full text-left flex items-center gap-4 p-3 rounded my-1.5 border transition-colors ${
+      className={`relative w-full text-left flex items-center gap-4 p-3 rounded my-1.5 border transition-colors ${
         isFocused
           ? "bg-white/20 border-white/60 shadow-[0_0_18px_rgba(255,255,255,0.12)]"
           : "bg-white/5 border-white/15 hover:bg-white/10"
@@ -179,38 +183,29 @@ const BeatmapsetRow = forwardRef<HTMLButtonElement, RowProps>(function Beatmapse
           <span className="text-white/30"> · mapped by </span>
           {beatmapset.creator}
         </div>
-        <div className="text-[10px] text-white/50 tracking-[0.18em] mt-1.5 tabular-nums">
-          {minDiff.toFixed(1)} — {maxDiff.toFixed(1)} ★ ·{" "}
-          {diffs.length} {diffs.length === 1 ? "map" : "maps"}
+        {/* While installing, the third line reports the phase; otherwise the
+            difficulty spread. Fixed by truncation so the row never reflows. */}
+        <div
+          className={`text-[10px] tracking-[0.18em] mt-1.5 tabular-nums truncate ${
+            phaseLabel ? "text-white/70" : "text-white/50"
+          }`}
+        >
+          {phaseLabel ?? (
+            <>
+              {minDiff.toFixed(1)} — {maxDiff.toFixed(1)} ★ · {diffs.length}{" "}
+              {diffs.length === 1 ? "map" : "maps"}
+            </>
+          )}
         </div>
       </div>
-      <div className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full border border-white/30 bg-white/5">
-        {state === "loading" && (
-          <div className="w-4 h-4 border-t-white border-b-transparent border rounded-full animate-spin" />
-        )}
-        {state === "done" && (
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-            <path
-              d="M3 8l3.5 3.5L13 5"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        )}
-        {state === "idle" && (
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
-            <path
-              d="M8 2v9m0 0l-4-4m4 4l4-4M2 14h12"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        )}
+      <div
+        className={`shrink-0 w-9 h-9 flex items-center justify-center rounded-full border bg-white/5 ${
+          status.phase === "error" ? "border-red-400/50 text-red-300" : "border-white/30"
+        }`}
+      >
+        <InstallStatusIcon status={status} />
       </div>
+      <RowProgressBar status={status} />
     </button>
   );
 });
@@ -229,95 +224,3 @@ const CenteredHint = ({ label }: { label: string }) => (
     {label}
   </div>
 );
-
-async function downloadBeatmapset(beatmapset: Beatmapset): Promise<void> {
-  const zip = new JSZip();
-  const response = await fetch(
-    `https://api.nerinyan.moe/d/${beatmapset.id}?NoHitSound=1&NoVideo=1`,
-  );
-  const unzipped = await zip.loadAsync(await response.arrayBuffer());
-  const allFiles = Object.values(unzipped.files);
-  const beatmapFileList = allFiles.filter((file) => file.name.endsWith(".osu"));
-
-  const listBackgroundFileResponse = await fetch(beatmapset.covers["list"], {
-    mode: "no-cors",
-  });
-  const listBackgroundFileContent = await listBackgroundFileResponse.arrayBuffer();
-  const listBackgroundFileId = await latestDb.files.add({
-    content: new Blob([listBackgroundFileContent]),
-    createdAt: new Date(),
-    extension: "jpg",
-  });
-
-  const alreadyAddedFiles = new Map<string, number>();
-
-  for (const file of beatmapFileList) {
-    try {
-      const content = await file.async("string");
-      const parsedMap = convertFromOsu(content, (path) => path);
-
-      // Re-download = overwrite: drop the existing row + any of its files
-      // that no other beatmap references, then fall through to the normal
-      // import path. The schema only indexes idv2 (no uniqueness constraint)
-      // so without this step a second import would silently duplicate.
-      const existing = await latestDb.beatmaps.where("idv2").equals(parsedMap.id).first();
-      if (existing) {
-        console.log(`Overwriting existing beatmap ${parsedMap.id}`);
-        await deleteBeatmapAndOrphanedFiles(existing);
-      }
-
-      const backgroundFile = allFiles.find((f) => f.name === parsedMap.backgroundUrl);
-      const audioFile = allFiles.find((f) => f.name === parsedMap.audioUrl);
-
-      // Skip beatmaps whose .osu references files that aren't in the zip —
-      // they're unplayable and would otherwise be persisted with null
-      // audioId/gameplayBackgroundId, breaking the preview/playback path.
-      if (!backgroundFile || !audioFile) {
-        console.warn(
-          `Skipping beatmap ${parsedMap.id}: missing ${!audioFile ? "audio" : ""}${
-            !audioFile && !backgroundFile ? " + " : ""
-          }${!backgroundFile ? "background" : ""} file in zip`,
-        );
-        continue;
-      }
-
-      let backgroundFileId = alreadyAddedFiles.get(backgroundFile.name) ?? null;
-      let audioFileId = alreadyAddedFiles.get(audioFile.name) ?? null;
-
-      if (backgroundFileId === null) {
-        const fileContent = await backgroundFile.async("arraybuffer");
-        backgroundFileId = await latestDb.files.add({
-          content: new Blob([fileContent]),
-          createdAt: new Date(),
-          extension: backgroundFile.name.split(".").pop() || "",
-        });
-        alreadyAddedFiles.set(backgroundFile.name, backgroundFileId);
-      }
-
-      if (audioFileId === null) {
-        const fileContent = await audioFile.async("arraybuffer");
-        audioFileId = await latestDb.files.add({
-          content: new Blob([fileContent]),
-          createdAt: new Date(),
-          extension: audioFile.name.split(".").pop() || "",
-        });
-        alreadyAddedFiles.set(audioFile.name, audioFileId);
-      }
-
-      await latestDb.beatmaps.add({
-        idv2: parsedMap.id,
-        title: parsedMap.title,
-        artist: parsedMap.artist,
-        creator: parsedMap.creator,
-        difficulty: parsedMap.difficulty,
-        content: new Blob([content]),
-        gameplayBackgroundId: backgroundFileId,
-        audioId: audioFileId,
-        listBackgroundId: listBackgroundFileId,
-        createdAt: new Date(),
-      });
-    } catch (e) {
-      console.error("Failed to import a beatmap from the beatmapset:", e);
-    }
-  }
-}

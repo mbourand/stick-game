@@ -36,6 +36,12 @@ type RadialButtonProps = {
   mask?: string;
 
   isFocused: boolean;
+  /**
+   * Optional accent color (any CSS color). When set, tints the button's border
+   * and adds a soft glow on focus — used to carry a beatmap's difficulty color.
+   * Omit for the default white styling.
+   */
+  accentColor?: string;
   /** Enter-only delay (seconds) — for stagger. The exit never delays. */
   delay?: number;
 
@@ -68,6 +74,7 @@ export const RadialButton = ({
   paddingFar = 32,
   mask,
   isFocused,
+  accentColor,
   delay,
   onFocus,
   onBlur,
@@ -92,6 +99,16 @@ export const RadialButton = ({
       ? { maskImage: mask, WebkitMaskImage: mask, maskComposite: "intersect" }
       : {};
 
+  // Border + glow follow the accent color when provided (difficulty tint),
+  // dimmed at rest and brightened on focus; default to plain white otherwise.
+  const borderColor = accentColor
+    ? isFocused
+      ? accentColor
+      : `color-mix(in srgb, ${accentColor} 55%, transparent)`
+    : "rgba(255,255,255,0.5)";
+  const accentGlow =
+    accentColor && isFocused ? `0 0 22px color-mix(in srgb, ${accentColor} 38%, transparent)` : undefined;
+
   return (
     <motion.div
       className="absolute top-0 left-0"
@@ -107,7 +124,8 @@ export const RadialButton = ({
           top: 0,
           width: buttonWidth,
           height: buttonHeight,
-          border: "2px solid rgba(255,255,255,0.5)",
+          border: `2px solid ${borderColor}`,
+          boxShadow: accentGlow,
         }}
         {...presenceMotion}
         onMouseEnter={onFocus}

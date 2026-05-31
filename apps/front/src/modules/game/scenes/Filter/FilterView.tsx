@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
+import { difficultyColor, difficultyGradientCss } from "../shared/difficultyColor";
 import type { SceneUIComponent } from "../Scene";
 import type { FilterScene } from "./FilterScene";
 import { DIFFICULTY_SLIDER_MAX, type DifficultyFilter } from "./filterTypes";
@@ -56,8 +57,14 @@ export const FilterView: SceneUIComponent<FilterScene> = ({ scene }) => {
             )}
           </div>
 
-          <div className="text-center text-base text-white tracking-wider mb-4 tabular-nums">
-            {current.min.toFixed(1)} ★ — {maxIsInfinite ? "∞" : `${current.max.toFixed(1)} ★`}
+          <div className="text-center text-base tracking-wider mb-4 tabular-nums">
+            <span style={{ color: difficultyColor(current.min) }}>{current.min.toFixed(1)} ★</span>
+            <span className="text-white/40"> — </span>
+            {maxIsInfinite ? (
+              <span style={{ color: difficultyColor(DIFFICULTY_SLIDER_MAX) }}>10+ ★</span>
+            ) : (
+              <span style={{ color: difficultyColor(current.max) }}>{current.max.toFixed(1)} ★</span>
+            )}
           </div>
 
           <DualRangeSlider
@@ -68,9 +75,9 @@ export const FilterView: SceneUIComponent<FilterScene> = ({ scene }) => {
             onChange={setFilter}
           />
 
-          <div className="flex justify-between mt-2 text-[10px] text-white/40 tabular-nums tracking-[0.2em]">
-            <span>{DIFFICULTY_BOUNDS.min.toFixed(1)} ★</span>
-            <span>{DIFFICULTY_SLIDER_MAX}+ ★</span>
+          <div className="flex justify-between mt-2 text-[10px] tabular-nums tracking-[0.2em]">
+            <span style={{ color: difficultyColor(DIFFICULTY_BOUNDS.min) }}>{DIFFICULTY_BOUNDS.min.toFixed(1)} ★</span>
+            <span style={{ color: difficultyColor(DIFFICULTY_SLIDER_MAX) }}>{DIFFICULTY_SLIDER_MAX}+ ★</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mt-6">
@@ -104,10 +111,7 @@ export const FilterView: SceneUIComponent<FilterScene> = ({ scene }) => {
         </section>
       </motion.div>
 
-      <motion.div
-        className="mt-8 text-[10px] text-white/40 tracking-[0.3em] uppercase"
-        {...hintMotion}
-      >
+      <motion.div className="mt-8 text-[10px] text-white/40 tracking-[0.3em] uppercase" {...hintMotion}>
         <KeyHint label="B" /> Close
       </motion.div>
     </motion.div>
@@ -129,20 +133,23 @@ const DualRangeSlider = ({ min, max, step, value, onChange }: DualRangeSliderPro
 
   return (
     <div className="relative h-6 flex items-center">
-      <div className="absolute w-full h-1.5 bg-white/15 rounded-full" />
+      {/* The full difficulty spectrum, so the track reads as the scale itself.
+          Anchored to the slider's own 0–DIFFICULTY_SLIDER_MAX range so the
+          colors line up with the thumbs and the dim window below. */}
       <div
-        className="absolute h-1.5 bg-white/70 rounded-full"
-        style={{ left: `${minPct}%`, width: `${Math.max(0, maxPct - minPct)}%` }}
+        className="absolute w-full h-1.5 rounded-full"
+        style={{ background: difficultyGradientCss("to right", DIFFICULTY_SLIDER_MAX) }}
       />
+      {/* Dim the spectrum outside the selected [min, max] window. */}
+      <div className="absolute left-0 h-1.5 bg-black/55 rounded-l-full" style={{ width: `${minPct}%` }} />
+      <div className="absolute right-0 h-1.5 bg-black/55 rounded-r-full" style={{ width: `${100 - maxPct}%` }} />
       <input
         type="range"
         min={min}
         max={max}
         step={step}
         value={value.min}
-        onChange={(e) =>
-          onChange({ min: Math.min(Number(e.target.value), value.max), max: value.max })
-        }
+        onChange={(e) => onChange({ min: Math.min(Number(e.target.value), value.max), max: value.max })}
         className={SLIDER_INPUT_CLASS}
         aria-label="Minimum difficulty"
       />
@@ -152,9 +159,7 @@ const DualRangeSlider = ({ min, max, step, value, onChange }: DualRangeSliderPro
         max={max}
         step={step}
         value={value.max}
-        onChange={(e) =>
-          onChange({ min: value.min, max: Math.max(Number(e.target.value), value.min) })
-        }
+        onChange={(e) => onChange({ min: value.min, max: Math.max(Number(e.target.value), value.min) })}
         className={SLIDER_INPUT_CLASS}
         aria-label="Maximum difficulty"
       />

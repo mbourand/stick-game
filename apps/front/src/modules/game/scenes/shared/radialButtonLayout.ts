@@ -18,7 +18,15 @@
 export type RadialButtonInput = {
   side: "left" | "right";
   yCenter: number;
+  /** Circle radius used to place the button's centre within its container. */
   radius: number;
+  /**
+   * Radius the button hugs and is clipped at. Defaults to `radius`. Pass the
+   * ring's *visible outer edge* (path radius + half the canvas stroke width)
+   * so buttons sit flush against the stroke instead of overlapping its outer
+   * half — `radius` still drives vertical centring, so the two can differ.
+   */
+  edgeRadius?: number;
   buttonW: number;
   buttonH: number;
   outerExtraPx: number;
@@ -42,14 +50,19 @@ export type RadialButtonLayout = {
 };
 
 export function computeRadialButtonLayout(
-  { side, yCenter, radius: r, buttonW, buttonH, outerExtraPx, minNearPaddingPx = 28 }: RadialButtonInput,
+  { side, yCenter, radius: r, edgeRadius, buttonW, buttonH, outerExtraPx, minNearPaddingPx = 28 }: RadialButtonInput,
 ): RadialButtonLayout {
   const minPad = minNearPaddingPx;
+  // `centerR` places the button relative to the circle centre; `edgeR` is the
+  // curve it hugs and is clipped at. They're equal unless the caller passes a
+  // distinct `edgeRadius` (e.g. the ring's stroked outer edge).
+  const centerR = r;
+  const edgeR = edgeRadius ?? r;
   const halfH = buttonH / 2;
   const farY = Math.abs(yCenter) + halfH;
-  const horizontalRadiusAtFarY = Math.sqrt(Math.max(0, r * r - farY * farY));
+  const horizontalRadiusAtFarY = Math.sqrt(Math.max(0, edgeR * edgeR - farY * farY));
 
-  const top = r + yCenter - halfH;
+  const top = centerR + yCenter - halfH;
   const outerWidth = buttonW + outerExtraPx;
 
   // For a right-side button: outer extends LEFT of the visible button by
@@ -58,22 +71,23 @@ export function computeRadialButtonLayout(
   // Mirror for the left-side button.
   const left =
     side === "right"
-      ? r + horizontalRadiusAtFarY - outerExtraPx
-      : r - horizontalRadiusAtFarY - buttonW;
+      ? centerR + horizontalRadiusAtFarY - outerExtraPx
+      : centerR - horizontalRadiusAtFarY - buttonW;
 
-  // Mask centre, in outer-local coords (origin = outer's top-left).
+  // Mask centre, in outer-local coords (origin = outer's top-left). The
+  // `centerR` terms cancel out, so this depends only on `horizontalRadiusAtFarY`.
   const maskCenterX =
     side === "right" ? outerExtraPx - horizontalRadiusAtFarY : horizontalRadiusAtFarY + buttonW;
   const maskCenterY = halfH - yCenter;
 
-  const radialMask = `radial-gradient(circle at ${maskCenterX}px ${maskCenterY}px, transparent ${r - 0.5}px, black ${r + 0.5}px)`;
+  const radialMask = `radial-gradient(circle at ${maskCenterX}px ${maskCenterY}px, transparent ${edgeR - 0.5}px, black ${edgeR + 0.5}px)`;
 
   // Vertical band corresponding to the circle's vertical extent — composited
   // with the radial mask via `mask-composite: intersect` so buttons sliding
   // past the circle's top/bottom get hard-clipped at the ring edge instead of
   // floating in the void.
-  const verticalTop = maskCenterY - r;
-  const verticalBottom = maskCenterY + r;
+  const verticalTop = maskCenterY - edgeR;
+  const verticalBottom = maskCenterY + edgeR;
   const bandMask = `linear-gradient(to bottom, transparent ${verticalTop}px, black ${verticalTop}px, black ${verticalBottom}px, transparent ${verticalBottom}px)`;
   const mask = `${radialMask}, ${bandMask}`;
 
@@ -81,7 +95,7 @@ export function computeRadialButtonLayout(
   // start past that to avoid being clipped by the mask in the static state.
   const closestRowY = Math.max(0, Math.min(buttonH, maskCenterY));
   const yDelta = closestRowY - maskCenterY;
-  const reach = Math.sqrt(Math.max(0, r * r - yDelta * yDelta));
+  const reach = Math.sqrt(Math.max(0, edgeR * edgeR - yDelta * yDelta));
 
   let paddingNear: number;
   if (side === "right") {

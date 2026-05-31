@@ -8,6 +8,13 @@ import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceM
 /** Either a fixed value or a MotionValue — both are accepted directly by motion's `style`. */
 type Numeric = number | MotionValue<number>;
 
+/**
+ * Blur radius (px) of the accent focus glow. Exported so containers that clip
+ * their buttons (e.g. the beatmap list's `overflow-hidden`) can leave enough
+ * room for the glow not to be cut off.
+ */
+export const RADIAL_BUTTON_GLOW_BLUR_PX = 22;
+
 type RadialButtonProps = {
   side: "left" | "right";
   /**
@@ -107,7 +114,9 @@ export const RadialButton = ({
       : `color-mix(in srgb, ${accentColor} 55%, transparent)`
     : "rgba(255,255,255,0.5)";
   const accentGlow =
-    accentColor && isFocused ? `0 0 22px color-mix(in srgb, ${accentColor} 38%, transparent)` : undefined;
+    accentColor && isFocused
+      ? `0 0 ${RADIAL_BUTTON_GLOW_BLUR_PX}px color-mix(in srgb, ${accentColor} 38%, transparent)`
+      : undefined;
 
   return (
     <motion.div

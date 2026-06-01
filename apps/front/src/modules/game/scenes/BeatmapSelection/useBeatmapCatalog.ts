@@ -28,7 +28,11 @@ export type BeatmapCatalog = {
  * lives on `BeatmapSelectionScene.resolveMediaUrls` so its cache survives
  * view remounts — see the scene for the rationale.
  */
-export function useBeatmapCatalog(searchQuery: string, difficultyFilter: DifficultyFilter | null): BeatmapCatalog {
+export function useBeatmapCatalog(
+  searchQuery: string,
+  difficultyFilter: DifficultyFilter | null,
+  dailyScopeIds: Set<string> | null = null,
+): BeatmapCatalog {
   // No default value — returns `undefined` until Dexie resolves. We need to
   // tell "not loaded yet" apart from "loaded but empty" so the focus-sync
   // effect doesn't push count=0 into the scene during the first render after
@@ -42,6 +46,12 @@ export function useBeatmapCatalog(searchQuery: string, difficultyFilter: Difficu
 
   const filteredBeatmaps = useMemo(() => {
     let result = beatmaps;
+    // Daily scope is the strongest filter: pin the list to exactly the featured
+    // set's difficulties. Search/difficulty are cleared on activation but still
+    // composed here so the pipeline stays a single source of truth.
+    if (dailyScopeIds !== null) {
+      result = result.filter((b) => dailyScopeIds.has(b.idv2));
+    }
     if (difficultyFilter !== null) {
       // Slider parked at the max means "no upper bound" — keep maps above the slider range.
       const effectiveMax = difficultyFilter.max >= DIFFICULTY_SLIDER_MAX ? Infinity : difficultyFilter.max;
@@ -57,7 +67,7 @@ export function useBeatmapCatalog(searchQuery: string, difficultyFilter: Difficu
       );
     }
     return result;
-  }, [beatmaps, searchQuery, difficultyFilter]);
+  }, [beatmaps, searchQuery, difficultyFilter, dailyScopeIds]);
 
   const isNoMatch = filteredBeatmaps.length === 0 && beatmaps.length > 0;
 

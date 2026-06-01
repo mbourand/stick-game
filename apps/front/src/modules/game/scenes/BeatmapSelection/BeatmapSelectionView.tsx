@@ -11,6 +11,7 @@ import type { SceneUIComponent } from "../Scene";
 import { difficultyColor, difficultyColorRgba } from "../shared/difficultyColor";
 import { BeatmapRadialButton } from "./BeatmapRadialButton";
 import type { BeatmapSelectionScene } from "./BeatmapSelectionScene";
+import { DailyPanel } from "./DailyPanel";
 import { LeftActionButton } from "./LeftActionButton";
 import { ScrollSurface } from "./ScrollSurface";
 import { useGlobalTypeahead } from "./useGlobalTypeahead";
@@ -32,7 +33,15 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
 
   const searchQuery = useStore(scene.searchQuery);
   const difficultyFilter = useStore(scene.difficultyFilter);
-  const { beatmaps, filteredBeatmaps, isNoMatch, isLoaded } = useBeatmapCatalog(searchQuery, difficultyFilter);
+  const dailyScopeIds = useStore(scene.dailyScopeBeatmapIds);
+  const { beatmaps, filteredBeatmaps, isNoMatch, isLoaded } = useBeatmapCatalog(
+    searchQuery,
+    difficultyFilter,
+    dailyScopeIds,
+  );
+
+  // Set of installed idv2 keys — lets the DailyPanel tell "owned" from "needs download".
+  const installedIdv2s = useMemo(() => new Set(beatmaps.map((b) => b.idv2)), [beatmaps]);
 
   useGlobalTypeahead(scene.searchQuery.update);
 
@@ -106,22 +115,34 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
           ))}
         </div>
 
-        {scene.leftActions.map((btn, index) => (
-          <LeftActionButton
-            key={btn.id}
-            yCenter={getLeftButtonYCenter(index, scene.leftActions.length)}
-            label={btn.label}
-            isFocused={focusedLeftButton === index}
-            // No onFocus: hovering must not focus the button. A click focuses
-            // it and runs the action. focusedIndex is intentionally NOT cleared
-            // here — keeping it preserved is what lets the overlay close restore
-            // the user to the beatmap they were on.
-            onClick={() => {
-              scene.focusedLeftButton.set(index);
-              btn.onActivate();
-            }}
-          />
-        ))}
+        {scene.leftActions.map((btn, index) =>
+          btn.id === "daily" ? (
+            <DailyPanel
+              key={btn.id}
+              scene={scene}
+              index={index}
+              yCenter={getLeftButtonYCenter(index, scene.leftActions.length)}
+              isFocused={focusedLeftButton === index}
+              installedIdv2s={installedIdv2s}
+              scopeActive={dailyScopeIds !== null}
+            />
+          ) : (
+            <LeftActionButton
+              key={btn.id}
+              yCenter={getLeftButtonYCenter(index, scene.leftActions.length)}
+              label={btn.label}
+              isFocused={focusedLeftButton === index}
+              // No onFocus: hovering must not focus the button. A click focuses
+              // it and runs the action. focusedIndex is intentionally NOT cleared
+              // here — keeping it preserved is what lets the overlay close restore
+              // the user to the beatmap they were on.
+              onClick={() => {
+                scene.focusedLeftButton.set(index);
+                btn.onActivate();
+              }}
+            />
+          ),
+        )}
 
         <ScrollSurface position="top" active={scrollZone === "top"} onPress={() => scene.scrollBy(-3)} />
         <ScrollSurface position="bottom" active={scrollZone === "bottom"} onPress={() => scene.scrollBy(+3)} />
@@ -135,7 +156,11 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
             type="text"
             placeholder="Search title, artist, mapper…"
             value={searchQuery}
-            onChange={(e) => scene.searchQuery.set(e.target.value)}
+            onChange={(e) => {
+              // Typing a search leaves the daily-only view back to the full library.
+              if (scene.dailyScopeBeatmapIds.get() !== null) scene.clearDailyScope();
+              scene.searchQuery.set(e.target.value);
+            }}
             className="w-full bg-black/30 backdrop-blur-sm border border-white/20 text-white text-xs tracking-[0.15em] uppercase placeholder-white/40 px-4 py-2 rounded focus:bg-black/50 focus:border-white/60 outline-none text-center"
           />
           {isNoMatch && (

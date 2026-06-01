@@ -22,6 +22,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model DailyFeature {
+  /// UTC day this pick is valid for, formatted YYYY-MM-DD.
+  date         String   @id
+  beatmapsetId Int
+  /// Full GetOsuDailyResponse payload, so we can serve the same pick after a
+  /// restart without re-querying osu! (validated against the Zod schema on read).
+  payload      Json
+  featuredAt   DateTime @default(now())
+}
+
 model Score {
   /// @zod.string().min(1).max(32)
   playerName      String

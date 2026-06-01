@@ -98,7 +98,7 @@ export const SettingsView: SceneUIComponent<SettingsScene> = ({ scene }) => {
 function useGamepadOptionsSync(scene: SettingsScene): void {
   useEffect(() => {
     const refresh = () => {
-      const detected: GamepadOption[] = [{ index: null, label: "None" }];
+      const detected: GamepadOption[] = [{ index: null, label: "Auto" }];
       for (const pad of navigator.getGamepads()) {
         if (pad) detected.push({ index: pad.index, label: `${pad.index}: ${pad.id}` });
       }

@@ -36,6 +36,8 @@ export type EngineOptions = {
 export class Engine {
   public readonly settings: Settings;
   public readonly audio = new Audio();
+  /** Auto-detecting gamepad. Exposed so the UI can react to connect/disconnect. */
+  public readonly gamepad: Gamepad;
   public readonly inputSystem: InputSystem;
   public readonly sceneManager = new SceneManager(this);
   public readonly playables = new PlayableScheduler();
@@ -59,8 +61,9 @@ export class Engine {
   constructor(opts: EngineOptions = {}) {
     this.settings = opts.settings ?? defaultSettings;
     this.clearColor = opts.clearColor ?? "black";
+    this.gamepad = new Gamepad(this.settings);
     this.inputSystem = new InputSystem([
-      createGamepadAdapter(new Gamepad(this.settings)),
+      createGamepadAdapter(this.gamepad),
       createKeyboardAdapter(),
     ]);
   }

@@ -10,7 +10,8 @@ type LeftActionButtonProps = {
   yCenter: number;
   label: string;
   isFocused: boolean;
-  onFocus: () => void;
+  /** Optional — left action buttons omit this so hover has no side effect. */
+  onFocus?: () => void;
   onClick: () => void;
 };
 

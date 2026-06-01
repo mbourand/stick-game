@@ -21,7 +21,8 @@ type BeatmapRadialButtonProps = {
   creator: string;
   difficulty: number;
   isFocused: boolean;
-  onFocus: () => void;
+  /** Optional — beatmap buttons intentionally omit this so hover has no side effect. */
+  onFocus?: () => void;
   onClick: () => void;
 };
 

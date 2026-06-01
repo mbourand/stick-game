@@ -6,6 +6,7 @@ import { MainMenuScene } from "../scenes/MainMenu/MainMenuScene";
 import type { Scene } from "../scenes/Scene";
 import { useTopScene, useTransition } from "../scenes/useScene";
 import { FirstRunImportOverlay } from "./FirstRunImportOverlay";
+import { GamepadToast } from "./GamepadToast";
 
 export const GameShell = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -31,6 +32,7 @@ export const GameShell = () => {
       <canvas ref={canvasRef} />
       <div className="absolute inset-0 pointer-events-none">
         {engine && <SceneUIOverlay engine={engine} />}
+        {engine && <GamepadToast engine={engine} />}
       </div>
       {engine && <FirstRunImportOverlay engine={engine} />}
     </EngineContext.Provider>

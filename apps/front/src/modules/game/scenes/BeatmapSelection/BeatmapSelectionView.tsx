@@ -94,10 +94,9 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
               // focus states stay mutually exclusive *visually*, even though
               // focusedIndex is preserved underneath as "last focused".
               isFocused={focusedIndex === index && focusedLeftButton === null}
-              onFocus={() => {
-                scene.focusedLeftButton.set(null);
-                scene.focusedIndex.set(index);
-              }}
+              // No onFocus: hovering a beatmap must not focus it (which would
+              // restart the preview audio + background). A click both focuses
+              // and launches the map.
               onClick={() => {
                 scene.focusedLeftButton.set(null);
                 scene.focusedIndex.set(index);
@@ -113,10 +112,10 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
             yCenter={getLeftButtonYCenter(index, scene.leftActions.length)}
             label={btn.label}
             isFocused={focusedLeftButton === index}
-            // focusedIndex is intentionally NOT cleared here — keeping it
-            // preserved is what lets the overlay close restore the user to
-            // the beatmap they were on.
-            onFocus={() => scene.focusedLeftButton.set(index)}
+            // No onFocus: hovering must not focus the button. A click focuses
+            // it and runs the action. focusedIndex is intentionally NOT cleared
+            // here — keeping it preserved is what lets the overlay close restore
+            // the user to the beatmap they were on.
             onClick={() => {
               scene.focusedLeftButton.set(index);
               btn.onActivate();

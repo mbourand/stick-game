@@ -7,7 +7,8 @@ import { SettingsView } from "./SettingsView";
 
 /**
  * Lists the connected gamepad options the user can cycle through. `null`
- * (no gamepad) is always the first option so the user can deselect.
+ * (Auto — first connected pad wins) is always the first option, so the user
+ * can fall back to automatic detection.
  */
 export type GamepadOption = { index: number | null; label: string };
 
@@ -29,7 +30,7 @@ export class SettingsScene extends Scene {
    * nav-left/right; rather than poll itself, it lets the view — the side
    * that already runs React effects — keep this current.
    */
-  public readonly gamepadOptions = new Store<readonly GamepadOption[]>([{ index: null, label: "None" }]);
+  public readonly gamepadOptions = new Store<readonly GamepadOption[]>([{ index: null, label: "Auto" }]);
 
   /**
    * Transition factory used when the user backs out. Supplied by whoever

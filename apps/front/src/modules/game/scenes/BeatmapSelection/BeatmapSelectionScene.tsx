@@ -6,6 +6,7 @@ import { BackgroundCrossfader } from "../../entities/BackgroundCrossfader";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
 import { easeInOutCubic } from "../../engine/animation/Easing";
 import type { Playable } from "../../engine/animation/Playable";
+import { call, sequence } from "../../engine/animation/Timeline";
 import { tween } from "../../engine/animation/Tween";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
@@ -192,13 +193,28 @@ export class BeatmapSelectionScene extends CanvasScene {
   }
 
   public override scenePlayable(slot: SceneTransitionSlot, durationMs: number): Playable | null {
-    if (slot !== "exit") return null;
-    return tween({
-      target: this.innerContainer,
-      to: { alpha: 0 },
-      duration: durationMs,
-      easing: easeInOutCubic,
-    });
+    if (slot === "exit") {
+      return tween({
+        target: this.innerContainer,
+        to: { alpha: 0 },
+        duration: durationMs,
+        easing: easeInOutCubic,
+      });
+    }
+    if (slot === "enter") {
+      return sequence([
+        call(() => {
+          this.innerContainer.alpha = 0;
+        }),
+        tween({
+          target: this.innerContainer,
+          to: { alpha: 1 },
+          duration: durationMs,
+          easing: easeInOutCubic,
+        }),
+      ]);
+    }
+    return null;
   }
 
   public setBeatmapCount(count: number): void {
@@ -334,10 +350,7 @@ export class BeatmapSelectionScene extends CanvasScene {
   public openDownloader(): void {
     // Preview audio is deliberately left playing — the downloader is just an
     // overlay scene and we want the user's track to keep going behind it.
-    void this.sceneManager.transitionPush(
-      new DownloaderScene(this.engine),
-      beatmapSelectionToDownloader,
-    );
+    void this.sceneManager.transitionPush(new DownloaderScene(this.engine), beatmapSelectionToDownloader);
   }
 
   public openFilter(): void {

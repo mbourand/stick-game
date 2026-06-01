@@ -4,6 +4,7 @@ import {
   GetOsuBeatmapsetsSearchQueryParamsDto,
   GetOsuBeatmapsetsSearchResponseDto,
 } from "./dto/routes/get-osu-beatmapsets-search.dto";
+import { GetOsuDailyResponseDto } from "./dto/routes/get-osu-daily.dto";
 import { ZodResponse } from "nestjs-zod";
 
 @Controller("osu")
@@ -14,5 +15,11 @@ export class OsuController {
   @ZodResponse({ type: GetOsuBeatmapsetsSearchResponseDto })
   async beatmapsetsSearch(@Query() query: GetOsuBeatmapsetsSearchQueryParamsDto) {
     return this.osuService.searchBeatmapsets(query.q);
+  }
+
+  @Get("daily")
+  @ZodResponse({ type: GetOsuDailyResponseDto })
+  async daily() {
+    return this.osuService.getDailyBeatmapset();
   }
 }

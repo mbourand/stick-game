@@ -97,15 +97,29 @@ export class BeatmapSelectionScene extends CanvasScene {
   public readonly difficultyFilter = new Store<DifficultyFilter | null>(null);
 
   /**
+   * When non-null, the list is scoped to exactly these beatmap idv2 keys — the
+   * difficulties of the featured daily beatmapset. Acts like a special filter;
+   * the DailyPanel toggles it on (after installing the set if needed) and off.
+   */
+  public readonly dailyScopeBeatmapIds = new Store<Set<string> | null>(null);
+
+  /**
    * Left-column actions, defined here so both the view (renders them) and the
    * scene (handles stick / d-pad / confirm input for them) see the same
    * source of truth — no need to push counts/handlers through a context.
    */
   public readonly leftActions: readonly LeftAction[] = [
+    // The daily button is the first left action so it joins the stick / d-pad
+    // focus stack. Its actual behaviour lives in the React DailyPanel (it needs
+    // the fetched daily data + install store), registered via setDailyActivate.
+    { id: "daily", label: "Daily", onActivate: () => this.dailyActivate?.() },
     { id: "filter", label: "Filters", onActivate: () => this.openFilter() },
     { id: "download", label: "Download maps", onActivate: () => this.openDownloader() },
     { id: "settings", label: "Settings", onActivate: () => this.openSettings() },
   ];
+
+  /** Handler the DailyPanel registers so gamepad "confirm" runs the same action as a click. */
+  private dailyActivate: (() => void) | null = null;
 
   /**
    * Continuous scroll position (float). A MotionValue so the view can drive
@@ -314,6 +328,30 @@ export class BeatmapSelectionScene extends CanvasScene {
 
   public scrollTo(index: number): void {
     this.scrollOffset.set(clamp(index, 0, Math.max(0, this.beatmapCount - 1)));
+  }
+
+  /**
+   * Enter "daily" mode: scope the list to the featured set's difficulties and
+   * drop any active search/difficulty filter so they're all visible. `idv2s`
+   * are ordered easiest→hardest; we remember the easiest so focus snaps to it
+   * once the (re)filtered list lands.
+   */
+  public activateDailyScope(idv2s: string[]): void {
+    this.searchQuery.set("");
+    this.difficultyFilter.set(null);
+    this.focusedLeftButton.set(null);
+    if (idv2s.length > 0) this.focusedBeatmapIdv2.set(idv2s[0]);
+    this.dailyScopeBeatmapIds.set(new Set(idv2s));
+  }
+
+  public clearDailyScope(): void {
+    this.dailyScopeBeatmapIds.set(null);
+  }
+
+  /** The DailyPanel registers (and clears) its click handler here so the scene's
+   * confirm/gamepad path can trigger the same behaviour. */
+  public setDailyActivate(fn: (() => void) | null): void {
+    this.dailyActivate = fn;
   }
 
   public toggleLeaderboardTab(): void {

@@ -2,6 +2,8 @@ import { fetchData, FetchDataParams } from "@/modules/fetching/fetcher";
 import {
   zOsuControllerBeatmapsetsSearchResponse,
   zOsuControllerBeatmapsetsSearchData,
+  zOsuControllerDailyResponse,
+  zOsuControllerDailyData,
   zScoresControllerSubmitScoreData,
   zScoresControllerSubmitScoreResponse,
   zScoresControllerGetBeatmapLeaderboardData,
@@ -17,6 +19,13 @@ const BACK_ROUTES = {
     bodySchema: zOsuControllerBeatmapsetsSearchData.shape.body,
     paramsSchema: zOsuControllerBeatmapsetsSearchData.shape.path,
     responseSchema: zOsuControllerBeatmapsetsSearchResponse,
+  },
+  "/osu/daily": {
+    method: "GET",
+    queryParamsSchema: zOsuControllerDailyData.shape.query,
+    bodySchema: zOsuControllerDailyData.shape.body,
+    paramsSchema: zOsuControllerDailyData.shape.path,
+    responseSchema: zOsuControllerDailyResponse,
   },
   "/scores/submit": {
     method: "POST",

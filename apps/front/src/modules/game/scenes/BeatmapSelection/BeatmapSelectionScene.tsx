@@ -1,5 +1,5 @@
 import { motionValue, type MotionValue } from "motion/react";
-import type { LeaderboardTab } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
+import { type LeaderboardTab, cycleLeaderboardTab } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
@@ -17,7 +17,9 @@ import { DownloaderScene } from "../Downloader/DownloaderScene";
 import type { DifficultyFilter } from "../Filter/filterTypes";
 import { FilterScene } from "../Filter/FilterScene";
 import { GameplayScene } from "../Gameplay/GameplayScene";
+import { ModsScene } from "../Mods/ModsScene";
 import { SettingsScene } from "../Settings/SettingsScene";
+import { type ActiveMods, NO_MODS } from "../../mods/mods";
 import { CanvasScene } from "../CanvasScene";
 import type { SceneTransitionSlot } from "../Scene";
 import { pickIndexAtY } from "../shared/verticalPicker";
@@ -63,6 +65,13 @@ export class BeatmapSelectionScene extends CanvasScene {
   public readonly focusedLeftButton = new Store<number | null>(null);
 
   /**
+   * Active mods for the next play. Lives on the scene (not in the Mods overlay)
+   * so the selection survives opening/closing the overlay, and is read by
+   * playMap when launching gameplay. Mirrors the difficultyFilter pattern.
+   */
+  public readonly mods = new Store<ActiveMods>(NO_MODS);
+
+  /**
    * Logical id of the currently/last focused beatmap. Lives on the scene
    * (not in a view ref) so it survives view remounts — used by reconciliation
    * to snap focus back to the same beatmap after a filter change or after
@@ -95,6 +104,7 @@ export class BeatmapSelectionScene extends CanvasScene {
     // focus stack. Its actual behaviour lives in the React DailyPanel (it needs
     // the fetched daily data + install store), registered via setDailyActivate.
     { id: "daily", label: "Daily", onActivate: () => this.dailyActivate?.() },
+    { id: "mods", label: "Mods", onActivate: () => this.openMods() },
     { id: "filter", label: "Filters", onActivate: () => this.openFilter() },
     { id: "download", label: "Download maps", onActivate: () => this.openDownloader() },
     { id: "settings", label: "Settings", onActivate: () => this.openSettings() },
@@ -137,8 +147,8 @@ export class BeatmapSelectionScene extends CanvasScene {
   public override onEntered() {
     this.onAction("back", () => this.goBack());
     this.onAction("confirm", () => void this.confirmFocused());
-    this.onAction("leaderboard-prev", () => this.toggleLeaderboardTab());
-    this.onAction("leaderboard-next", () => this.toggleLeaderboardTab());
+    this.onAction("leaderboard-prev", () => this.cycleLeaderboardTab(-1));
+    this.onAction("leaderboard-next", () => this.cycleLeaderboardTab(1));
     this.onActionRepeat("nav-up", () => this.navByDPad(-1));
     this.onActionRepeat("nav-down", () => this.navByDPad(+1));
     // Returning from an overlay (downloader/filter) — drop the transient
@@ -284,8 +294,8 @@ export class BeatmapSelectionScene extends CanvasScene {
     this.dailyActivate = fn;
   }
 
-  public toggleLeaderboardTab(): void {
-    this.leaderboardTab.set(this.leaderboardTab.get() === "global" ? "local" : "global");
+  public cycleLeaderboardTab(dir: -1 | 1): void {
+    this.leaderboardTab.set(cycleLeaderboardTab(this.leaderboardTab.get(), dir));
   }
 
   public async confirmFocused(): Promise<void> {
@@ -305,7 +315,7 @@ export class BeatmapSelectionScene extends CanvasScene {
     // from 0 and we don't want any overlap during the cross-fade.
     this.preview.stop();
     this.lastGameplayScene?.remove();
-    const gameplayScene = new GameplayScene(this.engine, map);
+    const gameplayScene = new GameplayScene(this.engine, map, this.mods.get());
     void this.sceneManager.transitionPush(gameplayScene, fadeOutResizeIn);
     this.lastGameplayScene = gameplayScene;
   }
@@ -319,6 +329,11 @@ export class BeatmapSelectionScene extends CanvasScene {
     // Preview audio is deliberately left playing — the downloader is just an
     // overlay scene and we want the user's track to keep going behind it.
     void this.sceneManager.transitionPush(new DownloaderScene(this.engine), crossfade);
+  }
+
+  public openMods(): void {
+    // Preview audio keeps playing under the overlay (same as filter/settings).
+    void this.sceneManager.transitionPush(new ModsScene(this.engine, this.mods), crossfade);
   }
 
   public openFilter(): void {

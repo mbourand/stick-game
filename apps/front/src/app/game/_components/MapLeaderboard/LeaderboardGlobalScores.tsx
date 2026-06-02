@@ -7,11 +7,13 @@ const VISIBLE_ROWS = 5;
 
 type LeaderboardGlobalScoresProps = {
   beatmapId: string;
+  /** Show the modded board (multiplied scores) instead of the no-mods board. */
+  modded?: boolean;
 };
 
-export const LeaderboardGlobalScores = ({ beatmapId }: LeaderboardGlobalScoresProps) => {
+export const LeaderboardGlobalScores = ({ beatmapId, modded = false }: LeaderboardGlobalScoresProps) => {
   const leaderboardQuery = useQuery(
-    scoresBeatmapLeaderboardQueryOptions(beatmapId, LATEST_SCORE_VERSION),
+    scoresBeatmapLeaderboardQueryOptions(beatmapId, LATEST_SCORE_VERSION, modded),
   );
 
   if (leaderboardQuery.isLoading) return <Status text="Loading…" />;
@@ -30,6 +32,7 @@ export const LeaderboardGlobalScores = ({ beatmapId }: LeaderboardGlobalScoresPr
           accuracy={entry.accuracy}
           maxCombo={entry.maxCombo}
           missCount={entry.missCount}
+          mods={entry.mods}
         />
       ))}
     </ol>

@@ -1,6 +1,7 @@
 import { BeatmapEndedEventType } from "@/modules/game/events/impl/BeatmapEndedEvent";
 import { runKickAnalysis } from "@/modules/audio/kick-analysis/runKickAnalysis";
 import type { KickEvent } from "@/modules/audio/kick-analysis/analyze";
+import { runTimeStretch } from "@/modules/audio/time-stretch/runTimeStretch";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { type SettingsListType } from "../../../settings/Settings";
 import { EventEmitter } from "../../../utils/EventEmitter";
@@ -39,6 +40,7 @@ import { Note } from "../../note/Note";
 import { NoteColor } from "../../note/NoteColor";
 import { NoteSpawner } from "../../note/NoteSpawner";
 import { ScoreCounter } from "../../score/ScoreCounter";
+import { type ActiveMods, NO_MODS, applyRateToNotes, getScoreMultiplier } from "../../mods/mods";
 import { sharedCircle } from "../../sharedCircle";
 import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "../../utils/constants";
 import { PauseScene } from "../Pause/PauseScene";
@@ -55,6 +57,7 @@ export class GameplayScene extends CanvasScene {
   }
 
   private parsedMap: ParsedMap;
+  private mods: ActiveMods;
   private settings: SettingsListType;
 
   private events = new EventEmitter<GameplayEvents>();
@@ -81,9 +84,10 @@ export class GameplayScene extends CanvasScene {
    */
   private retainMusicOnDestroy = false;
 
-  constructor(engine: Engine, parsedMap: ParsedMap) {
+  constructor(engine: Engine, parsedMap: ParsedMap, mods: ActiveMods = NO_MODS) {
     super(engine);
     this.parsedMap = parsedMap;
+    this.mods = mods;
     // Read-only snapshot of settings at the moment play begins. Settings can't
     // change mid-game (no in-gameplay settings menu), so this is never patched.
     this.settings = engine.settings.get();
@@ -96,9 +100,14 @@ export class GameplayScene extends CanvasScene {
     this.clock = new BeatmapClock(musicContext);
     // Bar height scales with the circle so the visualizer keeps its proportions.
     this.audioVisualizer = new CircleAudioVisualizer(musicContext, 40, this.displayedRadius, 25 * scale, engine.settings);
-    this.noteSpawner = new NoteSpawner(this.parsedMap.notes, this.events, this.clock, this.settings.scrollDuration);
+    // Notes are re-timed into rate-adjusted coordinates so the rest of the
+    // pipeline (clock, scroll, judge) needs no rate awareness; the audio plays
+    // at the matching playbackRate in onEntered.
+    const ratedNotes = applyRateToNotes(this.parsedMap.notes, this.mods.rate);
+    this.noteSpawner = new NoteSpawner(ratedNotes, this.events, this.clock, this.settings.scrollDuration);
     this.scoreCounter = new ScoreCounter(
       this.parsedMap.notes.length + this.parsedMap.notes.filter((n) => n.isHold).length,
+      getScoreMultiplier(this.mods),
     );
 
     // SFX preloading lives here (rather than on the engine) because they're
@@ -138,25 +147,33 @@ export class GameplayScene extends CanvasScene {
     );
 
     const music = this.engine.audio.music;
-    const buffer = await music.loadBuffer(this.parsedMap.audioUrl);
+    const rawBuffer = await music.loadBuffer(this.parsedMap.audioUrl);
 
-    // Precompute the kick timeline from the whole waveform (HPSS onset
-    // analysis, off the main thread) before playback starts, so the visualizer
-    // can pulse on every percussive hit synced to the song clock. Failure here
-    // is non-fatal — the spectrum bars still react to the live FFT.
-    let kickEvents: KickEvent[] = [];
-    try {
-      kickEvents = await runKickAnalysis(buffer, this.parsedMap.audioUrl);
-    } catch {
-      kickEvents = [];
-    }
+    // Two independent, heavy load-time passes, run concurrently behind the fade:
+    //  - Kick timeline: HPSS onset analysis over the whole waveform (off-thread)
+    //    so the visualizer can pulse on every percussive hit. Always on the raw
+    //    buffer (song-time); we scale the timeline by rate below. Non-fatal — the
+    //    spectrum bars still react to the live FFT if it fails.
+    //  - Rate stretch: a pitch-preserving tempo change so the rate mod doesn't
+    //    also shift the song's pitch. Played back at normal speed (no playbackRate),
+    //    which keeps the clock's sample-accurate scheduling untouched.
+    const [kickEvents, playbackBuffer] = await Promise.all([
+      runKickAnalysis(rawBuffer, this.parsedMap.audioUrl).catch(() => [] as KickEvent[]),
+      this.mods.rate === 1
+        ? Promise.resolve(rawBuffer)
+        : runTimeStretch(music.getAudioContext(), rawBuffer, this.mods.rate, this.parsedMap.audioUrl),
+    ]);
 
     await fadeIn;
 
     const audioStartTimeSec = this.clock.schedule(this.noteSpawner.getInitialOffsetMs());
-    const source = music.play(BEATMAP_AUDIO_ID, buffer, { startAt: audioStartTimeSec });
+    const source = music.play(BEATMAP_AUDIO_ID, playbackBuffer, { startAt: audioStartTimeSec });
     this.audioVisualizer.connectSource(source);
-    this.audioVisualizer.setKickTimeline(kickEvents, () => this.clock.now());
+    // Kick times are in song-time; the clock runs in rate-adjusted real time (notes
+    // are pre-scaled), so divide by rate to keep the pulses synced to the stretched audio.
+    const ratedKicks =
+      this.mods.rate === 1 ? kickEvents : kickEvents.map((k) => ({ ...k, tMs: k.tMs / this.mods.rate }));
+    this.audioVisualizer.setKickTimeline(ratedKicks, () => this.clock.now());
 
     this.root.add(this.noteSpawner);
 
@@ -210,7 +227,7 @@ export class GameplayScene extends CanvasScene {
 
   public async retryBeatmap(): Promise<void> {
     await this.closePauseWithFade();
-    const next = new GameplayScene(this.engine, this.parsedMap);
+    const next = new GameplayScene(this.engine, this.parsedMap, this.mods);
     void this.sceneManager.transitionReplace(next, fadeOut);
   }
 
@@ -349,7 +366,7 @@ export class GameplayScene extends CanvasScene {
     // scene owns score submission + leaderboard display from here on.
     this.retainMusicOnDestroy = true;
     void this.sceneManager.transitionReplace(
-      new ScoresScene(this.engine, this.parsedMap, this.scoreCounter),
+      new ScoresScene(this.engine, this.parsedMap, this.scoreCounter, this.mods),
       fadeResizeRevealSequenced,
     );
   }

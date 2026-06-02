@@ -25,12 +25,14 @@ export class ScoreCounter {
   private maxScore: number;
   private bonus: number;
 
-  constructor(noteCountToBeExpected: number) {
+  constructor(noteCountToBeExpected: number, scoreMultiplier = 1) {
     this.combo = 0;
     this.maxCombo = 0;
     this.score = 0;
     this.totalNotes = noteCountToBeExpected;
-    this.maxScore = MAX_SCORE;
+    // Scaling the cap (rather than the final readout) makes the live HUD score,
+    // getScore(), and the "SS == max" invariant all scale together for free.
+    this.maxScore = MAX_SCORE * scoreMultiplier;
     this.bonus = MAX_BONUS_VALUE;
     this.playedNotes = 0;
   }

@@ -25,7 +25,11 @@ export class ScoresController {
     @Param() params: GetScoresBeatmapLeaderboardParamsDto,
     @Query() query: GetScoresBeatmapLeaderboardQueryParamsDto,
   ) {
-    const leaderboard = await this.scores.getBeatmapLeaderboard(params.beatmapId, query.scoreVersion);
+    const leaderboard = await this.scores.getBeatmapLeaderboard(
+      params.beatmapId,
+      query.scoreVersion,
+      query.modded,
+    );
     return {
       leaderboard: leaderboard.map(toResponseScore),
     };
@@ -37,7 +41,12 @@ export class ScoresController {
     @Param() params: GetScoresBeatmapPersonalBestParamsDto,
     @Query() query: GetScoresBeatmapPersonalBestQueryParamsDto,
   ) {
-    const result = await this.scores.getBeatmapPersonalBest(params.beatmapId, params.playerName, query.scoreVersion);
+    const result = await this.scores.getBeatmapPersonalBest(
+      params.beatmapId,
+      params.playerName,
+      query.scoreVersion,
+      query.modded,
+    );
     if (!result) {
       throw new HttpException("Personal best not found", HttpStatusCode.NotFound);
     }

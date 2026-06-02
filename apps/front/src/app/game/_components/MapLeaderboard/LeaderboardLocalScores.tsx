@@ -30,6 +30,7 @@ export const LeaderboardLocalScores = ({ beatmapId }: LeaderboardLocalScoresProp
           accuracy={entry.accuracy}
           maxCombo={entry.maxCombo}
           missCount={entry.missCount}
+          mods={entry.mods}
         />
       ))}
     </ol>

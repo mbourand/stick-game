@@ -1,6 +1,6 @@
 import type { Engine } from "../../engine/Engine";
 import { Store } from "../../engine/state/Store";
-import { downloaderToBeatmapSelection } from "../../engine/transitions/factories/downloaderToBeatmapSelection";
+import { crossfade } from "../transitions";
 import { Scene } from "../Scene";
 import { DownloaderView } from "./DownloaderView";
 
@@ -43,7 +43,7 @@ export class DownloaderScene extends Scene {
   }
 
   public close(): void {
-    void this.sceneManager.transitionPop(downloaderToBeatmapSelection);
+    void this.sceneManager.transitionPop(crossfade);
   }
 
   public confirmFocused(): void {

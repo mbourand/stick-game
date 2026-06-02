@@ -1,10 +1,7 @@
-import { sharedCircle } from "../../sharedCircle";
-import { easeInOutCubic } from "../animation/Easing";
 import type { Playable } from "../animation/Playable";
 import { call, parallel, sequence, wait } from "../animation/Timeline";
-import { tween } from "../animation/Tween";
 import type { TransitionContext } from "./TransitionContext";
-import { CIRCLE_RESIZE_DURATION_MS, ENTER_DURATION_MS, EXIT_DURATION_MS } from "./durations";
+import { ENTER_DURATION_MS, EXIT_DURATION_MS } from "./durations";
 
 export type PhaseShellOpts = {
   /** Override the canonical EXIT duration. Set to 0 for overlays that don't fade out the from-scene. */
@@ -55,20 +52,6 @@ export function phaseShell(ctx: TransitionContext, opts: PhaseShellOpts = {}): P
       ),
     ]),
   );
-}
-
-/**
- * Tween the persistent ring's radius — the workhorse of every transition's
- * choreography. Canonical duration + easing live here so factories don't
- * re-spell them.
- */
-export function resizeRing(ctx: TransitionContext, toRadius: number): Playable {
-  return tween({
-    target: sharedCircle(ctx.engine),
-    to: { radius: toRadius },
-    duration: CIRCLE_RESIZE_DURATION_MS,
-    easing: easeInOutCubic,
-  });
 }
 
 function compact<T>(items: (T | null | undefined)[]): T[] {

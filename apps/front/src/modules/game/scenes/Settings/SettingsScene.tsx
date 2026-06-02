@@ -25,10 +25,10 @@ export class SettingsScene extends Scene {
    */
   public readonly isEditingText = new Store<boolean>(false);
   /**
-   * Connected gamepads, refreshed by the view (which polls
-   * `navigator.getGamepads`). The scene needs the list to cycle on
-   * nav-left/right; rather than poll itself, it lets the view — the side
-   * that already runs React effects — keep this current.
+   * Connected gamepads the user can cycle through on nav-left/right. Kept
+   * current by the scene itself — it seeds the list on enter and refreshes it
+   * from the `Gamepad`'s `onConnectedChanged` event, so the scene doesn't
+   * depend on its view pumping `navigator.getGamepads` in.
    */
   public readonly gamepadOptions = new Store<readonly GamepadOption[]>([{ index: null, label: "Auto" }]);
 
@@ -53,6 +53,20 @@ export class SettingsScene extends Scene {
     this.onActionRepeat("nav-right", () => this.adjust(+1));
     this.onStickRepeat("y", (dir) => this.moveFocus(dir));
     this.onStickRepeat("x", (dir) => this.adjust(dir));
+
+    this.refreshGamepadOptions();
+    this.registerDisposer(
+      this.engine.gamepad.events.on("onConnectedChanged", () => this.refreshGamepadOptions()),
+    );
+  }
+
+  /** Rebuild the controller picker from the live list of connected pads. */
+  private refreshGamepadOptions(): void {
+    const options: GamepadOption[] = [{ index: null, label: "Auto" }];
+    for (const pad of this.engine.gamepad.listConnected()) {
+      options.push({ index: pad.index, label: `${pad.index}: ${pad.id}` });
+    }
+    this.gamepadOptions.set(options);
   }
 
   public moveFocus(delta: -1 | 1): void {
@@ -64,15 +78,6 @@ export class SettingsScene extends Scene {
   public setFocused(index: number): void {
     if (index < 0 || index >= this.rows.length) return;
     this.focused.set(index);
-  }
-
-  /**
-   * Updates the gamepad option list from React. Keeps the user's current
-   * selection valid: if the formerly-selected pad has disconnected, the next
-   * write will normalise focus the next time the user cycles.
-   */
-  public setGamepadOptions(options: readonly GamepadOption[]): void {
-    this.gamepadOptions.set(options);
   }
 
   /**

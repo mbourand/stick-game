@@ -13,14 +13,10 @@ import type { Engine } from "../../engine/Engine";
 import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
 import { LruCache } from "../../utils/LruCache";
-import { beatmapSelectionToDownloader } from "../../engine/transitions/factories/beatmapSelectionToDownloader";
-import { beatmapSelectionToFilter } from "../../engine/transitions/factories/beatmapSelectionToFilter";
-import { beatmapSelectionToGameplay } from "../../engine/transitions/factories/beatmapSelectionToGameplay";
-import { beatmapSelectionToMainMenu } from "../../engine/transitions/factories/beatmapSelectionToMainMenu";
-import { beatmapSelectionToSettings } from "../../engine/transitions/factories/beatmapSelectionToSettings";
-import { settingsToBeatmapSelection } from "../../engine/transitions/factories/settingsToBeatmapSelection";
+import { crossfade, fadeOutResizeIn, fadeThenResize } from "../transitions";
 import { CircleAudioVisualizer } from "../../flair/CircleAudioVisualizer";
 import { sharedCircle } from "../../sharedCircle";
+import { BEATMAP_SELECTION_CIRCLE_RADIUS } from "../../utils/constants";
 import { DownloaderScene } from "../Downloader/DownloaderScene";
 import type { DifficultyFilter } from "../Filter/filterTypes";
 import { FilterScene } from "../Filter/FilterScene";
@@ -58,8 +54,6 @@ export type LeftAction = {
   onActivate: () => void;
 };
 
-type Vec2 = { x: number; y: number };
-
 const PREVIEW_AUDIO_ID = "beatmap_preview_audio";
 const PREVIEW_AUDIO_VOLUME = 0.7;
 const BACKGROUND_CROSSFADE_MS = 300;
@@ -75,6 +69,9 @@ const SIDE_COMMIT_THRESHOLD = 0.3;
 export class BeatmapSelectionScene extends CanvasScene {
   public readonly id = "beatmap-selection";
   public override readonly UI = BeatmapSelectionView;
+  public override get ringRadius(): number {
+    return BEATMAP_SELECTION_CIRCLE_RADIUS;
+  }
 
   public readonly focusedIndex = new Store<number | null>(null);
   public readonly scrollZone = new Store<ScrollZone>(null);
@@ -378,25 +375,25 @@ export class BeatmapSelectionScene extends CanvasScene {
     this.stopPreviewAudio();
     this.lastGameplayScene?.remove();
     const gameplayScene = new GameplayScene(this.engine, map);
-    void this.sceneManager.transitionPush(gameplayScene, beatmapSelectionToGameplay);
+    void this.sceneManager.transitionPush(gameplayScene, fadeOutResizeIn);
     this.lastGameplayScene = gameplayScene;
   }
 
   public goBack(): void {
     this.stopPreviewAudio();
-    void this.sceneManager.transitionPop(beatmapSelectionToMainMenu);
+    void this.sceneManager.transitionPop(fadeThenResize);
   }
 
   public openDownloader(): void {
     // Preview audio is deliberately left playing — the downloader is just an
     // overlay scene and we want the user's track to keep going behind it.
-    void this.sceneManager.transitionPush(new DownloaderScene(this.engine), beatmapSelectionToDownloader);
+    void this.sceneManager.transitionPush(new DownloaderScene(this.engine), crossfade);
   }
 
   public openFilter(): void {
     void this.sceneManager.transitionPush(
       new FilterScene(this.engine, this.difficultyFilter),
-      beatmapSelectionToFilter,
+      crossfade,
     );
   }
 
@@ -405,8 +402,8 @@ export class BeatmapSelectionScene extends CanvasScene {
     // downloader / filter overlays) — the user is just popping a config panel
     // on top, not navigating away.
     void this.sceneManager.transitionPush(
-      new SettingsScene(this.engine, settingsToBeatmapSelection),
-      beatmapSelectionToSettings,
+      new SettingsScene(this.engine, crossfade),
+      crossfade,
     );
   }
 
@@ -416,7 +413,7 @@ export class BeatmapSelectionScene extends CanvasScene {
   }
 
   private processStickInput(dt: number): void {
-    const stick = pickActiveStick(this.getStick("left"), this.getStick("right"));
+    const stick = this.getActiveStick(STICK_ACTIVE_THRESHOLD);
     if (!stick) {
       this.scrollZone.set(null);
       return;
@@ -516,14 +513,6 @@ function sameMedia(a: FocusedBeatmapMedia | null, b: FocusedBeatmapMedia | null)
   if (a === b) return true;
   if (!a || !b) return false;
   return a.audioUrl === b.audioUrl && a.backgroundUrl === b.backgroundUrl;
-}
-
-function pickActiveStick(left: Vec2, right: Vec2): Vec2 | null {
-  const lm = Math.hypot(left.x, left.y);
-  const rm = Math.hypot(right.x, right.y);
-  const dominantMagnitude = Math.max(lm, rm);
-  if (dominantMagnitude < STICK_ACTIVE_THRESHOLD) return null;
-  return lm >= rm ? left : right;
 }
 
 function clamp(v: number, lo: number, hi: number): number {

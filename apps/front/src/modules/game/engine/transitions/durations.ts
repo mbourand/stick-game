@@ -26,6 +26,3 @@ export const ENTER_DURATION_MS = SCENE_TRANSITION_DURATION_MS;
  * than the UI exit so the canvas is fully gone before the ring resizes.
  */
 export const EXIT_FADE_DURATION_MS = SCENE_TRANSITION_DURATION_MS / 2;
-
-/** How long the persistent ring takes to resize between scenes. */
-export const CIRCLE_RESIZE_DURATION_MS = 450;

@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Fragment, useEffect } from "react";
+import { Fragment } from "react";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
@@ -20,8 +20,6 @@ export const SettingsView: SceneUIComponent<SettingsScene> = ({ scene }) => {
   const liveSettings = useSettings();
   const gamepadOptions = useStore(scene.gamepadOptions);
   const { scale } = useViewport();
-
-  useGamepadOptionsSync(scene);
 
   // Player-name typeahead. Active only while a text row is in edit mode.
   // Letters/digits append, Backspace pops — Escape/Enter exit edit mode
@@ -89,32 +87,6 @@ export const SettingsView: SceneUIComponent<SettingsScene> = ({ scene }) => {
     </motion.div>
   );
 };
-
-/**
- * Refresh the scene's gamepad list from `navigator.getGamepads` whenever a
- * pad connects / disconnects. Also polls at 1Hz, because the GamepadAPI
- * doesn't reliably emit events on every browser.
- */
-function useGamepadOptionsSync(scene: SettingsScene): void {
-  useEffect(() => {
-    const refresh = () => {
-      const detected: GamepadOption[] = [{ index: null, label: "Auto" }];
-      for (const pad of navigator.getGamepads()) {
-        if (pad) detected.push({ index: pad.index, label: `${pad.index}: ${pad.id}` });
-      }
-      scene.setGamepadOptions(detected);
-    };
-    refresh();
-    window.addEventListener("gamepadconnected", refresh);
-    window.addEventListener("gamepaddisconnected", refresh);
-    const interval = window.setInterval(refresh, 1000);
-    return () => {
-      window.removeEventListener("gamepadconnected", refresh);
-      window.removeEventListener("gamepaddisconnected", refresh);
-      window.clearInterval(interval);
-    };
-  }, [scene]);
-}
 
 const SectionHeader = ({ title, first }: { title: string; first: boolean }) => (
   <li

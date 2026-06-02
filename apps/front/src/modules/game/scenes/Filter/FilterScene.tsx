@@ -1,6 +1,6 @@
 import type { Engine } from "../../engine/Engine";
 import type { Store } from "../../engine/state/Store";
-import { filterToBeatmapSelection } from "../../engine/transitions/factories/filterToBeatmapSelection";
+import { crossfade } from "../transitions";
 import { Scene } from "../Scene";
 import { FilterView } from "./FilterView";
 import type { DifficultyFilter } from "./filterTypes";
@@ -27,6 +27,6 @@ export class FilterScene extends Scene {
   }
 
   public close(): void {
-    void this.sceneManager.transitionPop(filterToBeatmapSelection);
+    void this.sceneManager.transitionPop(crossfade);
   }
 }

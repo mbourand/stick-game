@@ -20,8 +20,7 @@ import { BEATMAP_AUDIO_ID, GameplayScene } from "../Gameplay/GameplayScene";
 import { CanvasScene } from "../CanvasScene";
 import type { SceneTransitionSlot } from "../Scene";
 import { ScoresView } from "./ScoresView";
-import { scoresToBeatmapSelection } from "../../engine/transitions/factories/scoresToBeatmapSelection";
-import { scoresToGameplay } from "../../engine/transitions/factories/scoresToGameplay";
+import { fadeOutResizeIn, fadeResizeRevealStaged } from "../transitions";
 
 const MUSIC_FADE_OUT_MS = 500;
 
@@ -54,6 +53,9 @@ const INITIAL_SUBMISSION: SubmissionState = {
 export class ScoresScene extends CanvasScene {
   public readonly id = "scores";
   public override readonly UI = ScoresView;
+  public override get ringRadius(): number {
+    return SCORES_CIRCLE_RADIUS;
+  }
 
   public readonly parsedMap: ParsedMap;
   public readonly scoreCounter: ScoreCounter;
@@ -151,11 +153,11 @@ export class ScoresScene extends CanvasScene {
 
   public retry(): void {
     const next = new GameplayScene(this.engine, this.parsedMap);
-    void this.sceneManager.transitionReplace(next, scoresToGameplay);
+    void this.sceneManager.transitionReplace(next, fadeOutResizeIn);
   }
 
   public backToSelection(): void {
-    void this.sceneManager.transitionPop(scoresToBeatmapSelection);
+    void this.sceneManager.transitionPop(fadeResizeRevealStaged);
   }
 
   /**

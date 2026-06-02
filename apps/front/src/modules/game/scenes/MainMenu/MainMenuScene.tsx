@@ -2,9 +2,7 @@ import { StickDotsEntity } from "../../entities/StickDotsEntity";
 import type { Engine } from "../../engine/Engine";
 import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
-import { mainMenuToBeatmapSelection } from "../../engine/transitions/factories/mainMenuToBeatmapSelection";
-import { mainMenuToSettings } from "../../engine/transitions/factories/mainMenuToSettings";
-import { settingsToMainMenu } from "../../engine/transitions/factories/settingsToMainMenu";
+import { crossfade, resizeBetween } from "../transitions";
 import { sharedCircle } from "../../sharedCircle";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import { BeatmapSelectionScene } from "../BeatmapSelection/BeatmapSelectionScene";
@@ -18,6 +16,9 @@ const STICK_EDGE_THRESHOLD = 0.9;
 export class MainMenuScene extends CanvasScene {
   public readonly id = "main-menu";
   public override readonly UI = MainMenuView;
+  public override get ringRadius(): number {
+    return GAME_CIRCLE_DISPLAYED_RADIUS;
+  }
 
   public readonly focused = new Store<ButtonId | null>(null);
 
@@ -54,17 +55,11 @@ export class MainMenuScene extends CanvasScene {
   }
 
   public goToBeatmapSelection() {
-    void this.sceneManager.transitionPush(
-      new BeatmapSelectionScene(this.engine),
-      mainMenuToBeatmapSelection,
-    );
+    void this.sceneManager.transitionPush(new BeatmapSelectionScene(this.engine), resizeBetween);
   }
 
   public openSettings() {
-    void this.sceneManager.transitionPush(
-      new SettingsScene(this.engine, settingsToMainMenu),
-      mainMenuToSettings,
-    );
+    void this.sceneManager.transitionPush(new SettingsScene(this.engine, crossfade), crossfade);
   }
 
   public override update(tick: TickContext) {

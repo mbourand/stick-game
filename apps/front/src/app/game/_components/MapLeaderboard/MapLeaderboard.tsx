@@ -2,10 +2,20 @@ import { LeaderboardGlobalScores } from "@/app/game/_components/MapLeaderboard/L
 import { LeaderboardLocalScores } from "@/app/game/_components/MapLeaderboard/LeaderboardLocalScores";
 import { twMerge } from "tailwind-merge";
 
-export type LeaderboardTab = "global" | "local";
+export type LeaderboardTab = "global" | "modded" | "local";
+
+/** Bumper cycle order across the three leaderboards. */
+export const LEADERBOARD_TABS: readonly LeaderboardTab[] = ["global", "modded", "local"];
+
+/** Step to the next/previous leaderboard tab, wrapping around the ends. */
+export const cycleLeaderboardTab = (current: LeaderboardTab, dir: -1 | 1): LeaderboardTab => {
+  const next = (LEADERBOARD_TABS.indexOf(current) + dir + LEADERBOARD_TABS.length) % LEADERBOARD_TABS.length;
+  return LEADERBOARD_TABS[next];
+};
 
 const TAB_LABEL: Record<LeaderboardTab, string> = {
   global: "Top 5",
+  modded: "Modded",
   local: "Your scores",
 };
 
@@ -24,10 +34,10 @@ export const MapLeaderboard = ({ beatmapId, tab, className }: MapLeaderboardProp
         <BumperHint label="R" />
       </div>
       <div className="bg-black/30 backdrop-blur-sm rounded px-4 py-3">
-        {tab === "global" ? (
-          <LeaderboardGlobalScores beatmapId={beatmapId} />
-        ) : (
+        {tab === "local" ? (
           <LeaderboardLocalScores beatmapId={beatmapId} />
+        ) : (
+          <LeaderboardGlobalScores beatmapId={beatmapId} modded={tab === "modded"} />
         )}
       </div>
     </div>

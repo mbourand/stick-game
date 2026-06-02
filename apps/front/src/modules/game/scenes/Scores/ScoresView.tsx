@@ -4,6 +4,7 @@ import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceM
 import { useStore } from "../../engine/state/useStore";
 import { useViewport } from "../../engine/state/useViewport";
 import { JudgmentKind } from "../../judge/constants";
+import { describeMods } from "../../mods/mods";
 import { SCORES_CIRCLE_RADIUS } from "../../utils/constants";
 import type { SceneUIComponent } from "../Scene";
 import { FooterHints } from "./components/FooterHints";
@@ -67,6 +68,8 @@ export const ScoresView: SceneUIComponent<ScoresScene> = ({ scene }) => {
           <ResultHeader parsedMap={scene.parsedMap} />
           <HeroStats score={score} accuracy={accuracy} missCount={missCount} />
 
+          {scene.modded && <ModsPill label={describeMods(scene.mods)} />}
+
           <div className="mt-6">
             <TabBar scene={scene} />
           </div>
@@ -94,6 +97,18 @@ export const ScoresView: SceneUIComponent<ScoresScene> = ({ scene }) => {
           </div>
         </div>
       </div>
+    </motion.div>
+  );
+};
+
+/** Amber pill under the hero, shown only for modded plays, naming the active mods. */
+const ModsPill = ({ label }: { label: string }) => {
+  const motionProps = useScenePresenceMotion({ ...fade({ y: -8 }), enterDelay: 0.2 });
+  return (
+    <motion.div className="mt-3" {...motionProps}>
+      <span className="inline-flex items-center px-3 py-1 rounded-full border border-amber-300/40 bg-amber-300/10 text-amber-200 text-[11px] uppercase tracking-[0.25em]">
+        {label}
+      </span>
     </motion.div>
   );
 };

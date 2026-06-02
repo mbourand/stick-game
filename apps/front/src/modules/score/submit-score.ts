@@ -13,6 +13,10 @@ type SubmitScoreParams = {
   greatCount: number;
   perfectCount: number;
   beatmapId: string;
+  /** Whether any mod was active — selects the modded vs no-mods leaderboard. */
+  modded: boolean;
+  /** Human-readable mod summary (e.g. "Rate ×1.50"), shown as a leaderboard badge. */
+  mods: string;
 };
 
 export const submitScore = async (params: SubmitScoreParams) => {
@@ -29,6 +33,7 @@ export const submitScore = async (params: SubmitScoreParams) => {
       goodCount: params.goodCount,
       greatCount: params.greatCount,
       perfectCount: params.perfectCount,
+      mods: params.mods,
       submissionTime: new Date(),
       scoreVersion: LATEST_SCORE_VERSION,
     }),

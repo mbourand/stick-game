@@ -56,6 +56,11 @@ model Score {
   submissionTime  DateTime @default(now())
   /// @zod.number().int().nonnegative()
   scoreVersion    Int
+  /// Whether the play used mods — splits the modded board from the no-mods board.
+  modded          Boolean  @default(false)
+  /// @zod.string().max(64)
+  /// Human-readable mod summary (e.g. "Rate ×1.50"); "" for no-mods plays.
+  mods            String   @default("")
 
-  @@id([playerName, beatmapId, scoreVersion])
+  @@id([playerName, beatmapId, scoreVersion, modded])
 }

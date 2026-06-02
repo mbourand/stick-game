@@ -1,4 +1,5 @@
 import { ScoreRow } from "@/app/game/_components/MapLeaderboard/ScoreRow";
+import { LEADERBOARD_TABS, type LeaderboardTab } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
 import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
 import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/queries/scores-beatmap-leaderboard";
 import { LATEST_SCORE_VERSION } from "@/modules/score/constants";
@@ -10,7 +11,17 @@ import type { ScoresScene, SubmissionState } from "../ScoresScene";
 /** Approximate per-row stride (row height + gap) for centering the player's row. */
 const ROW_STRIDE = 36;
 
-type Row = { key: string; playerName: string; score: number; accuracy: number; maxCombo: number; missCount: number };
+const TAB_LABEL: Record<LeaderboardTab, string> = { global: "Global", modded: "Modded", local: "Local" };
+
+type Row = {
+  key: string;
+  playerName: string;
+  score: number;
+  accuracy: number;
+  maxCombo: number;
+  missCount: number;
+  mods?: string;
+};
 
 export const RankTab = ({ scene }: { scene: ScoresScene }) => {
   const tab = useStore(scene.leaderboardTab);
@@ -20,51 +31,57 @@ export const RankTab = ({ scene }: { scene: ScoresScene }) => {
   const localQuery = useQuery(
     localScoresBeatmapLeaderboardQueryOptions(scene.parsedMap.id, LATEST_SCORE_VERSION),
   );
-  const globalQuery = useQuery(
-    scoresBeatmapLeaderboardQueryOptions(scene.parsedMap.id, LATEST_SCORE_VERSION),
+  const noModsQuery = useQuery(
+    scoresBeatmapLeaderboardQueryOptions(scene.parsedMap.id, LATEST_SCORE_VERSION, false),
+  );
+  const moddedQuery = useQuery(
+    scoresBeatmapLeaderboardQueryOptions(scene.parsedMap.id, LATEST_SCORE_VERSION, true),
   );
 
-  const isGlobal = tab === "global";
-  const query = isGlobal ? globalQuery : localQuery;
+  const isLocal = tab === "local";
+  const globalQuery = tab === "modded" ? moddedQuery : noModsQuery;
+  const query = isLocal ? localQuery : globalQuery;
 
-  const rows: Row[] = isGlobal
-    ? (globalQuery.data?.leaderboard ?? []).map((e, i) => ({
-        key: `${e.playerName}-${i}`,
-        playerName: e.playerName,
-        score: e.score,
-        accuracy: e.accuracy,
-        maxCombo: e.maxCombo,
-        missCount: e.missCount,
-      }))
-    : (localQuery.data ?? []).map((e) => ({
+  const rows: Row[] = isLocal
+    ? (localQuery.data ?? []).map((e) => ({
         key: String(e.id),
         playerName: e.playerName,
         score: e.score,
         accuracy: e.accuracy,
         maxCombo: e.maxCombo,
         missCount: e.missCount,
+        mods: e.mods,
+      }))
+    : (globalQuery.data?.leaderboard ?? []).map((e, i) => ({
+        key: `${e.playerName}-${i}`,
+        playerName: e.playerName,
+        score: e.score,
+        accuracy: e.accuracy,
+        maxCombo: e.maxCombo,
+        missCount: e.missCount,
+        mods: e.mods,
       }));
 
-  const playerIndex = isGlobal
-    ? (globalQuery.data?.leaderboard ?? []).findIndex(
+  const playerIndex = isLocal
+    ? (localQuery.data ?? []).findIndex((e) => e.id === submission.localId)
+    : (globalQuery.data?.leaderboard ?? []).findIndex(
         (e) => e.playerName === scene.playerName && e.score === playerScore,
-      )
-    : (localQuery.data ?? []).findIndex((e) => e.id === submission.localId);
+      );
 
-  const placement = isGlobal
-    ? globalPlacement(submission, playerIndex)
-    : localPlacement(submission, playerIndex, rows.length);
+  const placement = isLocal
+    ? localPlacement(submission, playerIndex, rows.length)
+    : globalPlacement(submission, playerIndex);
 
   return (
     <div className="h-full flex flex-col items-center gap-3 w-full">
       <Toggle scene={scene} tab={tab} />
-      <Placement label={isGlobal ? "Global" : "Local"} value={placement} />
+      <Placement label={TAB_LABEL[tab]} value={placement} />
 
       <div className="w-full flex-1 min-h-0">
         {query.isLoading ? (
           <Status text="Loading…" />
         ) : query.isError ? (
-          <Status text={isGlobal ? "Offline" : "Failed to load"} />
+          <Status text={isLocal ? "Failed to load" : "Offline"} />
         ) : rows.length === 0 ? (
           <Status text="No scores yet" />
         ) : (
@@ -80,11 +97,11 @@ const Toggle = ({
   tab,
 }: {
   scene: ScoresScene;
-  tab: "global" | "local";
+  tab: LeaderboardTab;
 }) => (
   <div className="flex items-center gap-3 text-xs tracking-[0.25em] uppercase pointer-events-auto">
     <BumperHint label="L" />
-    {(["local", "global"] as const).map((id) => (
+    {LEADERBOARD_TABS.map((id) => (
       <button
         key={id}
         type="button"
@@ -131,6 +148,7 @@ const LeaderboardList = ({ rows, playerIndex }: { rows: Row[]; playerIndex: numb
           accuracy={row.accuracy}
           maxCombo={row.maxCombo}
           missCount={row.missCount}
+          mods={row.mods}
           highlighted={i === playerIndex}
         />
       ))}

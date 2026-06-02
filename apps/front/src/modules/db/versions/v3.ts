@@ -34,6 +34,8 @@ export type V3LocalScoreEntity = {
   goodCount: number;
   greatCount: number;
   perfectCount: number;
+  /** Human-readable mod summary (e.g. "Rate ×1.50"); "" / undefined for no-mods plays. */
+  mods?: string;
   submissionTime: Date;
   scoreVersion: number;
 };

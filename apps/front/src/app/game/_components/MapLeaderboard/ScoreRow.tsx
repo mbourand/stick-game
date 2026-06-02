@@ -8,11 +8,13 @@ type ScoreRowProps = {
   maxCombo: number;
   /** Miss count for the play — used (with accuracy) to derive the displayed grade. */
   missCount: number;
+  /** Human-readable mod summary (e.g. "Rate ×1.50"); shown as a badge when non-empty. */
+  mods?: string;
   /** Highlights the row as the local player's own score (e.g. the just-played run). */
   highlighted?: boolean;
 };
 
-export const ScoreRow = ({ rank, playerName, score, accuracy, maxCombo, missCount, highlighted = false }: ScoreRowProps) => {
+export const ScoreRow = ({ rank, playerName, score, accuracy, maxCombo, missCount, mods, highlighted = false }: ScoreRowProps) => {
   const grade = computeGrade(accuracy, missCount);
   return (
     <li
@@ -29,7 +31,14 @@ export const ScoreRow = ({ rank, playerName, score, accuracy, maxCombo, missCoun
       >
         {grade}
       </span>
-      <span className="flex-1 truncate text-sm text-white/90 tracking-wide">{playerName}</span>
+      {/* Name owns the full flexible column; the mod tag sits on its own line
+          beneath it so a long "Rate ×1.50" never squeezes the name. */}
+      <span className="flex-1 min-w-0 flex flex-col justify-center leading-tight">
+        <span className="truncate text-sm text-white/90 tracking-wide">{playerName}</span>
+        {mods ? (
+          <span className="truncate text-[9px] uppercase tracking-[0.15em] text-amber-300/80">{mods}</span>
+        ) : null}
+      </span>
       <span className="text-sm text-white/90 tabular-nums">{formatScore(score)}</span>
       <span className="text-xs text-white/50 tabular-nums w-12 text-right">{accuracy.toFixed(1)}%</span>
       <span className="text-xs text-white/50 tabular-nums w-10 text-right">{maxCombo}x</span>

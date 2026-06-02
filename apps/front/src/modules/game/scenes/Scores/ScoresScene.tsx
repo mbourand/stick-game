@@ -3,7 +3,7 @@ import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/
 import { scoresBeatmapLeaderboardQueryOptions } from "@/modules/fetching/back/queries/scores-beatmap-leaderboard";
 import { LATEST_SCORE_VERSION } from "@/modules/score/constants";
 import { submitScore } from "@/modules/score/submit-score";
-import type { LeaderboardTab } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
+import { type LeaderboardTab, cycleLeaderboardTab } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { easeInOutCubic } from "../../engine/animation/Easing";
 import type { Playable } from "../../engine/animation/Playable";
@@ -13,6 +13,7 @@ import type { Engine } from "../../engine/Engine";
 import { Store } from "../../engine/state/Store";
 import { BackgroundEntity } from "../../entities/BackgroundEntity";
 import { JudgmentKind } from "../../judge/constants";
+import { type ActiveMods, describeMods, isModded } from "../../mods/mods";
 import type { ScoreCounter } from "../../score/ScoreCounter";
 import { sharedCircle } from "../../sharedCircle";
 import { SCORES_CIRCLE_RADIUS } from "../../utils/constants";
@@ -60,9 +61,12 @@ export class ScoresScene extends CanvasScene {
   public readonly parsedMap: ParsedMap;
   public readonly scoreCounter: ScoreCounter;
   public readonly playerName: string;
+  public readonly mods: ActiveMods;
+  /** Whether this play used mods — picks the modded vs no-mods global board. */
+  public readonly modded: boolean;
 
   public readonly activeTab = new Store<ScoresTab>("overview");
-  public readonly leaderboardTab = new Store<LeaderboardTab>("global");
+  public readonly leaderboardTab: Store<LeaderboardTab>;
   public readonly submission = new Store<SubmissionState>(INITIAL_SUBMISSION);
 
   /**
@@ -76,11 +80,15 @@ export class ScoresScene extends CanvasScene {
   /** Beatmap background, cropped to the scores circle. Fades out on exit. */
   private readonly background = new Container();
 
-  constructor(engine: Engine, parsedMap: ParsedMap, scoreCounter: ScoreCounter) {
+  constructor(engine: Engine, parsedMap: ParsedMap, scoreCounter: ScoreCounter, mods: ActiveMods) {
     super(engine);
     this.parsedMap = parsedMap;
     this.scoreCounter = scoreCounter;
     this.playerName = engine.settings.get().playerName;
+    this.mods = mods;
+    this.modded = isModded(mods);
+    // Land on the board this play belongs to, so the just-set score is in view.
+    this.leaderboardTab = new Store<LeaderboardTab>(this.modded ? "modded" : "global");
 
     // Background sits behind the ring; clip to the live ring radius so it
     // doesn't spill past the ring while it grows in from gameplay. Starts
@@ -116,10 +124,9 @@ export class ScoresScene extends CanvasScene {
     this.onActionRepeat("nav-left", () => this.cycleTab(-1));
     this.onActionRepeat("nav-right", () => this.cycleTab(1));
     this.onStickRepeat("x", (dir) => this.cycleTab(dir));
-    // Two leaderboard tabs, so either bumper just flips between them — matching
-    // the beatmap-selection convention.
-    this.onAction("leaderboard-prev", () => this.toggleLeaderboardTab());
-    this.onAction("leaderboard-next", () => this.toggleLeaderboardTab());
+    // Bumpers step through the three leaderboards (no-mods / modded / local).
+    this.onAction("leaderboard-prev", () => this.cycleLeaderboardTab(-1));
+    this.onAction("leaderboard-next", () => this.cycleLeaderboardTab(1));
   }
 
   public override onBeforeExit() {
@@ -147,12 +154,12 @@ export class ScoresScene extends CanvasScene {
     this.activeTab.set(tab);
   }
 
-  public toggleLeaderboardTab(): void {
-    this.leaderboardTab.set(this.leaderboardTab.get() === "global" ? "local" : "global");
+  public cycleLeaderboardTab(dir: -1 | 1): void {
+    this.leaderboardTab.set(cycleLeaderboardTab(this.leaderboardTab.get(), dir));
   }
 
   public retry(): void {
-    const next = new GameplayScene(this.engine, this.parsedMap);
+    const next = new GameplayScene(this.engine, this.parsedMap, this.mods);
     void this.sceneManager.transitionReplace(next, fadeOutResizeIn);
   }
 
@@ -179,6 +186,8 @@ export class ScoresScene extends CanvasScene {
       greatCount: 0,
       perfectCount: sc.getJudgmentCount(JudgmentKind.Perfect),
       beatmapId: this.parsedMap.id,
+      modded: this.modded,
+      mods: describeMods(this.mods),
     });
 
     const localId = localResult.status === "fulfilled" ? localResult.value : null;
@@ -201,7 +210,7 @@ export class ScoresScene extends CanvasScene {
     }
     if (uploadedGlobal) {
       browserQueryClient?.invalidateQueries({
-        queryKey: scoresBeatmapLeaderboardQueryOptions(this.parsedMap.id, LATEST_SCORE_VERSION).queryKey,
+        queryKey: scoresBeatmapLeaderboardQueryOptions(this.parsedMap.id, LATEST_SCORE_VERSION, this.modded).queryKey,
       });
     }
   }

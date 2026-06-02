@@ -5,6 +5,7 @@ import { EngineContext } from "../engine/EngineContext";
 import { MainMenuScene } from "../scenes/MainMenu/MainMenuScene";
 import type { Scene } from "../scenes/Scene";
 import { useTopScene, useTransition } from "../scenes/useScene";
+import { ensureSharedCircle } from "../sharedCircle";
 import { FirstRunImportOverlay } from "./FirstRunImportOverlay";
 import { GamepadToast } from "./GamepadToast";
 
@@ -19,6 +20,7 @@ export const GameShell = () => {
     // Engine.start sizes the canvas to the viewport (with dpr) and keeps it in
     // sync on resize, so the shell no longer manages canvas dimensions.
     instance.start(canvasRef.current);
+    ensureSharedCircle(instance);
     instance.sceneManager.pushScene(new MainMenuScene(instance));
     setEngine(instance);
 
@@ -27,15 +29,24 @@ export const GameShell = () => {
     };
   }, []);
 
+  // The canvas always renders (the effect needs it to start the engine). The
+  // EngineContext subtree mounts only once the engine exists, so the provider
+  // value — and every consumer below it — is guaranteed non-null. That's why
+  // useEngine/useViewport/useFrame can assume a live Engine instead of each
+  // branching on null.
   return (
-    <EngineContext.Provider value={engine}>
+    <>
       <canvas ref={canvasRef} />
-      <div className="absolute inset-0 pointer-events-none">
-        {engine && <SceneUIOverlay engine={engine} />}
-        {engine && <GamepadToast engine={engine} />}
-      </div>
-      {engine && <FirstRunImportOverlay engine={engine} />}
-    </EngineContext.Provider>
+      {engine && (
+        <EngineContext.Provider value={engine}>
+          <div className="absolute inset-0 pointer-events-none">
+            <SceneUIOverlay engine={engine} />
+            <GamepadToast engine={engine} />
+          </div>
+          <FirstRunImportOverlay engine={engine} />
+        </EngineContext.Provider>
+      )}
+    </>
   );
 };
 

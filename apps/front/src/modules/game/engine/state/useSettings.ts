@@ -1,14 +1,11 @@
-import { useEffect, useState } from "react";
 import { settings, type SettingsListType } from "../../../settings/Settings";
+import { useStore } from "./useStore";
 
 /**
- * Live snapshot of the global Settings instance. Each consumer holds its own
- * state and refreshes via the Settings event emitter — equivalent to a
- * useSyncExternalStore but with a captured snapshot (Settings.get returns a
- * fresh clone each call, which would defeat reference equality).
+ * Live snapshot of the global Settings instance. Settings exposes a stable
+ * snapshot (`get`) plus `subscribe`, so it plugs straight into `useStore` —
+ * the same path the viewport store uses.
  */
 export function useSettings(): SettingsListType {
-  const [snapshot, setSnapshot] = useState<SettingsListType>(() => settings.get());
-  useEffect(() => settings.events.on("onSettingChanged", () => setSnapshot(settings.get())), []);
-  return snapshot;
+  return useStore(settings);
 }

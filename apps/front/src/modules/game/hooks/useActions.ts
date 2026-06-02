@@ -6,7 +6,6 @@ import type { ButtonAction } from "../input/actions";
 export function useAction(action: ButtonAction, handler: () => void): void {
   const engine = useEngine();
   useEffect(() => {
-    if (!engine) return;
     return engine.inputSystem.onActionDown(action, handler);
   }, [engine, action, handler]);
 }
@@ -26,7 +25,6 @@ export function useActionRepeat(
   const initialDelayMs = opts.initialDelayMs;
   const repeatIntervalMs = opts.repeatIntervalMs;
   useEffect(() => {
-    if (!engine) return;
     return engine.inputSystem.onActionRepeat(action, handler, {
       initialDelayMs,
       repeatIntervalMs,

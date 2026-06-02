@@ -20,6 +20,7 @@ import { beatmapSelectionToMainMenu } from "../../engine/transitions/factories/b
 import { beatmapSelectionToSettings } from "../../engine/transitions/factories/beatmapSelectionToSettings";
 import { settingsToBeatmapSelection } from "../../engine/transitions/factories/settingsToBeatmapSelection";
 import { CircleAudioVisualizer } from "../../flair/CircleAudioVisualizer";
+import { sharedCircle } from "../../sharedCircle";
 import { DownloaderScene } from "../Downloader/DownloaderScene";
 import type { DifficultyFilter } from "../Filter/filterTypes";
 import { FilterScene } from "../Filter/FilterScene";
@@ -176,8 +177,9 @@ export class BeatmapSelectionScene extends CanvasScene {
     this.innerContainer.add(this.background);
     this.innerContainer.add(this.audioVisualizer);
     this.root.add(this.innerContainer);
-    this.root.add(engine.circle);
-    this.root.add(new StickDotsEntity(this.inputSystem, engine.circle));
+    const circle = sharedCircle(engine);
+    this.root.add(circle);
+    this.root.add(new StickDotsEntity(this.inputSystem, circle));
   }
 
   public override onEntered() {

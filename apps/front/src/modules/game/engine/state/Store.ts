@@ -1,11 +1,21 @@
 type Listener = () => void;
 
 /**
+ * Read side of an observable value: a stable snapshot getter plus a subscribe.
+ * `useStore` needs only this much, so anything that can expose a stable
+ * snapshot (Store, Settings, …) can be consumed by it.
+ */
+export interface ReadableStore<T> {
+  get(): T;
+  subscribe(listener: Listener): () => void;
+}
+
+/**
  * Observable cell of state. Writes that don't change the value (by Object.is)
  * are dropped; otherwise listeners are notified synchronously. Methods are
  * bound to the instance so they can be passed straight to useSyncExternalStore.
  */
-export class Store<T> {
+export class Store<T> implements ReadableStore<T> {
   private value: T;
   private readonly listeners = new Set<Listener>();
 

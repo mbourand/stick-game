@@ -5,6 +5,7 @@ import type { TickContext } from "../../engine/TickContext";
 import { mainMenuToBeatmapSelection } from "../../engine/transitions/factories/mainMenuToBeatmapSelection";
 import { mainMenuToSettings } from "../../engine/transitions/factories/mainMenuToSettings";
 import { settingsToMainMenu } from "../../engine/transitions/factories/settingsToMainMenu";
+import { sharedCircle } from "../../sharedCircle";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import { BeatmapSelectionScene } from "../BeatmapSelection/BeatmapSelectionScene";
 import { CanvasScene } from "../CanvasScene";
@@ -22,8 +23,9 @@ export class MainMenuScene extends CanvasScene {
 
   constructor(engine: Engine) {
     super(engine);
-    this.root.add(engine.circle);
-    this.root.add(new StickDotsEntity(this.inputSystem, engine.circle));
+    const circle = sharedCircle(engine);
+    this.root.add(circle);
+    this.root.add(new StickDotsEntity(this.inputSystem, circle));
   }
 
   public override onEntered() {

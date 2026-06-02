@@ -1,9 +1,9 @@
-import { useContext, useEffect, useRef } from "react";
-import { EngineContext } from "./EngineContext";
+import { useEffect, useRef } from "react";
 import type { FrameCallback } from "./Engine";
+import { useEngine } from "./useEngine";
 
 export function useFrame(callback: FrameCallback) {
-  const engine = useContext(EngineContext);
+  const engine = useEngine();
   const callbackRef = useRef(callback);
 
   useEffect(() => {
@@ -11,7 +11,6 @@ export function useFrame(callback: FrameCallback) {
   });
 
   useEffect(() => {
-    if (!engine) return;
     return engine.registerFrameCallback((tick) => callbackRef.current(tick));
   }, [engine]);
 }

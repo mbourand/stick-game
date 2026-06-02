@@ -1,3 +1,4 @@
+import { sharedCircle } from "../../sharedCircle";
 import { easeInOutCubic } from "../animation/Easing";
 import type { Playable } from "../animation/Playable";
 import { call, parallel, sequence, wait } from "../animation/Timeline";
@@ -63,7 +64,7 @@ export function phaseShell(ctx: TransitionContext, opts: PhaseShellOpts = {}): P
  */
 export function resizeRing(ctx: TransitionContext, toRadius: number): Playable {
   return tween({
-    target: ctx.engine.circle,
+    target: sharedCircle(ctx.engine),
     to: { radius: toRadius },
     duration: CIRCLE_RESIZE_DURATION_MS,
     easing: easeInOutCubic,

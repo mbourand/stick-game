@@ -93,13 +93,7 @@ export class Tween<T extends object> extends LifecyclePlayable {
 
   private captureFrom(): void {
     for (const key of this.toValues.keys()) {
-      const explicit = this.explicitFromValues.get(key);
-      if (explicit !== undefined) {
-        this.fromValues.set(key, explicit);
-      } else {
-        const current = (this.target as Record<keyof T, number>)[key];
-        this.fromValues.set(key, typeof current === "number" ? current : 0);
-      }
+      this.fromValues.set(key, resolveFromValue(this.target, key, this.explicitFromValues.get(key)));
     }
     this.fromCaptured = true;
   }
@@ -122,4 +116,19 @@ export function collectNumericTargets<T extends object>(
     map.set(k, v);
   }
   return map;
+}
+
+/**
+ * Shared by Tween/Spring: resolve a property's starting value — the explicit
+ * `from` if one was given, otherwise the target's current numeric value, falling
+ * back to 0 for non-numeric/undefined fields.
+ */
+export function resolveFromValue<T extends object>(
+  target: T,
+  key: keyof T,
+  explicit: number | undefined,
+): number {
+  if (explicit !== undefined) return explicit;
+  const current = (target as Record<keyof T, number>)[key];
+  return typeof current === "number" ? current : 0;
 }

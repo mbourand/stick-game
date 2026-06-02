@@ -1,5 +1,4 @@
-import { useContext } from "react";
-import { EngineContext } from "../EngineContext";
+import { useEngine } from "../useEngine";
 import type { ViewportMetrics } from "../Viewport";
 import { useStore } from "./useStore";
 
@@ -10,7 +9,5 @@ import { useStore } from "./useStore";
  * the canvas, which scales by the same factor.
  */
 export function useViewport(): ViewportMetrics {
-  const engine = useContext(EngineContext);
-  if (!engine) throw new Error("useViewport must be used within an EngineContext provider");
-  return useStore(engine.viewport);
+  return useStore(useEngine().viewport);
 }

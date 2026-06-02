@@ -1,7 +1,5 @@
+import { HandlerRegistry } from "../../utils/HandlerRegistry";
 import type { InputDeviceAdapter } from "./InputDeviceAdapter";
-
-type Handler = () => void;
-type HandlerMap = Map<string, Set<Handler>>;
 
 /**
  * Window-level keyboard input adapter. Subscribers register against
@@ -24,37 +22,18 @@ type HandlerMap = Map<string, Set<Handler>>;
  * Stickless; `getStick` always returns null.
  */
 export function createKeyboardAdapter(): InputDeviceAdapter {
-  const downHandlers: HandlerMap = new Map();
-  const upHandlers: HandlerMap = new Map();
-
-  const addHandler = (map: HandlerMap, key: string, handler: Handler) => {
-    let set = map.get(key);
-    if (!set) {
-      set = new Set();
-      map.set(key, set);
-    }
-    set.add(handler);
-    return () => {
-      set?.delete(handler);
-    };
-  };
-
-  const dispatch = (map: HandlerMap, key: string): boolean => {
-    const set = map.get(key);
-    if (!set || set.size === 0) return false;
-    for (const handler of [...set]) handler();
-    return true;
-  };
+  const downHandlers = new HandlerRegistry<string>();
+  const upHandlers = new HandlerRegistry<string>();
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.repeat) return;
     if (e.ctrlKey || e.altKey || e.metaKey) return;
-    if (!dispatch(downHandlers, e.key)) return;
+    if (!downHandlers.emit(e.key)) return;
     if (!isTextEditingTarget(e.target)) e.preventDefault();
   };
   const onKeyUp = (e: KeyboardEvent) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
-    if (!dispatch(upHandlers, e.key)) return;
+    if (!upHandlers.emit(e.key)) return;
     if (!isTextEditingTarget(e.target)) e.preventDefault();
   };
 
@@ -65,11 +44,11 @@ export function createKeyboardAdapter(): InputDeviceAdapter {
     device: "keyboard",
     onButtonDown(binding, handler) {
       if (binding.device !== "keyboard") return null;
-      return addHandler(downHandlers, binding.key, handler);
+      return downHandlers.add(binding.key, handler);
     },
     onButtonUp(binding, handler) {
       if (binding.device !== "keyboard") return null;
-      return addHandler(upHandlers, binding.key, handler);
+      return upHandlers.add(binding.key, handler);
     },
     getStick: () => null,
     destroy() {

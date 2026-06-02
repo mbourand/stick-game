@@ -1,5 +1,6 @@
 import type { Settings, SettingsListType } from "../settings/Settings";
 import { EventEmitter } from "../utils/EventEmitter";
+import { HandlerRegistry } from "../utils/HandlerRegistry";
 
 const LEFT_STICK_X_INDEX = 0;
 const LEFT_STICK_Y_INDEX = 1;
@@ -27,10 +28,12 @@ export enum GamepadButton {
 }
 
 type ButtonHandler = () => void;
-type HandlerMap = Map<GamepadButton, Set<ButtonHandler>>;
 
 /** Identity of the pad currently driving input, or null when none is active. */
 export type ActiveGamepadInfo = { index: number; id: string } | null;
+
+/** A connected pad, as surfaced to UI that lists selectable controllers. */
+export type ConnectedGamepad = { index: number; id: string };
 
 type GamepadEvents = {
   /**
@@ -39,6 +42,12 @@ type GamepadEvents = {
    * surface a "controller connected" toast.
    */
   onActiveGamepadChanged: (info: ActiveGamepadInfo) => void;
+  /**
+   * Fired when the *set* of connected pads changes (a pad appears or drops).
+   * Lets UI (the settings controller picker) track the list without polling
+   * `navigator.getGamepads` itself.
+   */
+  onConnectedChanged: (pads: ConnectedGamepad[]) => void;
 };
 
 export class Gamepad {
@@ -52,8 +61,10 @@ export class Gamepad {
   /** The pad we're actually reading from. Sticky: kept until it disconnects. */
   private activeIndex: number | null = null;
   private previousButtonPressed: boolean[] = [];
-  private downHandlers: HandlerMap = new Map();
-  private upHandlers: HandlerMap = new Map();
+  /** Signature of the last-seen connected-pad set, to detect changes in `tick`. */
+  private connectedSignature = "";
+  private downHandlers = new HandlerRegistry<GamepadButton>();
+  private upHandlers = new HandlerRegistry<GamepadButton>();
   private offSettingChanged: () => void;
 
   constructor(settings: Settings) {
@@ -94,14 +105,25 @@ export class Gamepad {
   }
 
   public onButtonDown(button: GamepadButton, handler: ButtonHandler): () => void {
-    return this.addHandler(this.downHandlers, button, handler);
+    return this.downHandlers.add(button, handler);
   }
 
   public onButtonUp(button: GamepadButton, handler: ButtonHandler): () => void {
-    return this.addHandler(this.upHandlers, button, handler);
+    return this.upHandlers.add(button, handler);
+  }
+
+  /** Currently-connected pads (those the browser has exposed, i.e. touched at least once). */
+  public listConnected(): ConnectedGamepad[] {
+    const pads: ConnectedGamepad[] = [];
+    for (const pad of navigator.getGamepads()) {
+      if (pad) pads.push({ index: pad.index, id: pad.id });
+    }
+    return pads;
   }
 
   public tick() {
+    this.detectConnectedChange();
+
     // Fallback for browsers that don't reliably fire `gamepadconnected`: keep
     // trying to claim a pad while none is active. Cheap — a single array scan.
     if (this.activeIndex === null) this.resolveActive();
@@ -116,29 +138,11 @@ export class Gamepad {
       const wasPressed = this.previousButtonPressed[i] ?? false;
       const isPressed = pad.buttons[i]?.pressed ?? false;
 
-      if (isPressed && !wasPressed) this.dispatch(this.downHandlers, i);
-      else if (!isPressed && wasPressed) this.dispatch(this.upHandlers, i);
+      if (isPressed && !wasPressed) this.downHandlers.emit(i as GamepadButton);
+      else if (!isPressed && wasPressed) this.upHandlers.emit(i as GamepadButton);
 
       this.previousButtonPressed[i] = isPressed;
     }
-  }
-
-  private addHandler(map: HandlerMap, button: GamepadButton, handler: ButtonHandler): () => void {
-    let set = map.get(button);
-    if (!set) {
-      set = new Set();
-      map.set(button, set);
-    }
-    set.add(handler);
-    return () => {
-      set?.delete(handler);
-    };
-  }
-
-  private dispatch(map: HandlerMap, buttonIndex: number) {
-    const handlers = map.get(buttonIndex as GamepadButton);
-    if (!handlers) return;
-    for (const handler of [...handlers]) handler();
   }
 
   private findGamepad() {
@@ -176,5 +180,14 @@ export class Gamepad {
     this.previousButtonPressed = [];
     const pad = index === null ? null : navigator.getGamepads()[index];
     this.events.emit("onActiveGamepadChanged", pad ? { index: pad.index, id: pad.id } : null);
+  }
+
+  /** Emit `onConnectedChanged` when the connected-pad set differs from last frame. */
+  private detectConnectedChange() {
+    const pads = this.listConnected();
+    const signature = pads.map((p) => `${p.index}:${p.id}`).join("|");
+    if (signature === this.connectedSignature) return;
+    this.connectedSignature = signature;
+    this.events.emit("onConnectedChanged", pads);
   }
 }

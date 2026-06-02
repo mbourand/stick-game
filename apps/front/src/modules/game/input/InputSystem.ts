@@ -1,8 +1,8 @@
+import { HandlerRegistry } from "../../utils/HandlerRegistry";
 import { DEFAULT_ACTION_BINDINGS, type ActionBindings, type ButtonAction } from "./actions";
 import type { InputDeviceAdapter } from "./InputDeviceAdapter";
 
 type ActionHandler = () => void;
-type HandlerMap = Map<ButtonAction, Set<ActionHandler>>;
 
 type RepeatTimingOpts = { initialDelayMs?: number; repeatIntervalMs?: number };
 type RepeatTimers = { cancel: () => void };
@@ -41,10 +41,10 @@ const ZERO_STICK = { x: 0, y: 0 };
 
 export class InputSystem {
   private readonly adapters: InputDeviceAdapter[];
-  private bindings: ActionBindings;
+  private readonly bindings: ActionBindings;
 
-  private downHandlers: HandlerMap = new Map();
-  private upHandlers: HandlerMap = new Map();
+  private downHandlers = new HandlerRegistry<ButtonAction>();
+  private upHandlers = new HandlerRegistry<ButtonAction>();
   private deviceUnsubscribes: (() => void)[] = [];
   /** Per-frame stick samplers driving onStickRepeat. Ticked by `update`. */
   private stickPolls = new Set<() => void>();
@@ -67,11 +67,11 @@ export class InputSystem {
   }
 
   public onActionDown(action: ButtonAction, handler: ActionHandler): () => void {
-    return this.addHandler(this.downHandlers, action, handler);
+    return this.downHandlers.add(action, handler);
   }
 
   public onActionUp(action: ButtonAction, handler: ActionHandler): () => void {
-    return this.addHandler(this.upHandlers, action, handler);
+    return this.upHandlers.add(action, handler);
   }
 
   /**
@@ -85,6 +85,22 @@ export class InputSystem {
       if (v !== null) return v;
     }
     return ZERO_STICK;
+  }
+
+  /**
+   * The dominant stick — whichever of left/right is pushed furthest from
+   * centre. The single home for the "which stick is the user driving?" vote
+   * that scenes would otherwise each re-derive. Returns null when neither
+   * stick is engaged past `threshold`, so callers can treat "no input" and a
+   * live direction uniformly.
+   */
+  public getActiveStick(threshold = 0): { x: number; y: number } | null {
+    const left = this.getStick("left");
+    const right = this.getStick("right");
+    const leftMagnitude = Math.hypot(left.x, left.y);
+    const rightMagnitude = Math.hypot(right.x, right.y);
+    if (Math.max(leftMagnitude, rightMagnitude) < threshold) return null;
+    return leftMagnitude >= rightMagnitude ? left : right;
   }
 
   /**
@@ -204,22 +220,8 @@ export class InputSystem {
     }
   }
 
-  private addHandler(map: HandlerMap, action: ButtonAction, handler: ActionHandler): () => void {
-    let set = map.get(action);
-    if (!set) {
-      set = new Set();
-      map.set(action, set);
-    }
-    set.add(handler);
-    return () => {
-      set?.delete(handler);
-    };
-  }
-
-  private dispatch(map: HandlerMap, action: ButtonAction) {
+  private dispatch(registry: HandlerRegistry<ButtonAction>, action: ButtonAction) {
     if (this.locked) return;
-    const handlers = map.get(action);
-    if (!handlers) return;
-    for (const handler of [...handlers]) handler();
+    registry.emit(action);
   }
 }

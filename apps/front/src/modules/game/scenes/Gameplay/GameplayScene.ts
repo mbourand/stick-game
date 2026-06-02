@@ -15,10 +15,13 @@ import { EXIT_FADE_DURATION_MS } from "../../engine/transitions/durations";
 import { BeatmapClock } from "../../engine/BeatmapClock";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
-import { gameplayRetry } from "../../engine/transitions/factories/gameplayRetry";
-import { gameplayToBeatmapSelection } from "../../engine/transitions/factories/gameplayToBeatmapSelection";
-import { gameplayToScores } from "../../engine/transitions/factories/gameplayToScores";
-import { pauseEnter, pauseExit } from "../Pause/transitions";
+import {
+  fadeOut,
+  fadeResizeRevealConcurrent,
+  fadeResizeRevealSequenced,
+  pauseEnter,
+  pauseExit,
+} from "../transitions";
 import { ScoresScene } from "../Scores/ScoresScene";
 import { CanvasScene } from "../CanvasScene";
 import type { SceneTransitionSlot } from "../Scene";
@@ -47,6 +50,9 @@ const BACKGROUND_FADE_IN_MS = 400;
 
 export class GameplayScene extends CanvasScene {
   public readonly id = "gameplay";
+  public override get ringRadius(): number {
+    return this.displayedRadius;
+  }
 
   private parsedMap: ParsedMap;
   private settings: SettingsListType;
@@ -205,12 +211,12 @@ export class GameplayScene extends CanvasScene {
   public async retryBeatmap(): Promise<void> {
     await this.closePauseWithFade();
     const next = new GameplayScene(this.engine, this.parsedMap);
-    void this.sceneManager.transitionReplace(next, gameplayRetry);
+    void this.sceneManager.transitionReplace(next, fadeOut);
   }
 
   public async exitToBeatmapSelection(): Promise<void> {
     await this.closePauseWithFade();
-    void this.sceneManager.transitionPop(gameplayToBeatmapSelection);
+    void this.sceneManager.transitionPop(fadeResizeRevealConcurrent);
   }
 
   /**
@@ -344,7 +350,7 @@ export class GameplayScene extends CanvasScene {
     this.retainMusicOnDestroy = true;
     void this.sceneManager.transitionReplace(
       new ScoresScene(this.engine, this.parsedMap, this.scoreCounter),
-      gameplayToScores,
+      fadeResizeRevealSequenced,
     );
   }
 

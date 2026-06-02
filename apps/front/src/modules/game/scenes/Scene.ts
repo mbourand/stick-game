@@ -81,6 +81,18 @@ export abstract class Scene {
    */
   public readonly isOverlay: boolean = false;
 
+  /**
+   * The radius the shared persistent ring should rest at while this scene is
+   * active. Ring-aware transitions read the *incoming* scene's value to decide
+   * where to resize the ring — so the resize target is a property of the
+   * destination scene, not of each from→to pair. `null` means "leave the ring
+   * wherever it is" (e.g. DOM-only overlays). Override with a getter when the
+   * radius depends on live state (e.g. gameplay scales by a setting).
+   */
+  public get ringRadius(): number | null {
+    return null;
+  }
+
   public update(_tick: TickContext): void {}
   public render(_canvas: HTMLCanvasElement, _context: CanvasRenderingContext2D): void {}
 
@@ -142,6 +154,16 @@ export abstract class Scene {
    * — and any timers / per-frame polls it owns — clears the moment the scene
    * leaves `active`.
    */
+  /**
+   * Park an arbitrary teardown on the active lifetime — run (alongside input
+   * disposers) the moment the scene leaves `active`. For subscriptions a scene
+   * opens in `onEntered` that aren't InputSystem handlers (e.g. a gamepad
+   * connect/disconnect listener).
+   */
+  protected registerDisposer(dispose: () => void): void {
+    this.activeDisposers.push(dispose);
+  }
+
   protected onAction(action: ButtonAction, handler: () => void): void {
     this.activeDisposers.push(this.inputSystem.onActionDown(action, handler));
   }
@@ -173,6 +195,11 @@ export abstract class Scene {
 
   protected getStick(side: "left" | "right"): { x: number; y: number } {
     return this.inputSystem.getStick(side);
+  }
+
+  /** The dominant stick, or null if neither is engaged past `threshold`. See InputSystem.getActiveStick. */
+  protected getActiveStick(threshold = 0): { x: number; y: number } | null {
+    return this.inputSystem.getActiveStick(threshold);
   }
 
   public remove() {

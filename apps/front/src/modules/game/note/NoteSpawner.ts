@@ -12,7 +12,7 @@ export class NoteSpawner implements Entity {
   private lastNoteIndex = -1;
   private eventManager: EventEmitter<GameplayEvents>;
   private clock: BeatmapClock;
-  private scrollDuration: number;
+  private readonly scrollDuration: number;
   private hasFinished = false;
 
   constructor(
@@ -24,10 +24,6 @@ export class NoteSpawner implements Entity {
     this.parsedNotes = parsedNotes;
     this.eventManager = eventManager;
     this.clock = clock;
-    this.scrollDuration = scrollDuration;
-  }
-
-  public setScrollDuration(scrollDuration: number) {
     this.scrollDuration = scrollDuration;
   }
 

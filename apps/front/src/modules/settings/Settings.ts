@@ -39,22 +39,33 @@ const STORAGE_KEY = "settings";
 export class Settings {
   public readonly events = new EventEmitter<SettingsEvents>();
 
-  private values: SettingsListType;
+  /**
+   * Immutable snapshot handed out by `get()`. Rebuilt only when a value
+   * actually changes, so consecutive `get()` calls return a referentially
+   * stable object — which lets `useStore`/`useSyncExternalStore` consume
+   * Settings directly (Settings satisfies the `ReadableStore` shape).
+   */
+  private snapshot: SettingsListType;
 
   constructor(initial?: SettingsListType) {
-    this.values = initial ?? Settings.loadFromStorage();
+    this.snapshot = initial ?? Settings.loadFromStorage();
   }
 
   public get(): SettingsListType {
-    return structuredClone(this.values);
+    return this.snapshot;
   }
 
+  /** Subscribe to any settings change. Returns a disposer. */
+  public subscribe = (listener: () => void): (() => void) => {
+    return this.events.on("onSettingChanged", listener);
+  };
+
   public set<K extends keyof SettingsListType>(key: K, value: SettingsListType[K]) {
-    console.log(`Setting changed: ${key} =`, value);
-    this.values[key] = value;
+    if (Object.is(this.snapshot[key], value)) return;
+    this.snapshot = { ...this.snapshot, [key]: value };
     this.events.emit("onSettingChanged", SettingChangedEvent(key, value));
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.values));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.snapshot));
     } catch {
       // ignore quota / private-mode failures
     }

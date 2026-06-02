@@ -14,6 +14,7 @@ import { Store } from "../../engine/state/Store";
 import { BackgroundEntity } from "../../entities/BackgroundEntity";
 import { JudgmentKind } from "../../judge/constants";
 import type { ScoreCounter } from "../../score/ScoreCounter";
+import { sharedCircle } from "../../sharedCircle";
 import { SCORES_CIRCLE_RADIUS } from "../../utils/constants";
 import { BEATMAP_AUDIO_ID, GameplayScene } from "../Gameplay/GameplayScene";
 import { CanvasScene } from "../CanvasScene";
@@ -83,16 +84,17 @@ export class ScoresScene extends CanvasScene {
     // doesn't spill past the ring while it grows in from gameplay. Starts
     // transparent and fades in during enter (see scenePlayable) — otherwise it
     // would render opaque over the still-visible gameplay scene from frame one.
+    const circle = sharedCircle(engine);
     this.background.alpha = 0;
     this.background.add(
       new BackgroundEntity(parsedMap, engine.settings, {
         radius: SCORES_CIRCLE_RADIUS,
-        clipRadius: () => engine.circle.radius,
+        clipRadius: () => circle.radius,
         variant: "menu",
       }),
     );
     this.root.add(this.background);
-    this.root.add(engine.circle);
+    this.root.add(circle);
 
     // Kick off persistence immediately so the network round-trip overlaps the
     // gameplay→scores transition; the Rank tab reads `submission` reactively.

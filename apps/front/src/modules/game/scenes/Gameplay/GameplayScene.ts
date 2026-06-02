@@ -36,6 +36,7 @@ import { Note } from "../../note/Note";
 import { NoteColor } from "../../note/NoteColor";
 import { NoteSpawner } from "../../note/NoteSpawner";
 import { ScoreCounter } from "../../score/ScoreCounter";
+import { sharedCircle } from "../../sharedCircle";
 import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "../../utils/constants";
 import { PauseScene } from "../Pause/PauseScene";
 
@@ -77,6 +78,8 @@ export class GameplayScene extends CanvasScene {
   constructor(engine: Engine, parsedMap: ParsedMap) {
     super(engine);
     this.parsedMap = parsedMap;
+    // Read-only snapshot of settings at the moment play begins. Settings can't
+    // change mid-game (no in-gameplay settings menu), so this is never patched.
     this.settings = engine.settings.get();
 
     const scale = this.settings.gameplayCircleScale;
@@ -235,11 +238,12 @@ export class GameplayScene extends CanvasScene {
     this.circleInnerContentContainer.add(new ScoreHUDEntity(this.scoreCounter));
 
     // Children render in insertion order (back -> front).
+    const circle = sharedCircle(this.engine);
     this.root.add(this.circleInnerContentContainer);
-    this.root.add(this.engine.circle);
+    this.root.add(circle);
     this.root.add(this.notesContainer);
     this.root.add(this.fxContainer);
-    this.root.add(new StickDotsEntity(this.inputSystem, this.engine.circle));
+    this.root.add(new StickDotsEntity(this.inputSystem, circle));
     // NoteSpawner is added after the clock is scheduled (in onEntered).
   }
 
@@ -350,12 +354,6 @@ export class GameplayScene extends CanvasScene {
       this.events.on("onNoteShouldSpawn", (e) => this.onNoteShouldSpawn(e)),
       this.events.on("onNoteHoldTick", (e) => this.onNoteHoldTick(e)),
       this.events.on("onBeatmapEnded", (e) => this.onBeatmapEnded(e)),
-      this.engine.settings.events.on("onSettingChanged", (e) => {
-        if (e.key === "scrollDuration") {
-          this.settings.scrollDuration = this.engine.settings.get().scrollDuration;
-          this.noteSpawner.setScrollDuration(this.settings.scrollDuration);
-        }
-      }),
     );
   }
 

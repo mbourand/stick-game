@@ -1,5 +1,5 @@
 import { LifecyclePlayable } from "./LifecyclePlayable";
-import { collectNumericTargets, type TweenTargets } from "./Tween";
+import { collectNumericTargets, resolveFromValue, type TweenTargets } from "./Tween";
 
 export type SpringOptions<T extends object> = {
   target: T;
@@ -104,15 +104,8 @@ export class Spring<T extends object> extends LifecyclePlayable {
 
   private capture(): void {
     for (const [key, to] of this.toValues) {
-      const explicitFrom = this.explicitFromValues.get(key);
-      const position =
-        explicitFrom !== undefined
-          ? explicitFrom
-          : typeof (this.target as Record<keyof T, number>)[key] === "number"
-            ? (this.target as Record<keyof T, number>)[key]
-            : 0;
       this.states.set(key, {
-        position,
+        position: resolveFromValue(this.target, key, this.explicitFromValues.get(key)),
         velocity: this.initialVelocity,
         to,
       });

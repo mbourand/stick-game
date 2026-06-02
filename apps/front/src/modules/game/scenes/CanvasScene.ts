@@ -1,5 +1,6 @@
 import { Container } from "../engine/Container";
 import type { TickContext } from "../engine/TickContext";
+import { sharedCircle } from "../sharedCircle";
 import { Scene } from "./Scene";
 
 /**
@@ -7,7 +8,7 @@ import { Scene } from "./Scene";
  * canvas centre every frame. Subclasses add their entities to `root`; this
  * base class wires update/render/destroy.
  *
- * The persistent `engine.circle` is auto-detached on destroy if it's part of
+ * The shared persistent ring is auto-detached on destroy if it's part of
  * the tree, so it survives across scene swaps. Subclasses that override
  * `onDestroy` should call `super.onDestroy()` (or destroy `root` themselves).
  */
@@ -32,7 +33,7 @@ export abstract class CanvasScene extends Scene {
   }
 
   public override onDestroy(): void | Promise<void> {
-    this.root.detach(this.engine.circle);
+    this.root.detach(sharedCircle(this.engine));
     this.root.destroy();
   }
 }

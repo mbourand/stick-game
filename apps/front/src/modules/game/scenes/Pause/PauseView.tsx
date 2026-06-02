@@ -3,6 +3,7 @@ import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
 import { useViewport } from "../../engine/state/useViewport";
+import { HintBar } from "../shared/KeyHint";
 import type { SceneUIComponent } from "../Scene";
 import type { PauseScene } from "./PauseScene";
 
@@ -44,13 +45,12 @@ export const PauseView: SceneUIComponent<PauseScene> = ({ scene }) => {
           className="mt-14 flex items-center gap-5 text-[11px] text-white/40 tracking-[0.35em] uppercase"
           {...hintMotion}
         >
-          <span>
-            <KeyHint label="A" /> Confirm
-          </span>
-          <span className="text-white/20">|</span>
-          <span>
-            <KeyHint label="B" /> Resume
-          </span>
+          <HintBar
+            items={[
+              { key: "A", label: "Confirm" },
+              { key: "B", label: "Resume" },
+            ]}
+          />
         </motion.div>
       </div>
     </motion.div>
@@ -102,11 +102,3 @@ const PauseButton = ({
   );
 };
 
-const KeyHint = ({ label }: { label: string }) => (
-  <span
-    className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 mr-2 rounded border border-white/30 text-[10px] font-bold tracking-wider text-white/70 align-middle"
-    aria-hidden
-  >
-    {label}
-  </span>
-);

@@ -6,6 +6,7 @@ import { useStore } from "../../engine/state/useStore";
 import { useViewport } from "../../engine/state/useViewport";
 import { useSettings } from "../../engine/state/useSettings";
 import { useGlobalTypeahead } from "../BeatmapSelection/useGlobalTypeahead";
+import { HintBar } from "../shared/KeyHint";
 import type { SceneUIComponent } from "../Scene";
 import type { GamepadOption, SettingsScene } from "./SettingsScene";
 import type { SettingsRow, SliderRow, TextRow } from "./fields";
@@ -67,21 +68,14 @@ export const SettingsView: SceneUIComponent<SettingsScene> = ({ scene }) => {
           className="mt-7 flex items-center gap-5 text-[11px] text-white/40 tracking-[0.35em] uppercase"
           {...hintMotion}
         >
-          <span>
-            <KeyHint label="↑↓" /> Navigate
-          </span>
-          <span className="text-white/20">|</span>
-          <span>
-            <KeyHint label="←→" /> Adjust
-          </span>
-          <span className="text-white/20">|</span>
-          <span>
-            <KeyHint label="A" /> {isEditingText ? "Done" : "Edit"}
-          </span>
-          <span className="text-white/20">|</span>
-          <span>
-            <KeyHint label="B" /> Back
-          </span>
+          <HintBar
+            items={[
+              { key: "↑↓", label: "Navigate" },
+              { key: "←→", label: "Adjust" },
+              { key: "A", label: isEditingText ? "Done" : "Edit" },
+              { key: "B", label: "Back" },
+            ]}
+          />
         </motion.div>
       </div>
     </motion.div>
@@ -209,11 +203,3 @@ const ArrowHint = ({ dir, visible }: { dir: "left" | "right"; visible: boolean }
   </span>
 );
 
-const KeyHint = ({ label }: { label: string }) => (
-  <span
-    className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 mr-2 rounded border border-white/30 text-[10px] font-bold tracking-wider text-white/70 align-middle"
-    aria-hidden
-  >
-    {label}
-  </span>
-);

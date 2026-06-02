@@ -3,6 +3,7 @@ import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
 import { useViewport } from "../../engine/state/useViewport";
+import { HintBar } from "../shared/KeyHint";
 import { difficultyColor, difficultyGradientCss } from "../shared/difficultyColor";
 import type { SceneUIComponent } from "../Scene";
 import type { FilterScene } from "./FilterScene";
@@ -92,7 +93,7 @@ export const FilterView: SceneUIComponent<FilterScene> = ({ scene }) => {
                 step={0.1}
                 onChange={(v) =>
                   setFilter({
-                    min: clamp(v, DIFFICULTY_BOUNDS.min, current.max),
+                    min: Math.max(DIFFICULTY_BOUNDS.min, Math.min(current.max, v)),
                     max: current.max,
                   })
                 }
@@ -106,7 +107,7 @@ export const FilterView: SceneUIComponent<FilterScene> = ({ scene }) => {
                 onChange={(v) =>
                   setFilter({
                     min: current.min,
-                    max: clamp(v, current.min, DIFFICULTY_BOUNDS.max),
+                    max: Math.max(current.min, Math.min(DIFFICULTY_BOUNDS.max, v)),
                   })
                 }
               />
@@ -115,7 +116,7 @@ export const FilterView: SceneUIComponent<FilterScene> = ({ scene }) => {
         </motion.div>
 
         <motion.div className="mt-8 text-[10px] text-white/40 tracking-[0.3em] uppercase" {...hintMotion}>
-          <KeyHint label="B" /> Close
+          <HintBar items={[{ key: "B", label: "Close" }]} />
         </motion.div>
       </div>
     </motion.div>
@@ -222,15 +223,3 @@ const NumberField = ({ label, value, min, max, step, onChange }: NumberFieldProp
   </label>
 );
 
-const KeyHint = ({ label }: { label: string }) => (
-  <span
-    className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 mr-2 rounded border border-white/30 text-[10px] font-bold tracking-wider text-white/70 align-middle"
-    aria-hidden
-  >
-    {label}
-  </span>
-);
-
-function clamp(v: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, v));
-}

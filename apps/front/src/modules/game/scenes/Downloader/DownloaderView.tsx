@@ -9,6 +9,7 @@ import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
 import { useStore } from "../../engine/state/useStore";
 import { useViewport } from "../../engine/state/useViewport";
+import { HintBar } from "../shared/KeyHint";
 import type { SceneUIComponent } from "../Scene";
 import { getInstallStatusStore, startBeatmapsetInstall } from "./beatmapInstallStore";
 import { InstallStatusIcon, installPhaseLabel, RowProgressBar } from "./BeatmapsetInstallProgress";
@@ -104,17 +105,13 @@ export const DownloaderView: SceneUIComponent<DownloaderScene> = ({ scene }) => 
           </div>
 
           <footer className="mt-4 pt-4 border-t border-white/10 flex items-center justify-center gap-5 text-[10px] text-white/40 tracking-[0.3em] uppercase">
-            <span>
-              <KeyHint label="↑↓" /> Navigate
-            </span>
-            <span className="text-white/20">|</span>
-            <span>
-              <KeyHint label="A" /> Download
-            </span>
-            <span className="text-white/20">|</span>
-            <span>
-              <KeyHint label="B" /> Close
-            </span>
+            <HintBar
+              items={[
+                { key: "↑↓", label: "Navigate" },
+                { key: "A", label: "Download" },
+                { key: "B", label: "Close" },
+              ]}
+            />
           </footer>
         </motion.div>
       </div>
@@ -197,15 +194,6 @@ const BeatmapsetRow = forwardRef<HTMLButtonElement, RowProps>(function Beatmapse
     </button>
   );
 });
-
-const KeyHint = ({ label }: { label: string }) => (
-  <span
-    className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 mr-2 rounded border border-white/30 text-[10px] font-bold tracking-wider text-white/70 align-middle"
-    aria-hidden
-  >
-    {label}
-  </span>
-);
 
 const CenteredHint = ({ label }: { label: string }) => (
   <div className="flex items-center justify-center h-full text-white/40 text-xs tracking-[0.25em] uppercase">

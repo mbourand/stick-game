@@ -102,7 +102,7 @@ export class SettingsScene extends Scene {
 
   private adjustSlider(row: SliderRow, dir: -1 | 1): void {
     const current = row.read(this.engine.settings.get());
-    const next = clamp(current + dir * row.step, row.min, row.max);
+    const next = Math.max(row.min, Math.min(row.max, current + dir * row.step));
     if (next !== current) row.write(this.engine.settings, next);
   }
 
@@ -127,8 +127,4 @@ export class SettingsScene extends Scene {
     }
     void this.sceneManager.transitionPop(this.exitFactory);
   }
-}
-
-function clamp(v: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, v));
 }

@@ -1,20 +1,16 @@
 import { motionValue, type MotionValue } from "motion/react";
-import { latestDb } from "@/modules/db/db";
+import type { LeaderboardTab } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
-import { BackgroundCrossfader } from "../../entities/BackgroundCrossfader";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
 import { easeInOutCubic } from "../../engine/animation/Easing";
 import type { Playable } from "../../engine/animation/Playable";
 import { call, sequence } from "../../engine/animation/Timeline";
 import { tween } from "../../engine/animation/Tween";
-import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
 import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
-import { LruCache } from "../../utils/LruCache";
 import { crossfade, fadeOutResizeIn, fadeThenResize } from "../transitions";
-import { CircleAudioVisualizer } from "../../flair/CircleAudioVisualizer";
 import { sharedCircle } from "../../sharedCircle";
 import { BEATMAP_SELECTION_CIRCLE_RADIUS } from "../../utils/constants";
 import { DownloaderScene } from "../Downloader/DownloaderScene";
@@ -25,6 +21,7 @@ import { SettingsScene } from "../Settings/SettingsScene";
 import { CanvasScene } from "../CanvasScene";
 import type { SceneTransitionSlot } from "../Scene";
 import { pickIndexAtY } from "../shared/verticalPicker";
+import { BeatmapPreviewController, type MediaUrls } from "./BeatmapPreviewController";
 import { BeatmapSelectionView } from "./BeatmapSelectionView";
 import {
   BUTTON_HEIGHT_PX,
@@ -37,26 +34,13 @@ import {
 
 export type ScrollZone = "top" | "bottom" | null;
 export type BeatmapResolver = (index: number) => Promise<ParsedMap | null>;
-export type FocusedBeatmapMedia = { audioUrl: string; backgroundUrl: string };
-export type LeaderboardTab = "global" | "local";
-export type MediaUrls = { audioUrl: string; backgroundUrl: string };
-
-const MEDIA_URL_CACHE_SIZE = 10;
-
-function revokeMediaUrls({ audioUrl, backgroundUrl }: MediaUrls) {
-  URL.revokeObjectURL(audioUrl);
-  URL.revokeObjectURL(backgroundUrl);
-}
+export type { MediaUrls } from "./BeatmapPreviewController";
 
 export type LeftAction = {
   id: string;
   label: string;
   onActivate: () => void;
 };
-
-const PREVIEW_AUDIO_ID = "beatmap_preview_audio";
-const PREVIEW_AUDIO_VOLUME = 0.7;
-const BACKGROUND_CROSSFADE_MS = 300;
 
 /**
  * Stick.x must commit at least this far to one side before we switch focus
@@ -131,49 +115,20 @@ export class BeatmapSelectionScene extends CanvasScene {
 
   private lastGameplayScene: GameplayScene | null = null;
 
-  /** Holds the background crossfader + audio visualizer; fades to 0 during exit transitions. */
-  private innerContainer = new Container();
-  private background: BackgroundCrossfader;
-  private audioVisualizer: CircleAudioVisualizer;
-
-  private currentMedia: FocusedBeatmapMedia | null = null;
-  private mediaGeneration = 0;
   /**
-   * Cache of blob URLs per beatmap idv2. Lives on the scene (not in a view
-   * `useRef`) so it survives view unmounts — when the user pops back from an
-   * overlay scene (Filter / Downloader / Settings), `resolveMediaUrls` returns
-   * the SAME `MediaUrls` reference it returned before the overlay. The scene's
-   * `setFocusedBeatmapMedia` then short-circuits on `sameMedia`, leaving the
-   * preview audio + background untouched.
+   * Audio preview + circle background. Owns its own render container (added to
+   * `root` and faded by transitions), the preview source, and the blob-URL
+   * cache that survives view remounts on overlay close.
    */
-  private readonly mediaUrlCache = new LruCache<string, MediaUrls>(MEDIA_URL_CACHE_SIZE, revokeMediaUrls);
-  /**
-   * Whether the preview source is currently playing. Lets us skip the
-   * re-arm in onEntered when the audio survived an overlay scene (downloader/
-   * filter) — we don't want to restart the preview from 0 every pop-back.
-   */
-  private isPreviewArmed = false;
+  private readonly preview: BeatmapPreviewController;
 
   /** One-shot guard: pick a random map the first time the list arrives. */
   private hasPickedInitialFocus = false;
 
   constructor(engine: Engine) {
     super(engine);
-    this.background = new BackgroundCrossfader(engine.settings, {
-      radius: CIRCLE_RADIUS_PX,
-      fadeDurationMs: BACKGROUND_CROSSFADE_MS,
-    });
-    this.audioVisualizer = new CircleAudioVisualizer(
-      engine.audio.music.getAudioContext(),
-      40,
-      CIRCLE_RADIUS_PX,
-      30,
-      engine.settings,
-    );
-    // Inner content renders behind the circle, like in gameplay: background → visualizer.
-    this.innerContainer.add(this.background);
-    this.innerContainer.add(this.audioVisualizer);
-    this.root.add(this.innerContainer);
+    this.preview = new BeatmapPreviewController(engine, () => this.isActive());
+    this.root.add(this.preview.container);
     const circle = sharedCircle(engine);
     this.root.add(circle);
     this.root.add(new StickDotsEntity(this.inputSystem, circle));
@@ -190,25 +145,22 @@ export class BeatmapSelectionScene extends CanvasScene {
     // left-column focus so the user lands back on their beatmap. focusedIndex
     // is preserved through overlays so we restore the same selection.
     this.focusedLeftButton.set(null);
-    // Exit transitions fade innerContainer to 0; reset before showing again.
-    this.innerContainer.alpha = 1;
-    // Re-arm preview only if it isn't already playing. Coming back from
-    // gameplay/scores: audio was stopped, this restarts it. Coming back
-    // from downloader/filter: audio is still playing, no-op.
-    if (this.currentMedia && !this.isPreviewArmed) {
-      void this.refreshPreviewMedia(++this.mediaGeneration);
-    }
+    // Exit transitions fade the preview container to 0; reset before showing again.
+    this.preview.container.alpha = 1;
+    // Re-arm preview only if it isn't already playing (no-op when the audio
+    // survived an overlay; restarts it when coming back from gameplay/scores).
+    this.preview.reArmIfNeeded();
   }
 
   public override onDestroy() {
-    this.stopPreviewAudio();
+    this.preview.stop();
     super.onDestroy();
   }
 
   public override scenePlayable(slot: SceneTransitionSlot, durationMs: number): Playable | null {
     if (slot === "exit") {
       return tween({
-        target: this.innerContainer,
+        target: this.preview.container,
         to: { alpha: 0 },
         duration: durationMs,
         easing: easeInOutCubic,
@@ -217,10 +169,10 @@ export class BeatmapSelectionScene extends CanvasScene {
     if (slot === "enter") {
       return sequence([
         call(() => {
-          this.innerContainer.alpha = 0;
+          this.preview.container.alpha = 0;
         }),
         tween({
-          target: this.innerContainer,
+          target: this.preview.container,
           to: { alpha: 1 },
           duration: durationMs,
           easing: easeInOutCubic,
@@ -241,7 +193,7 @@ export class BeatmapSelectionScene extends CanvasScene {
       this.hasPickedInitialFocus = true;
     } else {
       const maxOffset = Math.max(0, count - 1);
-      this.scrollOffset.set(clamp(this.scrollOffset.get(), 0, maxOffset));
+      this.scrollOffset.set(Math.max(0, Math.min(maxOffset, this.scrollOffset.get())));
       const focused = this.focusedIndex.get();
       if (focused !== null && focused >= count) {
         this.focusedIndex.set(null);
@@ -255,37 +207,16 @@ export class BeatmapSelectionScene extends CanvasScene {
 
   /**
    * Tell the scene which beatmap is currently hovered. Triggers an audio
-   * preview + circle background. Pass null to clear both.
+   * preview + circle background. Pass null to clear both. Delegated to the
+   * preview controller, which owns the media lifecycle.
    */
-  public setFocusedBeatmapMedia(media: FocusedBeatmapMedia | null): void {
-    if (sameMedia(this.currentMedia, media)) return;
-    this.currentMedia = media;
-    void this.refreshPreviewMedia(++this.mediaGeneration);
+  public setFocusedBeatmapMedia(media: MediaUrls | null): void {
+    this.preview.setFocusedMedia(media);
   }
 
-  /**
-   * Cached blob-URL lookup for a beatmap's audio + background. Lives on the
-   * scene so the cache survives view remounts — see `mediaUrlCache`. Returns
-   * null if the beatmap is missing its referenced files in the DB.
-   */
-  public async resolveMediaUrls(beatmap: V3BeatmapEntity): Promise<MediaUrls | null> {
-    const cached = this.mediaUrlCache.get(beatmap.idv2);
-    if (cached) return cached;
-    // Legacy beatmaps in the DB may have null ids if the downloader couldn't
-    // find the referenced audio/background file in the zip. Skip cleanly
-    // instead of letting Dexie throw on Table.get(invalid).
-    if (beatmap.audioId == null || beatmap.gameplayBackgroundId == null) return null;
-    const [audioFile, bgFile] = await Promise.all([
-      latestDb.files.get(beatmap.audioId),
-      latestDb.files.get(beatmap.gameplayBackgroundId),
-    ]);
-    if (!audioFile || !bgFile) return null;
-    const urls: MediaUrls = {
-      audioUrl: URL.createObjectURL(audioFile.content),
-      backgroundUrl: URL.createObjectURL(bgFile.content),
-    };
-    this.mediaUrlCache.set(beatmap.idv2, urls);
-    return urls;
+  /** Cached blob-URL lookup for a beatmap's audio + background (see the controller). */
+  public resolveMediaUrls(beatmap: V3BeatmapEntity): Promise<MediaUrls | null> {
+    return this.preview.resolveMediaUrls(beatmap);
   }
 
   /**
@@ -320,13 +251,13 @@ export class BeatmapSelectionScene extends CanvasScene {
 
   public scrollBy(deltaItems: number): void {
     const current = this.scrollOffset.get();
-    const next = clamp(current + deltaItems, 0, Math.max(0, this.beatmapCount - 1));
+    const next = Math.max(0, Math.min(this.beatmapCount - 1, current + deltaItems));
     if (next === current) return;
     this.scrollOffset.set(next);
   }
 
   public scrollTo(index: number): void {
-    this.scrollOffset.set(clamp(index, 0, Math.max(0, this.beatmapCount - 1)));
+    this.scrollOffset.set(Math.max(0, Math.min(this.beatmapCount - 1, index)));
   }
 
   /**
@@ -372,7 +303,7 @@ export class BeatmapSelectionScene extends CanvasScene {
   public playMap(map: ParsedMap): void {
     // Stop the preview before transitioning — gameplay starts its own audio
     // from 0 and we don't want any overlap during the cross-fade.
-    this.stopPreviewAudio();
+    this.preview.stop();
     this.lastGameplayScene?.remove();
     const gameplayScene = new GameplayScene(this.engine, map);
     void this.sceneManager.transitionPush(gameplayScene, fadeOutResizeIn);
@@ -380,7 +311,7 @@ export class BeatmapSelectionScene extends CanvasScene {
   }
 
   public goBack(): void {
-    this.stopPreviewAudio();
+    this.preview.stop();
     void this.sceneManager.transitionPop(fadeThenResize);
   }
 
@@ -478,43 +409,4 @@ export class BeatmapSelectionScene extends CanvasScene {
     });
   }
 
-  private async refreshPreviewMedia(generation: number): Promise<void> {
-    this.stopPreviewAudio();
-
-    const media = this.currentMedia;
-    if (!media || !this.isActive()) {
-      this.background.setSource(null);
-      return;
-    }
-
-    this.background.setSource(media.backgroundUrl);
-
-    const music = this.engine.audio.music;
-    let buffer: AudioBuffer;
-    try {
-      buffer = await music.loadBuffer(media.audioUrl);
-    } catch (e) {
-      console.error("Failed to load preview audio", e);
-      return;
-    }
-    if (generation !== this.mediaGeneration || !this.isActive()) return;
-    const source = music.play(PREVIEW_AUDIO_ID, buffer, { loop: true, volume: PREVIEW_AUDIO_VOLUME });
-    this.audioVisualizer.connectSource(source);
-    this.isPreviewArmed = true;
-  }
-
-  private stopPreviewAudio(): void {
-    this.engine.audio.music.stop(PREVIEW_AUDIO_ID);
-    this.isPreviewArmed = false;
-  }
-}
-
-function sameMedia(a: FocusedBeatmapMedia | null, b: FocusedBeatmapMedia | null): boolean {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  return a.audioUrl === b.audioUrl && a.backgroundUrl === b.backgroundUrl;
-}
-
-function clamp(v: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, v));
 }

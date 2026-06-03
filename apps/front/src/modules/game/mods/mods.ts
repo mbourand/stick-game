@@ -14,8 +14,15 @@ export const RATE_DEFAULT = 1;
 
 export const NO_MODS: ActiveMods = { rate: RATE_DEFAULT };
 
-/** Multiplier applied to the score cap. Future mods multiply their factor in here. */
-export const getScoreMultiplier = (mods: ActiveMods): number => mods.rate;
+/**
+ * Multiplier applied to the score cap. Rate gives diminishing returns: it tracks
+ * the rate 1:1 while slowing down (0.5×→0.5, 1×→1) but only earns 0.4 of extra
+ * score per point of rate above 1× (1.5×→1.2, 2×→1.4), so speeding up is worth
+ * less than it costs in difficulty. Endpoints 0.5× and 2× are exact by design.
+ * Future mods multiply their own factor in here.
+ */
+export const getScoreMultiplier = (mods: ActiveMods): number =>
+  mods.rate <= RATE_DEFAULT ? mods.rate : RATE_DEFAULT + (mods.rate - RATE_DEFAULT) * 0.4;
 
 /** Whether any mod is active (i.e. the play doesn't belong on the no-mods board). */
 export const isModded = (mods: ActiveMods): boolean => mods.rate !== RATE_DEFAULT;

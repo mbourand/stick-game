@@ -247,30 +247,64 @@ const parseEventLines = (lines: string[]) => {
   return { backgroundFilePath };
 };
 
+// How much a change in angular velocity (acceleration) weighs relative to raw
+// speed. A full direction reversal at the same speed roughly doubles the strain.
+const ACCELERATION_WEIGHT = 0.6;
+
+// Global scale that keeps the new (speed + acceleration) rating on the same
+// numeric scale as the old (speed-only) one. Calibrated so the average new/old
+// ratio across the bundled default maps was ~1: the acceleration term
+// redistributes difficulty (variable/tech maps up, steady streams down)
+// without inflating every number. If ACCELERATION_WEIGHT changes, this needs
+// re-deriving (= 1 / average(new/old) over a representative map set).
+const DIFFICULTY_CALIBRATION = 0.8093;
+
 const computeDifficultyRating = (notes: ParsedNote[]): number => {
+  // Each stick (hand) is modelled independently. For every note we look at the
+  // angular motion the stick has to perform to reach it:
+  //   - speed: how fast it must rotate (this was the whole rating before).
+  //   - acceleration: how much that angular velocity changes from the previous
+  //     move. This single term captures BOTH speed variation (same direction,
+  //     slowing down / speeding up) AND direction changes (the velocity sign
+  //     flips, so the delta becomes |v| + |v_prev| — large). Both are much
+  //     harder than a steady stream, which is exactly what we want to reward.
   const diffData = {
     [NoteColor.Red]: {
       currentAngle: 0,
       currentHitTime: 0,
+      lastVelocity: undefined as number | undefined,
     },
     [NoteColor.Blue]: {
       currentAngle: 0,
       currentHitTime: 0,
+      lastVelocity: undefined as number | undefined,
     },
   };
 
-  let speedValuesSum = 0;
+  let strainSum = 0;
 
   for (const note of notes) {
     const hand = diffData[note.color];
-    const toAngle = note.angle;
-    const angleDiff = Math.abs(toAngle - hand.currentAngle);
-    speedValuesSum += angleDiff / Math.max(1, note.hitTime - hand.currentHitTime);
+
+    // Shortest signed rotation from the current stick angle to the note's
+    // angle (normalised to [-PI, PI]). The sign encodes the rotation direction.
+    const rawDelta = note.angle - hand.currentAngle;
+    const angleDelta = Math.atan2(Math.sin(rawDelta), Math.cos(rawDelta));
+
+    const dt = Math.max(1, note.hitTime - hand.currentHitTime);
+    const velocity = angleDelta / dt;
+
+    const speedStrain = Math.abs(velocity);
+    const accelerationStrain = hand.lastVelocity === undefined ? 0 : Math.abs(velocity - hand.lastVelocity);
+
+    strainSum += speedStrain + ACCELERATION_WEIGHT * accelerationStrain;
+
     hand.currentHitTime = note.hitTime + (note.holdDuration ?? 0);
-    hand.currentAngle = toAngle;
+    hand.currentAngle = note.angle;
+    hand.lastVelocity = velocity;
   }
 
-  return Math.round((speedValuesSum / notes.length) * 100000) / 100;
+  return Math.round((strainSum / notes.length) * DIFFICULTY_CALIBRATION * 100000) / 100;
 };
 
 export const convertFromOsu = (

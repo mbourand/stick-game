@@ -1,4 +1,4 @@
-import { v4db, type V4BeatmapEntity } from "./versions/v4";
+import { v5db, type V5BeatmapEntity } from "./versions/v5";
 
 /**
  * Idempotent cleanup: removes duplicate beatmap rows (same `idv2`), keeping
@@ -10,7 +10,7 @@ import { v4db, type V4BeatmapEntity } from "./versions/v4";
  * (called from db.ts); safe to re-run any time.
  */
 export async function pruneDuplicateBeatmaps(): Promise<void> {
-  const all = await v4db.beatmaps.orderBy("createdAt").toArray();
+  const all = await v5db.beatmaps.orderBy("createdAt").toArray();
   // orderBy returns ascending; reverse so we scan newest-first and keep the
   // most recent of each duplicate group.
   all.reverse();
@@ -26,7 +26,7 @@ export async function pruneDuplicateBeatmaps(): Promise<void> {
   }
 
   if (idsToDelete.length > 0) {
-    await v4db.beatmaps.bulkDelete(idsToDelete);
+    await v5db.beatmaps.bulkDelete(idsToDelete);
     console.log(`Pruned ${idsToDelete.length} duplicate beatmap row(s)`);
   }
 
@@ -38,7 +38,7 @@ export async function pruneDuplicateBeatmaps(): Promise<void> {
  * gameplay background, or list background.
  */
 async function pruneOrphanedFiles(): Promise<void> {
-  const beatmaps = await v4db.beatmaps.toArray();
+  const beatmaps = await v5db.beatmaps.toArray();
   const referenced = new Set<number>();
   for (const b of beatmaps) {
     if (b.audioId != null) referenced.add(b.audioId);
@@ -46,10 +46,10 @@ async function pruneOrphanedFiles(): Promise<void> {
     if (b.listBackgroundId != null) referenced.add(b.listBackgroundId);
   }
 
-  const allFiles = await v4db.files.toArray();
+  const allFiles = await v5db.files.toArray();
   const orphanIds = allFiles.filter((f) => !referenced.has(f.id)).map((f) => f.id);
   if (orphanIds.length > 0) {
-    await v4db.files.bulkDelete(orphanIds);
+    await v5db.files.bulkDelete(orphanIds);
     console.log(`Pruned ${orphanIds.length} orphaned file row(s)`);
   }
 }
@@ -60,8 +60,8 @@ async function pruneOrphanedFiles(): Promise<void> {
  * overwrites cleanly without leaking the previous import's audio/background
  * blobs.
  */
-export async function deleteBeatmapAndOrphanedFiles(beatmap: V4BeatmapEntity): Promise<void> {
-  await v4db.beatmaps.delete(beatmap.id);
+export async function deleteBeatmapAndOrphanedFiles(beatmap: V5BeatmapEntity): Promise<void> {
+  await v5db.beatmaps.delete(beatmap.id);
   const candidateFileIds = [
     beatmap.audioId,
     beatmap.gameplayBackgroundId,
@@ -69,12 +69,12 @@ export async function deleteBeatmapAndOrphanedFiles(beatmap: V4BeatmapEntity): P
   ].filter((id): id is number => id != null);
   for (const fileId of candidateFileIds) {
     if (await isFileReferenced(fileId)) continue;
-    await v4db.files.delete(fileId);
+    await v5db.files.delete(fileId);
   }
 }
 
 async function isFileReferenced(fileId: number): Promise<boolean> {
-  const ref = await v4db.beatmaps
+  const ref = await v5db.beatmaps
     .filter(
       (b) =>
         b.audioId === fileId ||

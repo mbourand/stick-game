@@ -8,6 +8,7 @@ import { useTopScene, useTransition } from "../scenes/useScene";
 import { ensureSharedCircle } from "../sharedCircle";
 import { FirstRunImportOverlay } from "./FirstRunImportOverlay";
 import { GamepadToast } from "./GamepadToast";
+import { MigrationOverlay } from "./MigrationOverlay";
 
 export const GameShell = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -44,6 +45,7 @@ export const GameShell = () => {
             <GamepadToast engine={engine} />
           </div>
           <FirstRunImportOverlay engine={engine} />
+          <MigrationOverlay engine={engine} />
         </EngineContext.Provider>
       )}
     </>

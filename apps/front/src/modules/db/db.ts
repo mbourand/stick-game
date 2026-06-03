@@ -3,6 +3,7 @@ import { v1DexieDatabase } from "@/modules/db/versions/v1";
 import { v2DexieDatabase } from "@/modules/db/versions/v2";
 import { v3DexieDatabase } from "@/modules/db/versions/v3";
 import { v4DexieDatabase } from "@/modules/db/versions/v4";
+import { v5DexieDatabase } from "@/modules/db/versions/v5";
 
 export { latestDb } from "./versions";
 
@@ -10,6 +11,7 @@ v1DexieDatabase();
 v2DexieDatabase();
 v3DexieDatabase();
 v4DexieDatabase();
+v5DexieDatabase();
 
 // One-shot cleanup of pre-existing duplicates (idempotent — safe to run on
 // every boot; no-op once the DB is clean).

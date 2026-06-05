@@ -1,62 +1,76 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { ScoreCreateInput, ScoreModel } from "../prisma/generated/client/models";
+import { ScoreModel } from "../prisma/generated/client/models";
+import { LeaderboardEntry, toLeaderboardEntry } from "../prisma/dto/score.dto";
+import { buildAvatarUrl } from "../users/users.service";
+import { SCORE_VERSION } from "./scores.constants";
+
+/** Score metrics a client submits; identity is taken from the session, never the body. */
+export type SubmitScoreInput = {
+  beatmapId: string;
+  score: number;
+  maxCombo: number;
+  accuracy: number;
+  missCount: number;
+  mehCount: number;
+  goodCount: number;
+  greatCount: number;
+  perfectCount: number;
+  modded: boolean;
+  mods: string;
+};
 
 @Injectable()
 export class ScoresService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getBeatmapLeaderboard(beatmapId: string, scoreVersion: number, modded: boolean) {
-    return this.prisma.score.findMany({
-      where: { beatmapId, scoreVersion, modded },
+  /** Top scores for a board, joined with each owner's live name + avatar. */
+  async getBeatmapLeaderboard(beatmapId: string, scoreVersion: number, modded: boolean): Promise<LeaderboardEntry[]> {
+    const rows = await this.prisma.score.findMany({
+      // `userId: not null` drops legacy anonymous rows — only accounts rank.
+      where: { beatmapId, scoreVersion, modded, userId: { not: null } },
       orderBy: { score: "desc" },
       take: 50,
+      include: { user: { select: { id: true, username: true, updatedAt: true } } },
     });
+
+    return rows.map((row) =>
+      toLeaderboardEntry(row, row.user ? buildAvatarUrl(row.user.id, row.user.updatedAt.getTime()) : null),
+    );
   }
 
-  async getBeatmapPersonalBest(beatmapId: string, playerName: string, scoreVersion: number, modded: boolean) {
+  getBeatmapPersonalBest(beatmapId: string, userId: string, scoreVersion: number, modded: boolean) {
     return this.prisma.score.findFirst({
-      where: { beatmapId, playerName, scoreVersion, modded },
+      where: { beatmapId, userId, scoreVersion, modded },
       orderBy: { score: "desc" },
     });
   }
 
-  // Saves the new score to the database if it is the new personal best
+  /** Save the play if it beats the account's current best on this board. */
   async submitScore(
-    score: Omit<ScoreCreateInput, "scoreVersion">,
+    userId: string,
+    playerName: string,
+    input: SubmitScoreInput,
   ): Promise<{ wasUploaded: boolean; score: ScoreModel }> {
-    const currentPersonalBest = await this.getBeatmapPersonalBest(
-      score.beatmapId,
-      score.playerName,
-      3,
-      score.modded ?? false,
-    );
-    if (currentPersonalBest && score.score <= currentPersonalBest.score) {
-      return { wasUploaded: false, score: currentPersonalBest };
+    const currentBest = await this.getBeatmapPersonalBest(input.beatmapId, userId, SCORE_VERSION, input.modded);
+    if (currentBest && input.score <= currentBest.score) {
+      return { wasUploaded: false, score: currentBest };
     }
 
-    const hydratedScore: ScoreCreateInput = {
-      ...score,
-      scoreVersion: 3,
-    };
-
-    const newScore = await this.prisma.score.upsert({
+    const data = { ...input, userId, playerName, scoreVersion: SCORE_VERSION };
+    const score = await this.prisma.score.upsert({
       where: {
-        playerName_beatmapId_scoreVersion_modded: {
-          playerName: score.playerName,
-          beatmapId: score.beatmapId,
-          scoreVersion: 3,
-          modded: score.modded ?? false,
+        userId_beatmapId_scoreVersion_modded: {
+          userId,
+          beatmapId: input.beatmapId,
+          scoreVersion: SCORE_VERSION,
+          modded: input.modded,
         },
       },
-      update: hydratedScore,
-      create: hydratedScore,
+      update: data,
+      create: data,
     });
 
-    if (!newScore) {
-      throw new Error("Failed to submit score");
-    }
-
-    return { wasUploaded: true, score: newScore };
+    return { wasUploaded: true, score };
   }
 }

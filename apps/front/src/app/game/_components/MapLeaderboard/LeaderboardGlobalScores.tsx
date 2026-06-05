@@ -25,9 +25,10 @@ export const LeaderboardGlobalScores = ({ beatmapId, modded = false }: Leaderboa
     <ol className="flex flex-col gap-1">
       {entries.slice(0, VISIBLE_ROWS).map((entry, index) => (
         <ScoreRow
-          key={entry.playerName + index}
+          key={entry.userId + index}
           rank={index + 1}
-          playerName={entry.playerName}
+          playerName={entry.username}
+          avatarUrl={entry.avatarUrl}
           score={entry.score}
           accuracy={entry.accuracy}
           maxCombo={entry.maxCombo}

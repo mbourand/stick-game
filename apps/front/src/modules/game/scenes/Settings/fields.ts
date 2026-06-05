@@ -63,10 +63,10 @@ export const SETTINGS_ROWS: readonly SettingsRow[] = [
     kind: "text",
     id: "playerName",
     section: "General",
-    label: "Player name",
+    label: "Guest name",
     read: (s) => s.playerName,
     write: (sv, v) => sv.set("playerName", v),
-    editHint: "Type on a keyboard to edit",
+    editHint: "Used for local scores — sign in to set your global name",
   },
   {
     kind: "gamepad",

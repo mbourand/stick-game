@@ -8,8 +8,15 @@ import {
   zScoresControllerSubmitScoreResponse,
   zScoresControllerGetBeatmapLeaderboardData,
   zScoresControllerGetBeatmapLeaderboardResponse,
+  zAuthControllerProvidersData,
+  zAuthControllerProvidersResponse,
+  zUsersControllerMeData,
+  zUsersControllerMeResponse,
+  zUsersControllerUpdateUsernameData,
+  zUsersControllerUpdateUsernameResponse,
 } from "@tau/back-schemas";
 import { Env } from "@/modules/env/Env";
+import { getAuthToken } from "@/modules/auth/authStore";
 import z from "zod";
 
 const BACK_ROUTES = {
@@ -41,6 +48,27 @@ const BACK_ROUTES = {
     bodySchema: zScoresControllerGetBeatmapLeaderboardData.shape.body,
     responseSchema: zScoresControllerGetBeatmapLeaderboardResponse,
   },
+  "/auth/providers": {
+    method: "GET",
+    queryParamsSchema: zAuthControllerProvidersData.shape.query,
+    paramsSchema: zAuthControllerProvidersData.shape.path,
+    bodySchema: zAuthControllerProvidersData.shape.body,
+    responseSchema: zAuthControllerProvidersResponse,
+  },
+  "/users/me": {
+    method: "GET",
+    queryParamsSchema: zUsersControllerMeData.shape.query,
+    paramsSchema: zUsersControllerMeData.shape.path,
+    bodySchema: zUsersControllerMeData.shape.body,
+    responseSchema: zUsersControllerMeResponse,
+  },
+  "/users/me/username": {
+    method: "PATCH",
+    queryParamsSchema: zUsersControllerUpdateUsernameData.shape.query,
+    paramsSchema: zUsersControllerUpdateUsernameData.shape.path,
+    bodySchema: zUsersControllerUpdateUsernameData.shape.body,
+    responseSchema: zUsersControllerUpdateUsernameResponse,
+  },
 } as const;
 
 type BackRoutesType = typeof BACK_ROUTES;
@@ -59,6 +87,11 @@ export const fetchBackend = async <const Route extends keyof typeof BACK_ROUTES>
   route: Route,
   params: ParamsType<Route>,
 ) => {
+  // Attach the session token (when logged in) so authed routes — score submit,
+  // profile — are recognised. Public routes simply ignore it.
+  const token = getAuthToken();
+  const headers = token ? { Authorization: `Bearer ${token}`, ...params.headers } : params.headers;
+
   return fetchData({
     baseUrl: Env.BACKEND_URL,
     params: params.params,
@@ -66,7 +99,7 @@ export const fetchBackend = async <const Route extends keyof typeof BACK_ROUTES>
     queryParams: params.queryParams,
     method: BACK_ROUTES[route].method,
     responseSchema: BACK_ROUTES[route].responseSchema,
-    headers: params.headers,
+    headers,
     body: params.body,
   }) as Promise<z.infer<BackRoutesType[Route]["responseSchema"]>>;
 };

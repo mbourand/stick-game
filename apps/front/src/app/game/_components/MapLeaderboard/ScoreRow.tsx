@@ -1,8 +1,11 @@
 import { computeGrade, GRADE_COLOR } from "@/modules/game/score/grade";
+import { Avatar } from "@/components/Avatar";
 
 type ScoreRowProps = {
   rank: number;
   playerName: string;
+  /** Account avatar URL; null/absent falls back to the player's initial. */
+  avatarUrl?: string | null;
   score: number;
   accuracy: number;
   maxCombo: number;
@@ -14,7 +17,17 @@ type ScoreRowProps = {
   highlighted?: boolean;
 };
 
-export const ScoreRow = ({ rank, playerName, score, accuracy, maxCombo, missCount, mods, highlighted = false }: ScoreRowProps) => {
+export const ScoreRow = ({
+  rank,
+  playerName,
+  avatarUrl,
+  score,
+  accuracy,
+  maxCombo,
+  missCount,
+  mods,
+  highlighted = false,
+}: ScoreRowProps) => {
   const grade = computeGrade(accuracy, missCount);
   return (
     <li
@@ -31,6 +44,7 @@ export const ScoreRow = ({ rank, playerName, score, accuracy, maxCombo, missCoun
       >
         {grade}
       </span>
+      <Avatar src={avatarUrl} name={playerName} size={26} />
       {/* Name owns the full flexible column; the mod tag sits on its own line
           beneath it so a long "Rate ×1.50" never squeezes the name. */}
       <span className="flex-1 min-w-0 flex flex-col justify-center leading-tight">

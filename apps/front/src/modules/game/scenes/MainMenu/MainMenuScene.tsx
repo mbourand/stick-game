@@ -8,6 +8,7 @@ import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import { BeatmapSelectionScene } from "../BeatmapSelection/BeatmapSelectionScene";
 import { CanvasScene } from "../CanvasScene";
 import { SettingsScene } from "../Settings/SettingsScene";
+import { ProfileScene } from "../Profile/ProfileScene";
 import { BUTTON_HEIGHT_PX, BUTTONS, getButtonYOffsetFromCenter, type ButtonId } from "./layout";
 import { MainMenuView } from "./MainMenuView";
 
@@ -60,6 +61,10 @@ export class MainMenuScene extends CanvasScene {
 
   public openSettings() {
     void this.sceneManager.transitionPush(new SettingsScene(this.engine, crossfade), crossfade);
+  }
+
+  public openProfile() {
+    void this.sceneManager.transitionPush(new ProfileScene(this.engine, crossfade), crossfade);
   }
 
   public override update(tick: TickContext) {

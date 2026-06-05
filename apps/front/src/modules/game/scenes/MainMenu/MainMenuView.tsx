@@ -1,5 +1,7 @@
 import { AnimatePresence, motion } from "motion/react";
 import { settings } from "@/modules/settings/Settings";
+import { Avatar } from "@/components/Avatar";
+import { useAuth } from "@/modules/auth/useAuth";
 import { useScenePresence } from "../../engine/animation/scenePresence";
 import { fade } from "../../engine/animation/poses";
 import { useScenePresenceMotion } from "../../engine/animation/useScenePresenceMotion";
@@ -17,8 +19,10 @@ export const MainMenuView: SceneUIComponent<MainMenuScene> = ({ scene }) => {
   const focused = useStore(scene.focused);
   const { scale } = useViewport();
   const isVisible = useScenePresence() === "in";
+  const session = useAuth();
 
-  const playerName = settings.get().playerName || "Guest";
+  // Logged-in account drives the card; otherwise fall back to the guest name.
+  const displayName = session?.user.username ?? settings.get().playerName ?? "Guest";
   const hint = focused ? BUTTONS.find((b) => b.id === focused)?.hint : null;
 
   const playerCardMotion = useScenePresenceMotion(fade());
@@ -58,9 +62,23 @@ export const MainMenuView: SceneUIComponent<MainMenuScene> = ({ scene }) => {
           className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none"
           {...playerCardMotion}
         >
-          <div className="w-32 h-32 rounded-full bg-white/10 border border-white/20 mb-6" />
-          <div className="text-3xl tracking-[0.15em] uppercase">{playerName}</div>
-          <div className="text-sm text-white/50 tracking-[0.25em] uppercase mt-2">rank #—</div>
+          <button
+            type="button"
+            onClick={() => scene.openProfile()}
+            className="flex flex-col items-center pointer-events-auto group focus:outline-none"
+            title={session ? "Manage your account" : "Sign in"}
+          >
+            <Avatar
+              src={session?.user.avatarUrl}
+              name={displayName}
+              size={128}
+              className="mb-6 transition-transform duration-150 group-hover:scale-105 group-focus:scale-105"
+            />
+            <div className="text-3xl tracking-[0.15em] uppercase">{displayName}</div>
+            <div className="text-sm text-white/50 tracking-[0.25em] uppercase mt-2">
+              {session ? "View profile" : "Sign in"}
+            </div>
+          </button>
         </motion.div>
 
         <div className="absolute bottom-[18%] left-0 right-0 px-[14%] h-5 flex items-center justify-center pointer-events-none">

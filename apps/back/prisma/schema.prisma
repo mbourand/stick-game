@@ -32,7 +32,36 @@ model DailyFeature {
   featuredAt   DateTime @default(now())
 }
 
+/// A registered player. Authentication is delegated to an OAuth provider
+/// (Discord/Google) so we never store passwords; we keep no email or other PII,
+/// only the provider's opaque account id used to recognise a returning user.
+model User {
+  id         String   @id @default(cuid())
+  /// Mutable display name shown on leaderboards and the profile card.
+  /// @zod.string().min(1).max(32)
+  username   String   @unique
+  /// Opaque provider account ids. Exactly one is set per account (one provider
+  /// per account in v1 — no cross-provider linking).
+  discordId  String?  @unique
+  googleId   String?  @unique
+  /// Resized (256x256 webp) avatar bytes, served via GET /users/:id/avatar.
+  avatarData Bytes?
+  /// @zod.string().max(64)
+  avatarMime String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  scores     Score[]
+}
+
 model Score {
+  id              Int      @id @default(autoincrement())
+  /// Owning account. Null only for legacy anonymous rows predating accounts;
+  /// the global leaderboard filters those out (login is required to submit).
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Denormalised copy of the owner's name, refreshed to their current username
+  /// on each submit. Only a fallback for legacy anonymous rows; live display
+  /// reads `user.username`.
   /// @zod.string().min(1).max(32)
   playerName      String
   /// @zod.string().min(1).max(32)
@@ -62,5 +91,7 @@ model Score {
   /// Human-readable mod summary (e.g. "Rate ×1.50"); "" for no-mods plays.
   mods            String   @default("")
 
-  @@id([playerName, beatmapId, scoreVersion, modded])
+  /// One personal best per (account, beatmap, score version, modded board).
+  @@unique([userId, beatmapId, scoreVersion, modded])
+  @@index([beatmapId, scoreVersion, modded, score])
 }

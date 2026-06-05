@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-type BodyMethod = "GET" | "POST" | "PUT";
+type BodyMethod = "GET" | "POST" | "PUT" | "PATCH";
 type NoBodyMethod = "GET" | "DELETE";
 
 export type FetchDataParams<

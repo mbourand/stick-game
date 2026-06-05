@@ -6,6 +6,7 @@ import { LATEST_SCORE_VERSION } from "@/modules/score/constants";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { useStore } from "../../../engine/state/useStore";
+import { useAuth } from "@/modules/auth/useAuth";
 import type { ScoresScene, SubmissionState } from "../ScoresScene";
 
 /** Approximate per-row stride (row height + gap) for centering the player's row. */
@@ -16,6 +17,7 @@ const TAB_LABEL: Record<LeaderboardTab, string> = { global: "Global", modded: "M
 type Row = {
   key: string;
   playerName: string;
+  avatarUrl?: string | null;
   score: number;
   accuracy: number;
   maxCombo: number;
@@ -26,6 +28,7 @@ type Row = {
 export const RankTab = ({ scene }: { scene: ScoresScene }) => {
   const tab = useStore(scene.leaderboardTab);
   const submission = useStore(scene.submission);
+  const session = useAuth();
   const playerScore = scene.scoreCounter.getScore();
 
   const localQuery = useQuery(
@@ -53,8 +56,9 @@ export const RankTab = ({ scene }: { scene: ScoresScene }) => {
         mods: e.mods,
       }))
     : (globalQuery.data?.leaderboard ?? []).map((e, i) => ({
-        key: `${e.playerName}-${i}`,
-        playerName: e.playerName,
+        key: `${e.userId}-${i}`,
+        playerName: e.username,
+        avatarUrl: e.avatarUrl,
         score: e.score,
         accuracy: e.accuracy,
         maxCombo: e.maxCombo,
@@ -65,7 +69,7 @@ export const RankTab = ({ scene }: { scene: ScoresScene }) => {
   const playerIndex = isLocal
     ? (localQuery.data ?? []).findIndex((e) => e.id === submission.localId)
     : (globalQuery.data?.leaderboard ?? []).findIndex(
-        (e) => e.playerName === scene.playerName && e.score === playerScore,
+        (e) => e.userId === session?.user.id && e.score === playerScore,
       );
 
   const placement = isLocal
@@ -144,6 +148,7 @@ const LeaderboardList = ({ rows, playerIndex }: { rows: Row[]; playerIndex: numb
           key={row.key}
           rank={i + 1}
           playerName={row.playerName}
+          avatarUrl={row.avatarUrl}
           score={row.score}
           accuracy={row.accuracy}
           maxCombo={row.maxCombo}
@@ -185,6 +190,7 @@ function localPlacement(submission: SubmissionState, playerIndex: number, total:
 
 function globalPlacement(submission: SubmissionState, playerIndex: number): string {
   if (submission.status === "saving") return "Saving…";
+  if (!submission.loggedIn) return "Sign in to rank";
   if (submission.globalError) return "Offline";
   if (!submission.uploadedGlobal) return "Not ranked";
   if (playerIndex < 0) return "Unranked";

@@ -42,6 +42,8 @@ export type SubmissionState = {
   uploadedGlobal: boolean;
   /** Backend request itself failed (offline / server error). */
   globalError: boolean;
+  /** Whether the player was signed in — global ranking requires an account. */
+  loggedIn: boolean;
 };
 
 const INITIAL_SUBMISSION: SubmissionState = {
@@ -49,6 +51,7 @@ const INITIAL_SUBMISSION: SubmissionState = {
   localId: null,
   uploadedGlobal: false,
   globalError: false,
+  loggedIn: false,
 };
 
 export class ScoresScene extends CanvasScene {
@@ -175,7 +178,7 @@ export class ScoresScene extends CanvasScene {
    */
   private async submitPlayedScore(): Promise<void> {
     const sc = this.scoreCounter;
-    const { backendResult, localResult } = await submitScore({
+    const { backendResult, localResult, loggedIn } = await submitScore({
       accuracy: sc.getAccuracy(),
       score: sc.getScore(),
       maxCombo: sc.getMaxCombo(),
@@ -191,8 +194,10 @@ export class ScoresScene extends CanvasScene {
     });
 
     const localId = localResult.status === "fulfilled" ? localResult.value : null;
-    const uploadedGlobal = backendResult.status === "fulfilled" && backendResult.value.wasUploaded;
-    const globalError = backendResult.status === "rejected";
+    // `backendResult` is null when logged out — no global attempt was made.
+    const uploadedGlobal =
+      backendResult !== null && backendResult.status === "fulfilled" && backendResult.value?.wasUploaded === true;
+    const globalError = backendResult !== null && backendResult.status === "rejected";
 
     if (localResult.status === "rejected") {
       console.error("Failed to save score locally:", localResult.reason);
@@ -201,7 +206,7 @@ export class ScoresScene extends CanvasScene {
       console.error("Failed to submit score to backend:", backendResult.reason);
     }
 
-    this.submission.set({ status: "settled", localId, uploadedGlobal, globalError });
+    this.submission.set({ status: "settled", localId, uploadedGlobal, globalError, loggedIn });
 
     if (localId !== null) {
       browserQueryClient?.invalidateQueries({

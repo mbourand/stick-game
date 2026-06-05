@@ -1,6 +1,19 @@
 import { createZodDto } from "nestjs-zod";
 import z from "zod";
 
+/**
+ * A user-chosen display name: trimmed, 1–32 chars, and free of control
+ * characters (tabs, newlines, zero-width/format codes) so a name can't be blank,
+ * padded with whitespace, or built to spoof another via invisible characters.
+ * `\p{Cc}` is the Unicode "Control" category; `\p{Cf}` is "Format".
+ */
+const usernameField = z
+  .string()
+  .trim()
+  .min(1)
+  .max(32)
+  .regex(/^[^\p{Cc}\p{Cf}]+$/u, "Username contains disallowed characters");
+
 /** Public account profile returned by the users + auth endpoints. */
 export const UserProfileSchema = z.strictObject({
   id: z.string(),
@@ -11,7 +24,7 @@ export const UserProfileSchema = z.strictObject({
 });
 
 export const UpdateUsernameSchema = z.strictObject({
-  username: z.string().min(1).max(32),
+  username: usernameField,
 });
 
 export class UserProfileDto extends createZodDto(UserProfileSchema) {}

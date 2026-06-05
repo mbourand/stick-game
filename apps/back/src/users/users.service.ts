@@ -2,6 +2,7 @@ import { ConflictException, Injectable } from "@nestjs/common";
 import { AUTH_CONFIG } from "../config/auth.config";
 import { PrismaService } from "../prisma/prisma.service";
 import { UserModel } from "../prisma/generated/client/models";
+import { isUniqueViolation } from "../prisma/prisma-errors";
 import { OAuthProfile, OAuthProviderKey } from "../auth/oauth/oauth-providers";
 import { AvatarService } from "./avatar.service";
 
@@ -13,14 +14,28 @@ const PROVIDER_ID_FIELD = {
 
 const MAX_USERNAME_LENGTH = 32;
 
-/** True for a Prisma unique-constraint violation (P2002), optionally on a given field. */
-const isUniqueViolation = (error: unknown, field?: string): boolean => {
-  const e = error as { code?: string; meta?: { target?: unknown } };
-  if (e?.code !== "P2002") return false;
-  if (!field) return true;
-  const target = e.meta?.target;
-  return Array.isArray(target) ? target.includes(field) : String(target ?? "").includes(field);
-};
+/**
+ * Columns needed to build a `PublicProfile`. Deliberately omits `avatarData` —
+ * the (potentially tens-of-KB) avatar blob is never part of a profile response,
+ * so profile reads must not drag it out of Postgres. Presence of an avatar is
+ * inferred from the cheap `avatarMime` instead (the two are always written
+ * together by `updateAvatar`).
+ */
+const PUBLIC_PROFILE_SELECT = {
+  id: true,
+  username: true,
+  discordId: true,
+  googleId: true,
+  avatarMime: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+/** The account row backing a `PublicProfile` — every column except the avatar bytes. */
+export type ProfileRow = Pick<
+  UserModel,
+  "id" | "username" | "discordId" | "googleId" | "avatarMime" | "createdAt" | "updatedAt"
+>;
 
 /**
  * Absolute URL of an account's avatar. The `?v=` version (the account's
@@ -46,8 +61,8 @@ export class UsersService {
     private readonly avatars: AvatarService,
   ) {}
 
-  findById(id: string): Promise<UserModel | null> {
-    return this.prisma.user.findUnique({ where: { id } });
+  findById(id: string): Promise<ProfileRow | null> {
+    return this.prisma.user.findUnique({ where: { id }, select: PUBLIC_PROFILE_SELECT });
   }
 
   /**
@@ -88,11 +103,11 @@ export class UsersService {
   }
 
   /** Rename an account, surfacing a 409 when the name is already taken. */
-  async updateUsername(id: string, username: string): Promise<UserModel> {
+  async updateUsername(id: string, username: string): Promise<ProfileRow> {
     // Let the unique constraint be the arbiter (no check-then-write race): a
     // concurrent claim of the same name surfaces as P2002, which we map to 409.
     try {
-      return await this.prisma.user.update({ where: { id }, data: { username } });
+      return await this.prisma.user.update({ where: { id }, data: { username }, select: PUBLIC_PROFILE_SELECT });
     } catch (error) {
       if (isUniqueViolation(error, "username")) throw new ConflictException("Username already taken");
       throw error;
@@ -100,9 +115,14 @@ export class UsersService {
   }
 
   /** Process and store a new avatar from raw uploaded bytes. */
-  async updateAvatar(id: string, input: Buffer): Promise<UserModel> {
+  async updateAvatar(id: string, input: Buffer): Promise<ProfileRow> {
     const { data, mime } = await this.avatars.process(input);
-    return this.prisma.user.update({ where: { id }, data: { avatarData: data, avatarMime: mime } });
+    // `select` keeps the freshly-written avatar bytes from being read back out.
+    return this.prisma.user.update({
+      where: { id },
+      data: { avatarData: data, avatarMime: mime },
+      select: PUBLIC_PROFILE_SELECT,
+    });
   }
 
   /** Raw avatar bytes for serving, or null if the account has none. */
@@ -115,7 +135,7 @@ export class UsersService {
     return { data: Buffer.from(user.avatarData), mime: user.avatarMime };
   }
 
-  toPublicProfile(user: UserModel): PublicProfile {
+  toPublicProfile(user: ProfileRow): PublicProfile {
     // Derive the linked provider from the same field map used to look accounts
     // up, so adding a provider only touches PROVIDER_ID_FIELD.
     const provider =
@@ -125,7 +145,8 @@ export class UsersService {
       id: user.id,
       username: user.username,
       provider,
-      avatarUrl: user.avatarData ? buildAvatarUrl(user.id, user.updatedAt.getTime()) : null,
+      // `avatarMime` is set iff avatar bytes exist, so it stands in for them here.
+      avatarUrl: user.avatarMime ? buildAvatarUrl(user.id, user.updatedAt.getTime()) : null,
       createdAt: user.createdAt.toISOString(),
     };
   }

@@ -16,6 +16,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
+import { Throttle } from "@nestjs/throttler";
 import type { Response } from "express";
 import { ZodResponse } from "nestjs-zod";
 import { AuthUser, CurrentUser } from "../auth/auth-user";
@@ -52,6 +53,9 @@ export class UsersController {
 
   /** Upload a new avatar (resized to a square webp server-side). */
   @Put("me/avatar")
+  // Each upload runs sharp (CPU + memory); keep the per-IP rate well below the
+  // global baseline so it can't be used to pin the server.
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @UseGuards(JwtAuthGuard)
   // `limits` makes multer abort mid-stream once the cap is hit, so a giant
   // upload can't exhaust memory before the size validator below ever runs.

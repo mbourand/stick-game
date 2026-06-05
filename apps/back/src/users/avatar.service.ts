@@ -12,6 +12,15 @@ const AVATAR_SIZE = 256;
 const AVATAR_MIME = "image/webp";
 
 /**
+ * Cap on decoded pixels sharp will accept. The upload byte-size limit bounds the
+ * *compressed* input, but a small highly-compressed file can still decode to
+ * hundreds of megapixels and exhaust memory ("decompression bomb"). 24 MP is far
+ * more than any real avatar source needs while making such a bomb a clean reject
+ * rather than an OOM. (sharp's own default is ~268 MP — much too generous here.)
+ */
+const MAX_INPUT_PIXELS = 1_000_000;
+
+/**
  * Hosts we'll fetch a seed avatar from. The URL comes from a provider's profile
  * response, but we still pin it to the known provider CDNs over https so the
  * seed fetch can never be turned into a server-side request to an arbitrary host
@@ -31,7 +40,7 @@ export class AvatarService {
 
   /** Resize/crop arbitrary image bytes to a square webp avatar. */
   async process(input: Buffer): Promise<ProcessedAvatar> {
-    const buffer = await sharp(input)
+    const buffer = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
       .resize(AVATAR_SIZE, AVATAR_SIZE, { fit: "cover" })
       .webp({ quality: 82 })
       .toBuffer();

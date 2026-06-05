@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpException, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { ScoresService } from "./scores.service";
 import { ZodResponse } from "nestjs-zod";
 import { HttpStatusCode } from "axios";
@@ -53,6 +54,8 @@ export class ScoresController {
   }
 
   @Post("submit")
+  // A submit is a couple of writes; cap bursts well under the global baseline.
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
   @UseGuards(JwtAuthGuard)
   @ZodResponse({ type: PostScoresSubmitResponseDto })
   async submitScore(@CurrentUser() current: AuthUser, @Body() scoreDto: PostScoresSubmitBodyDto) {

@@ -13,6 +13,53 @@
 
 import { z } from 'zod';
 
+// --- Account / score building blocks (shared across the routes below) ---
+
+export const zUserProfile = z.object({
+    id: z.string(),
+    username: z.string().min(1).max(32),
+    provider: z.enum(['discord', 'google']).nullable(),
+    avatarUrl: z.string().nullable(),
+    createdAt: z.string()
+});
+
+export const zLeaderboardEntry = z.object({
+    userId: z.string(),
+    username: z.string().min(1).max(32),
+    avatarUrl: z.string().nullable(),
+    beatmapId: z.string().min(1).max(32),
+    score: z.int().gte(0).lte(9007199254740991),
+    maxCombo: z.int().gte(0).lte(9007199254740991),
+    accuracy: z.number().gte(0),
+    missCount: z.int().gte(0).lte(9007199254740991),
+    mehCount: z.int().gte(0).lte(9007199254740991),
+    goodCount: z.int().gte(0).lte(9007199254740991),
+    greatCount: z.int().gte(0).lte(9007199254740991),
+    perfectCount: z.int().gte(0).lte(9007199254740991),
+    submissionTime: z.string(),
+    scoreVersion: z.int().gte(0).lte(9007199254740991),
+    modded: z.boolean(),
+    mods: z.string().max(64)
+});
+
+// The caller's own score: a leaderboard entry without the identity fields.
+export const zSelfScore = zLeaderboardEntry.omit({ userId: true, avatarUrl: true });
+
+// Submit body: only the play metrics — identity comes from the session token.
+export const zScoreMetrics = zLeaderboardEntry.pick({
+    beatmapId: true,
+    score: true,
+    maxCombo: true,
+    accuracy: true,
+    missCount: true,
+    mehCount: true,
+    goodCount: true,
+    greatCount: true,
+    perfectCount: true,
+    modded: true,
+    mods: true
+});
+
 export const zGetOsuBeatmapsetsSearchResponseDtoOutput = z.object({
     beatmapsets: z.array(z.object({
         beatmaps: z.array(z.object({
@@ -55,73 +102,16 @@ export const zGetOsuDailyResponseDtoOutput = z.object({
 });
 
 export const zGetScoresBeatmapLeaderboardResponseDtoOutput = z.object({
-    leaderboard: z.array(z.object({
-        playerName: z.string().min(1).max(32),
-        beatmapId: z.string().min(1).max(32),
-        score: z.int().gte(0).lte(9007199254740991),
-        maxCombo: z.int().gte(0).lte(9007199254740991),
-        accuracy: z.number().gte(0),
-        missCount: z.int().gte(0).lte(9007199254740991),
-        mehCount: z.int().gte(0).lte(9007199254740991),
-        goodCount: z.int().gte(0).lte(9007199254740991),
-        greatCount: z.int().gte(0).lte(9007199254740991),
-        perfectCount: z.int().gte(0).lte(9007199254740991),
-        submissionTime: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
-        scoreVersion: z.int().gte(0).lte(9007199254740991),
-        modded: z.boolean(),
-        mods: z.string().max(64)
-    }))
+    leaderboard: z.array(zLeaderboardEntry)
 });
 
-export const zGetScoresBeatmapPersonalBestResponseDtoOutput = z.object({
-    playerName: z.string().min(1).max(32),
-    beatmapId: z.string().min(1).max(32),
-    score: z.int().gte(0).lte(9007199254740991),
-    maxCombo: z.int().gte(0).lte(9007199254740991),
-    accuracy: z.number().gte(0),
-    missCount: z.int().gte(0).lte(9007199254740991),
-    mehCount: z.int().gte(0).lte(9007199254740991),
-    goodCount: z.int().gte(0).lte(9007199254740991),
-    greatCount: z.int().gte(0).lte(9007199254740991),
-    perfectCount: z.int().gte(0).lte(9007199254740991),
-    submissionTime: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
-    scoreVersion: z.int().gte(0).lte(9007199254740991),
-    modded: z.boolean(),
-    mods: z.string().max(64)
-});
+export const zGetScoresBeatmapPersonalBestResponseDtoOutput = zSelfScore;
 
-export const zPostScoresSubmitBodyDto = z.object({
-    playerName: z.string().min(1).max(32),
-    beatmapId: z.string().min(1).max(32),
-    score: z.int().gte(0).lte(9007199254740991),
-    maxCombo: z.int().gte(0).lte(9007199254740991),
-    accuracy: z.number().gte(0),
-    missCount: z.int().gte(0).lte(9007199254740991),
-    mehCount: z.int().gte(0).lte(9007199254740991),
-    goodCount: z.int().gte(0).lte(9007199254740991),
-    perfectCount: z.int().gte(0).lte(9007199254740991),
-    modded: z.boolean(),
-    mods: z.string().max(64)
-});
+export const zPostScoresSubmitBodyDto = zScoreMetrics;
 
 export const zPostScoresSubmitResponseDtoOutput = z.object({
     wasUploaded: z.boolean(),
-    score: z.object({
-        playerName: z.string().min(1).max(32),
-        beatmapId: z.string().min(1).max(32),
-        score: z.int().gte(0).lte(9007199254740991),
-        maxCombo: z.int().gte(0).lte(9007199254740991),
-        accuracy: z.number().gte(0),
-        missCount: z.int().gte(0).lte(9007199254740991),
-        mehCount: z.int().gte(0).lte(9007199254740991),
-        goodCount: z.int().gte(0).lte(9007199254740991),
-        greatCount: z.int().gte(0).lte(9007199254740991),
-        perfectCount: z.int().gte(0).lte(9007199254740991),
-        submissionTime: z.iso.datetime().regex(/^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))T(?:(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z))$/),
-        scoreVersion: z.int().gte(0).lte(9007199254740991),
-        modded: z.boolean(),
-        mods: z.string().max(64)
-    })
+    score: zSelfScore
 });
 
 export const zOsuControllerBeatmapsetsSearchData = z.object({
@@ -158,8 +148,7 @@ export const zScoresControllerGetBeatmapLeaderboardResponse = zGetScoresBeatmapL
 export const zScoresControllerGetBeatmapPersonalBestData = z.object({
     body: z.optional(z.never()),
     path: z.object({
-        beatmapId: z.string().min(1).max(32),
-        playerName: z.string().min(1).max(32)
+        beatmapId: z.string().min(1).max(32)
     }),
     query: z.optional(z.object({
         scoreVersion: z.optional(z.number().gte(1).lte(3)).default(3),
@@ -176,3 +165,33 @@ export const zScoresControllerSubmitScoreData = z.object({
 });
 
 export const zScoresControllerSubmitScoreResponse = zPostScoresSubmitResponseDtoOutput;
+
+// --- Auth / account routes ---
+
+export const zAuthControllerProvidersData = z.object({
+    body: z.optional(z.never()),
+    path: z.optional(z.never()),
+    query: z.optional(z.never())
+});
+
+export const zAuthControllerProvidersResponse = z.object({
+    providers: z.array(z.enum(['discord', 'google']))
+});
+
+export const zUsersControllerMeData = z.object({
+    body: z.optional(z.never()),
+    path: z.optional(z.never()),
+    query: z.optional(z.never())
+});
+
+export const zUsersControllerMeResponse = zUserProfile;
+
+export const zUsersControllerUpdateUsernameData = z.object({
+    body: z.object({
+        username: z.string().min(1).max(32)
+    }),
+    path: z.optional(z.never()),
+    query: z.optional(z.never())
+});
+
+export const zUsersControllerUpdateUsernameResponse = zUserProfile;

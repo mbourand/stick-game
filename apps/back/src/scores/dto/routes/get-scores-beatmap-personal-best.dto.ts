@@ -1,15 +1,15 @@
 import { createZodDto } from "nestjs-zod";
 import z from "zod";
-import { ScoreResponseDto } from "../../../prisma/dto/score.dto";
+import { SelfScoreSchema } from "../../../prisma/dto/score.dto";
 import { ScoreSchema } from "../../../prisma/generated/zod/schemas";
+import { SCORE_VERSION } from "../../scores.constants";
 
 const ParamsSchema = z.strictObject({
   beatmapId: ScoreSchema.shape.beatmapId,
-  playerName: ScoreSchema.shape.playerName,
 });
 
 const QueryParamsSchema = z.strictObject({
-  scoreVersion: z.coerce.number().min(1).max(3).default(3),
+  scoreVersion: z.coerce.number().min(1).max(SCORE_VERSION).default(SCORE_VERSION),
   // Query strings arrive as "true"/"false"; z.coerce.boolean would turn the
   // string "false" into `true`, so parse the literals explicitly.
   modded: z
@@ -18,7 +18,7 @@ const QueryParamsSchema = z.strictObject({
     .transform((v) => v === "true"),
 });
 
-const ResponseSchema = ScoreResponseDto.schema;
+const ResponseSchema = SelfScoreSchema;
 
 export class GetScoresBeatmapPersonalBestParamsDto extends createZodDto(ParamsSchema) {}
 export class GetScoresBeatmapPersonalBestQueryParamsDto extends createZodDto(QueryParamsSchema) {}

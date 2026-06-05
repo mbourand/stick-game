@@ -5,9 +5,11 @@ import { ZodSerializerInterceptor, ZodValidationPipe } from "nestjs-zod";
 import { HttpExceptionFilter } from "./http-exception.filter";
 import { ScoresModule } from "../scores/scores.module";
 import { PrismaModule } from "../prisma/prisma.module";
+import { AuthModule } from "../auth/auth.module";
+import { UsersModule } from "../users/users.module";
 
 @Module({
-  imports: [OsuModule, ScoresModule, PrismaModule],
+  imports: [OsuModule, ScoresModule, PrismaModule, AuthModule, UsersModule],
   controllers: [],
   providers: [
     {

@@ -3,14 +3,10 @@ import { type LeaderboardTab, cycleLeaderboardTab } from "@/app/game/_components
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
-import { easeInOutCubic } from "../../engine/animation/Easing";
-import type { Playable } from "../../engine/animation/Playable";
-import { call, sequence } from "../../engine/animation/Timeline";
-import { tween } from "../../engine/animation/Tween";
 import type { Engine } from "../../engine/Engine";
 import { Store } from "../../engine/state/Store";
 import type { TickContext } from "../../engine/TickContext";
-import { crossfade, fadeOutResizeIn, fadeThenResize } from "../transitions";
+import { crossfade, fadeOutResizeIn, resizeBetween } from "../transitions";
 import { sharedCircle } from "../../sharedCircle";
 import { BEATMAP_SELECTION_CIRCLE_RADIUS } from "../../utils/constants";
 import { DownloaderScene } from "../Downloader/DownloaderScene";
@@ -21,8 +17,8 @@ import { ModsScene } from "../Mods/ModsScene";
 import { SettingsScene } from "../Settings/SettingsScene";
 import { type ActiveMods, NO_MODS } from "../../mods/mods";
 import { CanvasScene } from "../CanvasScene";
-import type { SceneTransitionSlot } from "../Scene";
 import { pickIndexAtY } from "../shared/verticalPicker";
+import { backgroundLayer } from "../../BackgroundLayer";
 import { nowPlaying } from "../../nowPlaying";
 import type { MediaUrls, NowPlayingController, NowPlayingTrack } from "../../NowPlayingController";
 import { BeatmapSelectionView } from "./BeatmapSelectionView";
@@ -149,9 +145,29 @@ export class BeatmapSelectionScene extends CanvasScene {
   /** One-shot guard: pick a random map the first time the list arrives. */
   private hasPickedInitialFocus = false;
 
+  /**
+   * Latch: ignore stick input until it returns to neutral after each activation.
+   * On entry the player's stick is usually still deflected from aiming the menu's
+   * Play button — without this, that held-over deflection would instantly re-aim
+   * focus to a beatmap at that angle, clobbering the carried-over song.
+   */
+  private stickNeedsRelease = false;
+
   constructor(engine: Engine, opts?: { autoActivateDaily?: boolean }) {
     super(engine);
     this.wantsAutoDaily = opts?.autoActivateDaily ?? false;
+    // Land the initial focus on whatever the menu jukebox is playing, so the
+    // song + background carry straight over as the selected map instead of
+    // jumping to a random pick. Reconciliation in useSceneFocusSync snaps to
+    // this id once the list loads; the now-playing media is already this map so
+    // the preview is a no-op (no restart). Skipped for the daily flow, which
+    // sets its own scope/focus.
+    if (!this.wantsAutoDaily) {
+      const playingId = nowPlaying(engine).playingBeatmapId;
+      if (playingId) this.focusedBeatmapIdv2.set(playingId);
+    }
+    // Persistent background at the very back, then the now-playing visualizer.
+    this.root.add(backgroundLayer(engine));
     this.root.add(this.preview);
     const circle = sharedCircle(engine);
     this.root.add(circle);
@@ -169,8 +185,9 @@ export class BeatmapSelectionScene extends CanvasScene {
     // left-column focus so the user lands back on their beatmap. focusedIndex
     // is preserved through overlays so we restore the same selection.
     this.focusedLeftButton.set(null);
-    // Exit transitions fade the now-playing container to 0; reset before showing.
-    this.preview.alpha = 1;
+    // Require the stick to return to neutral before it can drive focus — the
+    // player is likely still holding it toward the menu's Play button.
+    this.stickNeedsRelease = true;
     this.preview.setLive(true);
     this.preview.enterPreviewMode();
     // Re-arm preview only if it isn't already playing (no-op when the audio
@@ -183,31 +200,6 @@ export class BeatmapSelectionScene extends CanvasScene {
     // and DON'T stop its audio: popping back to the menu inherits the song.
     this.root.detach(this.preview);
     super.onDestroy();
-  }
-
-  public override scenePlayable(slot: SceneTransitionSlot, durationMs: number): Playable | null {
-    if (slot === "exit") {
-      return tween({
-        target: this.preview,
-        to: { alpha: 0 },
-        duration: durationMs,
-        easing: easeInOutCubic,
-      });
-    }
-    if (slot === "enter") {
-      return sequence([
-        call(() => {
-          this.preview.alpha = 0;
-        }),
-        tween({
-          target: this.preview,
-          to: { alpha: 1 },
-          duration: durationMs,
-          easing: easeInOutCubic,
-        }),
-      ]);
-    }
-    return null;
   }
 
   public setBeatmapCount(count: number): void {
@@ -240,11 +232,16 @@ export class BeatmapSelectionScene extends CanvasScene {
   /**
    * Tell the scene which beatmap is currently hovered. Triggers an audio
    * preview + circle background. Pass null to clear both. `track` (title/artist)
-   * is remembered so the menu jukebox can label the song if the player heads
-   * back. Delegated to the shared player, which owns the media lifecycle.
+   * and `beatmapId` are remembered so the menu jukebox can label the inherited
+   * song and a later return to selection can re-focus the same map. Delegated to
+   * the shared player, which owns the media lifecycle.
    */
-  public setFocusedBeatmapMedia(media: MediaUrls | null, track: NowPlayingTrack | null = null): void {
-    this.preview.setFocusedMedia(media, track);
+  public setFocusedBeatmapMedia(
+    media: MediaUrls | null,
+    track: NowPlayingTrack | null = null,
+    beatmapId: string | null = null,
+  ): void {
+    this.preview.setFocusedMedia(media, track, beatmapId);
   }
 
   /** Cached blob-URL lookup for a beatmap's audio + background (see the controller). */
@@ -358,8 +355,9 @@ export class BeatmapSelectionScene extends CanvasScene {
 
   public goBack(): void {
     // Don't stop the now-playing player — the menu inherits the song + background
-    // and continues it (its jukebox takes over when the track ends).
-    void this.sceneManager.transitionPop(fadeThenResize);
+    // and continues it (its jukebox takes over when the track ends). Only the
+    // ring resizes; the persistent background stays put.
+    void this.sceneManager.transitionPop(resizeBetween);
   }
 
   public openDownloader(): void {
@@ -391,12 +389,21 @@ export class BeatmapSelectionScene extends CanvasScene {
   }
 
   public override update(tick: TickContext): void {
-    if (this.beatmapCount > 0) this.processStickInput(tick.dt);
+    // Only poll the stick while active — during the enter transition the held
+    // stick (and the React-driven focus reconciliation) shouldn't fight.
+    if (this.isActive() && this.beatmapCount > 0) this.processStickInput(tick.dt);
     super.update(tick);
   }
 
   private processStickInput(dt: number): void {
     const stick = this.getActiveStick(STICK_ACTIVE_THRESHOLD);
+    // Held-over deflection from the previous scene: wait for a neutral stick
+    // once, then resume normal navigation.
+    if (this.stickNeedsRelease) {
+      if (!stick) this.stickNeedsRelease = false;
+      this.scrollZone.set(null);
+      return;
+    }
     if (!stick) {
       this.scrollZone.set(null);
       return;

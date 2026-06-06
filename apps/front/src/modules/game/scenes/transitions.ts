@@ -71,13 +71,6 @@ export const crossfade: TransitionFactory = (ctx) => phaseShell(ctx, {});
 export const resizeBetween: TransitionFactory = (ctx) => phaseShell(ctx, { between: ringResize(ctx) });
 
 /**
- * Fade the outgoing canvas out, then resize the ring — both finishing before
- * the incoming UI enters. (selection → mainMenu)
- */
-export const fadeThenResize: TransitionFactory = (ctx) =>
-  phaseShell(ctx, { duringExit: compose("sequence", exitFade(ctx), ringResize(ctx)) });
-
-/**
  * Fade the outgoing canvas during its exit, resize the ring as the new UI
  * enters. (selection → gameplay, scores → gameplay)
  */

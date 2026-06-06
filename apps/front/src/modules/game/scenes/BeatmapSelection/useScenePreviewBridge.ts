@@ -26,7 +26,11 @@ export function useScenePreviewBridge(
     void (async () => {
       const urls = await resolveMediaUrls(previewBeatmap);
       if (cancelled || !urls) return;
-      scene.setFocusedBeatmapMedia(urls, { title: previewBeatmap.title, artist: previewBeatmap.artist });
+      scene.setFocusedBeatmapMedia(
+        urls,
+        { title: previewBeatmap.title, artist: previewBeatmap.artist },
+        previewBeatmap.idv2,
+      );
     })();
     return () => {
       cancelled = true;

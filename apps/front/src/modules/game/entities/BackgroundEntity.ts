@@ -1,5 +1,4 @@
 import type { ParsedMap } from "../../osu/convert/OsuConverter";
-import type { Settings, SettingsListType } from "../../settings/Settings";
 import type { Entity } from "../engine/Entity";
 import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../utils/constants";
 
@@ -7,17 +6,6 @@ export type BackgroundSource = Pick<
   ParsedMap,
   "backgroundUrl" | "backgroundOffsetX" | "backgroundOffsetY"
 >;
-
-/** Which settings the background reads its brightness/blur from. */
-export type BackgroundVariant = "gameplay" | "menu";
-
-const VARIANT_KEYS: Record<
-  BackgroundVariant,
-  { brightness: keyof SettingsListType; blur: keyof SettingsListType }
-> = {
-  gameplay: { brightness: "backgroundBrightness", blur: "backgroundBlurriness" },
-  menu: { brightness: "menuBackgroundBrightness", blur: "menuBackgroundBlurriness" },
-};
 
 export type BackgroundEntityOptions = {
   /** Radius of the circular crop in screen px. Defaults to the gameplay circle. */
@@ -28,32 +16,35 @@ export type BackgroundEntityOptions = {
    * spilling past the ring while it animates. Falls back to the static crop.
    */
   clipRadius?: () => number;
-  /** Which brightness/blur settings to honour. Defaults to the gameplay ones. */
-  variant?: BackgroundVariant;
+  /** Brightness multiplier baked into the texture (1 = unchanged). */
+  brightness?: number;
+  /** Blur radius in px baked into the texture (0 = sharp). */
+  blur?: number;
 };
 
+/**
+ * A pure, static background disc: bakes one image (cover-scaled, centred,
+ * brightness + blur applied) into a texture and renders it clipped to the live
+ * ring. It is intentionally dumb — it has no knowledge of settings or scene
+ * "variants". The treatment (brightness/blur) is handed in already resolved;
+ * any change to it produces a *new* entity (see BackgroundCrossfader), so
+ * transitions can crossfade between treatments rather than re-bake in place.
+ */
 export class BackgroundEntity implements Entity {
   private source: BackgroundSource;
-  private settings: Settings;
   private radius: number;
   private clipRadius?: () => number;
-  private keys: { brightness: keyof SettingsListType; blur: keyof SettingsListType };
+  private brightness: number;
+  private blur: number;
   private texture: HTMLCanvasElement | null = null;
-  private offSettingChanged: () => void;
 
-  constructor(source: BackgroundSource, settings: Settings, options: BackgroundEntityOptions = {}) {
+  constructor(source: BackgroundSource, options: BackgroundEntityOptions = {}) {
     this.source = source;
-    this.settings = settings;
     this.radius = options.radius ?? GAME_CIRCLE_DISPLAYED_RADIUS;
     this.clipRadius = options.clipRadius;
-    this.keys = VARIANT_KEYS[options.variant ?? "gameplay"];
+    this.brightness = options.brightness ?? 1;
+    this.blur = options.blur ?? 0;
     void this.rebuildTexture();
-
-    this.offSettingChanged = settings.events.on("onSettingChanged", (e) => {
-      if (e.key === this.keys.brightness || e.key === this.keys.blur) {
-        void this.rebuildTexture();
-      }
-    });
   }
 
   public update(): void {}
@@ -75,13 +66,9 @@ export class BackgroundEntity implements Entity {
     ctx.drawImage(this.texture, -this.radius, -this.radius);
   }
 
-  public destroy(): void {
-    this.offSettingChanged();
-  }
+  public destroy(): void {}
 
   private async rebuildTexture(): Promise<void> {
-    const settings: SettingsListType = this.settings.get();
-
     const image = new Image();
     image.src = this.source.backgroundUrl;
     await image.decode();
@@ -95,21 +82,21 @@ export class BackgroundEntity implements Entity {
 
     const imageMinSize = Math.min(image.width, image.height);
     const scale = (this.radius * 2) / imageMinSize;
+    const drawWidth = image.width * scale;
+    const drawHeight = image.height * scale;
+    // Center the cover-scaled image in the square texture — the overflow on the
+    // larger axis is split evenly both sides — then apply the map's offset nudge.
+    // Without this the image is top-left anchored, so a landscape/portrait
+    // background shows an edge in the circle instead of its center.
+    const drawX = (this.radius * 2 - drawWidth) / 2 + this.source.backgroundOffsetX * scale;
+    const drawY = (this.radius * 2 - drawHeight) / 2 + this.source.backgroundOffsetY * scale;
 
-    const blur = settings[this.keys.blur] as number;
-    const brightness = settings[this.keys.brightness] as number;
-    ctx.filter = `blur(${blur}px) brightness(${brightness})`;
+    ctx.filter = `blur(${this.blur}px) brightness(${this.brightness})`;
     ctx.beginPath();
     ctx.arc(this.radius, this.radius, this.radius, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
-    ctx.drawImage(
-      image,
-      this.source.backgroundOffsetX * scale,
-      this.source.backgroundOffsetY * scale,
-      image.width * scale,
-      image.height * scale,
-    );
+    ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
     ctx.filter = "none";
 
     this.texture = canvas;

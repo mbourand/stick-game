@@ -5,7 +5,6 @@ import { runTimeStretch } from "@/modules/audio/time-stretch/runTimeStretch";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { type SettingsListType } from "../../../settings/Settings";
 import { EventEmitter } from "../../../utils/EventEmitter";
-import { BackgroundEntity } from "../../entities/BackgroundEntity";
 import { ScoreHUDEntity } from "../../entities/ScoreHUDEntity";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
 import { easeInOutCubic } from "../../engine/animation/Easing";
@@ -41,13 +40,14 @@ import { NoteColor } from "../../note/NoteColor";
 import { NoteSpawner } from "../../note/NoteSpawner";
 import { ScoreCounter } from "../../score/ScoreCounter";
 import { type ActiveMods, NO_MODS, applyRateToNotes, getScoreMultiplier } from "../../mods/mods";
+import { backgroundLayer } from "../../BackgroundLayer";
 import { sharedCircle } from "../../sharedCircle";
 import { GAME_CIRCLE_DISPLAYED_RADIUS, GAME_CIRCLE_RADIUS } from "../../utils/constants";
 import { PauseScene } from "../Pause/PauseScene";
 
 export const BEATMAP_AUDIO_ID = "beatmap_audio";
 
-/** How long the circle's inner content (background, visualizer, HUD) eases in when gameplay begins. */
+/** How long the circle's inner content (visualizer, HUD) eases in when gameplay begins. */
 const BACKGROUND_FADE_IN_MS = 400;
 
 export class GameplayScene extends CanvasScene {
@@ -133,9 +133,10 @@ export class GameplayScene extends CanvasScene {
     this.registerEvents();
 
     // Enter with the circle's inner content hidden and ease it in, so the
-    // background (plus visualizer + HUD) fades up rather than popping into
-    // view. Runs concurrently with the buffer load + kick analysis, but is
-    // awaited before scheduling playback so it finishes before the song begins.
+    // visualizer + HUD fade up rather than popping into view (the persistent
+    // background is already shown by the shared layer). Runs concurrently with
+    // the buffer load + kick analysis, but is awaited before scheduling playback
+    // so it finishes before the song begins.
     this.circleInnerContentContainer.alpha = 0;
     const fadeIn = this.engine.playables.play(
       tween({
@@ -254,14 +255,22 @@ export class GameplayScene extends CanvasScene {
   }
 
   private buildSceneTree() {
-    this.circleInnerContentContainer.add(
-      new BackgroundEntity(this.parsedMap, this.engine.settings, { radius: this.displayedRadius }),
-    );
+    // The background is the shared persistent layer — point it at this map with
+    // the dim gameplay treatment (it stays put across the transition; only the
+    // inner content below eases in). The inner container now holds just the
+    // visualizer + HUD.
+    backgroundLayer(this.engine).setSource(this.parsedMap.backgroundUrl, {
+      variant: "gameplay",
+      radius: this.displayedRadius,
+      offsetX: this.parsedMap.backgroundOffsetX,
+      offsetY: this.parsedMap.backgroundOffsetY,
+    });
     this.circleInnerContentContainer.add(this.audioVisualizer);
     this.circleInnerContentContainer.add(new ScoreHUDEntity(this.scoreCounter));
 
     // Children render in insertion order (back -> front).
     const circle = sharedCircle(this.engine);
+    this.root.add(backgroundLayer(this.engine));
     this.root.add(this.circleInnerContentContainer);
     this.root.add(circle);
     this.root.add(this.notesContainer);

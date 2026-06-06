@@ -5,21 +5,16 @@ import { LATEST_SCORE_VERSION } from "@/modules/score/constants";
 import { submitScore } from "@/modules/score/submit-score";
 import { type LeaderboardTab, cycleLeaderboardTab } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
-import { easeInOutCubic } from "../../engine/animation/Easing";
-import type { Playable } from "../../engine/animation/Playable";
-import { tween } from "../../engine/animation/Tween";
-import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
 import { Store } from "../../engine/state/Store";
-import { BackgroundEntity } from "../../entities/BackgroundEntity";
 import { JudgmentKind } from "../../judge/constants";
 import { type ActiveMods, describeMods, isModded } from "../../mods/mods";
 import type { ScoreCounter } from "../../score/ScoreCounter";
+import { backgroundLayer } from "../../BackgroundLayer";
 import { sharedCircle } from "../../sharedCircle";
 import { SCORES_CIRCLE_RADIUS } from "../../utils/constants";
 import { BEATMAP_AUDIO_ID, GameplayScene } from "../Gameplay/GameplayScene";
 import { CanvasScene } from "../CanvasScene";
-import type { SceneTransitionSlot } from "../Scene";
 import { ScoresView } from "./ScoresView";
 import { fadeOutResizeIn, fadeResizeRevealStaged } from "../transitions";
 
@@ -80,9 +75,6 @@ export class ScoresScene extends CanvasScene {
    */
   public tabDirection: -1 | 1 = 1;
 
-  /** Beatmap background, cropped to the scores circle. Fades out on exit. */
-  private readonly background = new Container();
-
   constructor(engine: Engine, parsedMap: ParsedMap, scoreCounter: ScoreCounter, mods: ActiveMods) {
     super(engine);
     this.parsedMap = parsedMap;
@@ -93,20 +85,12 @@ export class ScoresScene extends CanvasScene {
     // Land on the board this play belongs to, so the just-set score is in view.
     this.leaderboardTab = new Store<LeaderboardTab>(this.modded ? "modded" : "global");
 
-    // Background sits behind the ring; clip to the live ring radius so it
-    // doesn't spill past the ring while it grows in from gameplay. Starts
-    // transparent and fades in during enter (see scenePlayable) — otherwise it
-    // would render opaque over the still-visible gameplay scene from frame one.
+    // The background is the shared persistent layer — it already shows this map
+    // (carried over from gameplay), so leaving in the persistent layer means the
+    // background never blinks; `onEntered` retargets it to the brighter menu
+    // treatment once the screen settles. Added behind the ring.
     const circle = sharedCircle(engine);
-    this.background.alpha = 0;
-    this.background.add(
-      new BackgroundEntity(parsedMap, engine.settings, {
-        radius: SCORES_CIRCLE_RADIUS,
-        clipRadius: () => circle.radius,
-        variant: "menu",
-      }),
-    );
-    this.root.add(this.background);
+    this.root.add(backgroundLayer(engine));
     this.root.add(circle);
 
     // Kick off persistence immediately so the network round-trip overlaps the
@@ -114,14 +98,15 @@ export class ScoresScene extends CanvasScene {
     void this.submitPlayedScore();
   }
 
-  public override scenePlayable(slot: SceneTransitionSlot, durationMs: number): Playable | null {
-    // Fade the background in on enter (so gameplay stays visible while it fades
-    // out underneath) and back out on exit (so leaving doesn't cut hard).
-    const to = slot === "enter" ? 1 : 0;
-    return tween({ target: this.background, to: { alpha: to }, duration: durationMs, easing: easeInOutCubic });
-  }
-
   public override onEntered() {
+    // Crossfade the shared background from gameplay's dim treatment to the
+    // brighter menu treatment of the same map (a no-op image change otherwise).
+    backgroundLayer(this.engine).setSource(this.parsedMap.backgroundUrl, {
+      variant: "menu",
+      radius: SCORES_CIRCLE_RADIUS,
+      offsetX: this.parsedMap.backgroundOffsetX,
+      offsetY: this.parsedMap.backgroundOffsetY,
+    });
     this.onAction("confirm", () => this.retry());
     this.onAction("back", () => this.backToSelection());
     this.onActionRepeat("nav-left", () => this.cycleTab(-1));

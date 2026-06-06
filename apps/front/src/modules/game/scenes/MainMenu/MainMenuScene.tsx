@@ -8,6 +8,7 @@ import { BeatmapSelectionScene } from "../BeatmapSelection/BeatmapSelectionScene
 import { CanvasScene } from "../CanvasScene";
 import { SettingsScene } from "../Settings/SettingsScene";
 import { ProfileScene } from "../Profile/ProfileScene";
+import { backgroundLayer } from "../../BackgroundLayer";
 import { nowPlaying } from "../../nowPlaying";
 import type { NowPlayingController } from "../../NowPlayingController";
 import {
@@ -68,8 +69,9 @@ export class MainMenuScene extends CanvasScene {
     // radius until the first navigation. Transitions handle later resizes.
     const circle = sharedCircle(engine);
     circle.radius = MAIN_MENU_CIRCLE_RADIUS;
-    // The shared now-playing player renders behind the ring (background +
-    // visualizer); add it first so the ring and stick dots sit on top.
+    // Persistent background at the very back, then the shared now-playing player
+    // (visualizer) in front of it; both behind the ring and stick dots.
+    this.root.add(backgroundLayer(engine));
     this.root.add(nowPlaying(engine));
     this.root.add(circle);
     this.root.add(new StickDotsEntity(this.inputSystem, circle));
@@ -85,7 +87,6 @@ export class MainMenuScene extends CanvasScene {
     // Resume the shared player and run the menu jukebox (random library tracks,
     // inheriting whatever was playing in selection).
     const player = nowPlaying(this.engine);
-    player.alpha = 1;
     player.setLive(true);
     void player.enterJukeboxMode();
   }

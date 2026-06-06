@@ -49,6 +49,9 @@ export const RankTab = ({ scene }: { scene: ScoresScene }) => {
     ? (localQuery.data ?? []).map((e) => ({
         key: String(e.id),
         playerName: e.playerName,
+        // Only the current account's own rows get an avatar — the live session
+        // one; guests and other accounts fall back to the default disc.
+        avatarUrl: session && e.userId === session.user.id ? session.user.avatarUrl : null,
         score: e.score,
         accuracy: e.accuracy,
         maxCombo: e.maxCombo,

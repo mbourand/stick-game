@@ -30,6 +30,7 @@ export type V5LocalScoreEntity = {
   id: number;
   beatmapIdv2: string;
   playerName: string;
+  userId?: string;
   score: number;
   maxCombo: number;
   accuracy: number;

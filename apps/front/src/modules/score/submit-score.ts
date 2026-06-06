@@ -37,6 +37,7 @@ export const submitScore = async (params: SubmitScoreParams) => {
   const localTask = latestDb.localScores.add({
     beatmapIdv2: params.beatmapId,
     playerName: localPlayerName,
+    userId: session?.user.id,
     score: params.score,
     maxCombo: params.maxCombo,
     accuracy: params.accuracy,

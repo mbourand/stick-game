@@ -1,6 +1,6 @@
 import { latestDb } from "@/modules/db/db";
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
-import { BackgroundCrossfader } from "./entities/BackgroundCrossfader";
+import { backgroundLayer } from "./BackgroundLayer";
 import { Container } from "./engine/Container";
 import type { Engine } from "./engine/Engine";
 import type { TickContext } from "./engine/TickContext";
@@ -20,13 +20,12 @@ const MEDIA_URL_CACHE_SIZE = 10;
 /** Single music channel shared by the preview (selection) and the jukebox (menu). */
 const NOW_PLAYING_AUDIO_ID = "beatmap_preview_audio";
 const NOW_PLAYING_VOLUME = 0.7;
-const BACKGROUND_CROSSFADE_MS = 300;
 const VISUALIZER_BAR_COUNT = 40;
 const VISUALIZER_MAX_AMPLITUDE = 30;
 /**
- * Build the background + visualizer at the larger (selection) ring, then clip /
- * retarget them to the live ring each frame — so one shared instance fits both
- * the 310px menu ring and the 460px selection ring (and animates between them).
+ * Bake the menu-side background at the larger (selection) ring, then clip it to
+ * the live ring each frame — so one shared texture fits both the 310px menu ring
+ * and the 460px selection ring (and animates between them).
  */
 const BUILD_RADIUS = BEATMAP_SELECTION_CIRCLE_RADIUS;
 
@@ -45,10 +44,11 @@ function sameMedia(a: MediaUrls | null, b: MediaUrls | null): boolean {
 
 /**
  * The single, persistent "now playing" player shared across the menu and beatmap
- * selection: one looping/play-through audio channel, one background crossfader,
- * one audio visualizer, and the blob-URL cache. Because it's one instance
- * (borrowed into whichever scene is active, like the shared ring), the song +
- * background continue seamlessly when navigating between those screens.
+ * selection: one looping/play-through audio channel, one audio visualizer, and
+ * the blob-URL cache. It drives the shared, persistent background layer (it does
+ * not own it). Because it's one instance (borrowed into whichever scene is
+ * active, like the shared ring), the song + visualizer continue seamlessly when
+ * navigating between those screens.
  *
  * Two modes:
  *  - **preview** (selection): the scene pushes the focused map via `setFocusedMedia`,
@@ -61,7 +61,6 @@ function sameMedia(a: MediaUrls | null, b: MediaUrls | null): boolean {
  * playing across scene swaps regardless of which tree the container is in.
  */
 export class NowPlayingController extends Container {
-  private readonly background: BackgroundCrossfader;
   private readonly visualizer: CircleAudioVisualizer;
 
   private currentMedia: MediaUrls | null = null;
@@ -85,6 +84,20 @@ export class NowPlayingController extends Container {
   private currentEntity: V3BeatmapEntity | null = null;
   private lastPlayedId: string | null = null;
 
+  /**
+   * idv2 of whatever is currently playing — set by both the jukebox (playEntity)
+   * and the selection preview (setFocusedMedia), so it survives a track being
+   * *inherited* across screens (where `currentEntity` is null). Lets beatmap
+   * selection land its focus on the playing map, carrying the song + background
+   * straight over instead of jumping to a random pick.
+   */
+  private currentBeatmapId: string | null = null;
+
+  /** idv2 of the track currently playing, or null when nothing is. */
+  public get playingBeatmapId(): string | null {
+    return this.currentBeatmapId;
+  }
+
   /** The current jukebox track for the menu label, or null when nothing's playing. */
   readonly currentTrack = new Store<NowPlayingTrack | null>(null);
   /** Whether jukebox playback is paused, for the menu's play/pause control. */
@@ -107,11 +120,6 @@ export class NowPlayingController extends Container {
 
   constructor(private readonly engine: Engine) {
     super();
-    this.background = new BackgroundCrossfader(engine.settings, {
-      radius: BUILD_RADIUS,
-      fadeDurationMs: BACKGROUND_CROSSFADE_MS,
-      clipRadius: () => sharedCircle(engine).radius,
-    });
     this.visualizer = new CircleAudioVisualizer(
       engine.audio.music.getAudioContext(),
       VISUALIZER_BAR_COUNT,
@@ -119,9 +127,14 @@ export class NowPlayingController extends Container {
       VISUALIZER_MAX_AMPLITUDE,
       engine.settings,
     );
-    // Background behind the visualizer, both behind the ring (added after in the scene).
-    this.add(this.background);
+    // The background is the shared persistent layer (added separately, behind
+    // this controller in the scene); this container holds only the visualizer.
     this.add(this.visualizer);
+  }
+
+  /** Point the shared background layer at this player's menu-treatment artwork. */
+  private showBackground(backgroundUrl: string): void {
+    backgroundLayer(this.engine).setSource(backgroundUrl, { variant: "menu", radius: BUILD_RADIUS });
   }
 
   public override update(tick: TickContext): void {
@@ -174,15 +187,28 @@ export class NowPlayingController extends Container {
     // ends it, so a later "previous" doesn't reach across the visit.
     this.history = [];
     this.currentEntity = null;
+    // A track inherited from the jukebox plays through (non-loop). In selection
+    // the focused map should loop — flip the live source to looping in place so
+    // it keeps playing seamlessly instead of running out into silence.
+    if (this.currentSource) {
+      this.currentSource.loop = true;
+      this.currentLoop = true;
+    }
   }
 
   /**
    * Selection pushes the focused map here; played looping. Null clears playback.
-   * `track` is remembered so that if the player heads back to the menu, the
-   * jukebox inherits this song *with* its now-playing label.
+   * `track` + `beatmapId` are remembered so that if the player heads back to the
+   * menu, the jukebox inherits this song *with* its label, and a later return to
+   * selection can re-focus the same map.
    */
-  public setFocusedMedia(media: MediaUrls | null, track: NowPlayingTrack | null = null): void {
+  public setFocusedMedia(
+    media: MediaUrls | null,
+    track: NowPlayingTrack | null = null,
+    beatmapId: string | null = null,
+  ): void {
     this.currentTrack.set(media ? track : null);
+    this.currentBeatmapId = media ? beatmapId : null;
     if (sameMedia(this.currentMedia, media)) return;
     this.currentMedia = media;
     void this.refresh(++this.generation, true);
@@ -232,7 +258,7 @@ export class NowPlayingController extends Container {
       this.currentSource.loop = false;
       this.currentLoop = false;
       this.installEndedAdvance(this.currentSource, this.generation);
-      this.background.setSource(this.currentMedia.backgroundUrl);
+      this.showBackground(this.currentMedia.backgroundUrl);
     } else {
       // Media set but not armed (e.g. returned from gameplay) — start it fresh.
       void this.refresh(++this.generation, false);
@@ -288,6 +314,7 @@ export class NowPlayingController extends Container {
     }
     this.currentEntity = entity;
     this.lastPlayedId = entity.idv2;
+    this.currentBeatmapId = entity.idv2;
     this.currentMedia = media;
     this.currentTrack.set({ title: entity.title, artist: entity.artist });
     void this.refresh(++this.generation, false);
@@ -341,13 +368,18 @@ export class NowPlayingController extends Container {
   private async refresh(generation: number, loop: boolean): Promise<void> {
     this.stop();
 
+    // When suspended (handing off to gameplay), leave the shared layer alone —
+    // the next scene drives it, so the background never blinks to nothing.
+    if (!this.live) return;
+
     const media = this.currentMedia;
-    if (!media || !this.live) {
-      this.background.setSource(null);
+    if (!media) {
+      // Live but nothing to play (e.g. an empty library) — clear the layer.
+      backgroundLayer(this.engine).clear();
       return;
     }
 
-    this.background.setSource(media.backgroundUrl);
+    this.showBackground(media.backgroundUrl);
 
     const music = this.engine.audio.music;
     let buffer: AudioBuffer;

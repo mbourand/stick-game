@@ -5,6 +5,7 @@ import { EngineContext } from "../engine/EngineContext";
 import { MainMenuScene } from "../scenes/MainMenu/MainMenuScene";
 import type { Scene } from "../scenes/Scene";
 import { useTopScene, useTransition } from "../scenes/useScene";
+import { ensureBackgroundLayer } from "../BackgroundLayer";
 import { ensureNowPlaying } from "../nowPlaying";
 import { ensureSharedCircle } from "../sharedCircle";
 import { FirstRunImportOverlay } from "./FirstRunImportOverlay";
@@ -23,6 +24,7 @@ export const GameShell = () => {
     // sync on resize, so the shell no longer manages canvas dimensions.
     instance.start(canvasRef.current);
     ensureSharedCircle(instance);
+    ensureBackgroundLayer(instance);
     ensureNowPlaying(instance);
     instance.sceneManager.pushScene(new MainMenuScene(instance));
     setEngine(instance);

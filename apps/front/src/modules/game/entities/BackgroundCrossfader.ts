@@ -11,6 +11,12 @@ export type BackgroundCrossfaderOptions = {
   radius: number;
   /** Total crossfade duration in milliseconds. */
   fadeDurationMs: number;
+  /**
+   * Optional live clip radius, forwarded to every background layer. Lets the
+   * crop follow a resizing ring (e.g. the shared menu↔selection ring) even
+   * though the texture itself is built once at `radius`.
+   */
+  clipRadius?: () => number;
 };
 
 /**
@@ -31,6 +37,7 @@ export class BackgroundCrossfader extends Container implements Entity {
   private readonly settings: Settings;
   private readonly radius: number;
   private readonly fadeDurationMs: number;
+  private readonly clipRadius?: () => number;
 
   private currentUrl: string | null = null;
   private stable: Layer | null = null;
@@ -42,6 +49,7 @@ export class BackgroundCrossfader extends Container implements Entity {
     this.settings = settings;
     this.radius = opts.radius;
     this.fadeDurationMs = opts.fadeDurationMs;
+    this.clipRadius = opts.clipRadius;
   }
 
   /**
@@ -90,7 +98,7 @@ export class BackgroundCrossfader extends Container implements Entity {
     const entity = new BackgroundEntity(
       { backgroundUrl, backgroundOffsetX: 0, backgroundOffsetY: 0 },
       this.settings,
-      { radius: this.radius, variant: "menu" },
+      { radius: this.radius, variant: "menu", clipRadius: this.clipRadius },
     );
     const container = new Container({ alpha: 0 });
     container.add(entity);

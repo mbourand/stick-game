@@ -1,10 +1,10 @@
-import { GAME_CIRCLE_DISPLAYED_RADIUS } from "../../utils/constants";
 import { RadialButton as SharedRadialButton } from "../shared/RadialButton";
 import { computeRadialButtonLayout } from "../shared/radialButtonLayout";
 import {
   BUTTON_HEIGHT_PX,
   BUTTON_STAGGER_S,
   BUTTON_WIDTH_PX,
+  MAIN_MENU_CIRCLE_RADIUS,
   OUTER_LEFT_EXTRA_PX,
 } from "./layout";
 
@@ -28,7 +28,7 @@ export const RadialButton = ({
   onBlur,
   onClick,
 }: RadialButtonProps) => {
-  const r = GAME_CIRCLE_DISPLAYED_RADIUS;
+  const r = MAIN_MENU_CIRCLE_RADIUS;
   const layout = computeRadialButtonLayout({
     side: "right",
     yCenter: yCenter - r,
@@ -55,10 +55,9 @@ export const RadialButton = ({
       onFocus={onFocus}
       onBlur={onBlur}
       onClick={onClick}
-      innerClassName="text-xl font-bold uppercase tracking-[0.3em] justify-between"
+      innerClassName="text-xl font-bold uppercase tracking-[0.3em]"
     >
-      <span>{label}</span>
-      <span className="w-7 h-7 rounded-full border border-white/40" aria-hidden />
+      {label}
     </SharedRadialButton>
   );
 };

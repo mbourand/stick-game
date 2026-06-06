@@ -23,7 +23,8 @@ import { type ActiveMods, NO_MODS } from "../../mods/mods";
 import { CanvasScene } from "../CanvasScene";
 import type { SceneTransitionSlot } from "../Scene";
 import { pickIndexAtY } from "../shared/verticalPicker";
-import { BeatmapPreviewController, type MediaUrls } from "./BeatmapPreviewController";
+import { nowPlaying } from "../../nowPlaying";
+import type { MediaUrls, NowPlayingController, NowPlayingTrack } from "../../NowPlayingController";
 import { BeatmapSelectionView } from "./BeatmapSelectionView";
 import {
   BUTTON_HEIGHT_PX,
@@ -36,7 +37,7 @@ import {
 
 export type ScrollZone = "top" | "bottom" | null;
 export type BeatmapResolver = (index: number) => Promise<ParsedMap | null>;
-export type { MediaUrls } from "./BeatmapPreviewController";
+export type { MediaUrls } from "../../NowPlayingController";
 
 export type LeftAction = {
   id: string;
@@ -114,6 +115,16 @@ export class BeatmapSelectionScene extends CanvasScene {
   private dailyActivate: (() => void) | null = null;
 
   /**
+   * One-shot intent set by the main menu's daily card: jump straight into the
+   * daily flow on entry. Deferred until BOTH the DailyPanel has registered its
+   * action AND the beatmap list has loaded — `DailyPanel.runAction` decides
+   * "owned" from the list, so firing earlier would re-download an already-owned
+   * set. `tryAutoDaily` fires once, from whichever of those two lands last.
+   */
+  private wantsAutoDaily: boolean;
+  private listReady = false;
+
+  /**
    * Continuous scroll position (float). A MotionValue so the view can drive
    * each visible button's transform/mask via useTransform without going
    * through React renders — scrolling is per-frame motion, not state.
@@ -126,19 +137,22 @@ export class BeatmapSelectionScene extends CanvasScene {
   private lastGameplayScene: GameplayScene | null = null;
 
   /**
-   * Audio preview + circle background. Owns its own render container (added to
-   * `root` and faded by transitions), the preview source, and the blob-URL
-   * cache that survives view remounts on overlay close.
+   * The shared, persistent now-playing player (audio + circle background +
+   * visualizer). Borrowed into this scene's tree in "preview" mode; the same
+   * instance keeps playing on the menu (jukebox) so navigating between the two
+   * never interrupts the song. Audio/cache lifecycle lives on the controller.
    */
-  private readonly preview: BeatmapPreviewController;
+  private get preview(): NowPlayingController {
+    return nowPlaying(this.engine);
+  }
 
   /** One-shot guard: pick a random map the first time the list arrives. */
   private hasPickedInitialFocus = false;
 
-  constructor(engine: Engine) {
+  constructor(engine: Engine, opts?: { autoActivateDaily?: boolean }) {
     super(engine);
-    this.preview = new BeatmapPreviewController(engine, () => this.isActive());
-    this.root.add(this.preview.container);
+    this.wantsAutoDaily = opts?.autoActivateDaily ?? false;
+    this.root.add(this.preview);
     const circle = sharedCircle(engine);
     this.root.add(circle);
     this.root.add(new StickDotsEntity(this.inputSystem, circle));
@@ -155,22 +169,26 @@ export class BeatmapSelectionScene extends CanvasScene {
     // left-column focus so the user lands back on their beatmap. focusedIndex
     // is preserved through overlays so we restore the same selection.
     this.focusedLeftButton.set(null);
-    // Exit transitions fade the preview container to 0; reset before showing again.
-    this.preview.container.alpha = 1;
+    // Exit transitions fade the now-playing container to 0; reset before showing.
+    this.preview.alpha = 1;
+    this.preview.setLive(true);
+    this.preview.enterPreviewMode();
     // Re-arm preview only if it isn't already playing (no-op when the audio
     // survived an overlay; restarts it when coming back from gameplay/scores).
     this.preview.reArmIfNeeded();
   }
 
   public override onDestroy() {
-    this.preview.stop();
+    // The now-playing player is shared/persistent — detach it (don't destroy)
+    // and DON'T stop its audio: popping back to the menu inherits the song.
+    this.root.detach(this.preview);
     super.onDestroy();
   }
 
   public override scenePlayable(slot: SceneTransitionSlot, durationMs: number): Playable | null {
     if (slot === "exit") {
       return tween({
-        target: this.preview.container,
+        target: this.preview,
         to: { alpha: 0 },
         duration: durationMs,
         easing: easeInOutCubic,
@@ -179,10 +197,10 @@ export class BeatmapSelectionScene extends CanvasScene {
     if (slot === "enter") {
       return sequence([
         call(() => {
-          this.preview.container.alpha = 0;
+          this.preview.alpha = 0;
         }),
         tween({
-          target: this.preview.container,
+          target: this.preview,
           to: { alpha: 1 },
           duration: durationMs,
           easing: easeInOutCubic,
@@ -193,6 +211,10 @@ export class BeatmapSelectionScene extends CanvasScene {
   }
 
   public setBeatmapCount(count: number): void {
+    if (count > 0 && !this.listReady) {
+      this.listReady = true;
+      this.tryAutoDaily();
+    }
     if (this.beatmapCount === count) return;
     this.beatmapCount = count;
 
@@ -217,11 +239,12 @@ export class BeatmapSelectionScene extends CanvasScene {
 
   /**
    * Tell the scene which beatmap is currently hovered. Triggers an audio
-   * preview + circle background. Pass null to clear both. Delegated to the
-   * preview controller, which owns the media lifecycle.
+   * preview + circle background. Pass null to clear both. `track` (title/artist)
+   * is remembered so the menu jukebox can label the song if the player heads
+   * back. Delegated to the shared player, which owns the media lifecycle.
    */
-  public setFocusedBeatmapMedia(media: MediaUrls | null): void {
-    this.preview.setFocusedMedia(media);
+  public setFocusedBeatmapMedia(media: MediaUrls | null, track: NowPlayingTrack | null = null): void {
+    this.preview.setFocusedMedia(media, track);
   }
 
   /** Cached blob-URL lookup for a beatmap's audio + background (see the controller). */
@@ -292,6 +315,18 @@ export class BeatmapSelectionScene extends CanvasScene {
    * confirm/gamepad path can trigger the same behaviour. */
   public setDailyActivate(fn: (() => void) | null): void {
     this.dailyActivate = fn;
+    if (fn) this.tryAutoDaily();
+  }
+
+  /**
+   * Fire the main-menu "jump into the daily" intent exactly once, and only when
+   * the daily action is registered and the list has loaded (so its owned/scope
+   * logic is trustworthy). A no-op otherwise — called from both readiness edges.
+   */
+  private tryAutoDaily(): void {
+    if (!this.wantsAutoDaily || !this.dailyActivate || !this.listReady) return;
+    this.wantsAutoDaily = false;
+    this.dailyActivate();
   }
 
   public cycleLeaderboardTab(dir: -1 | 1): void {
@@ -311,9 +346,10 @@ export class BeatmapSelectionScene extends CanvasScene {
   }
 
   public playMap(map: ParsedMap): void {
-    // Stop the preview before transitioning — gameplay starts its own audio
-    // from 0 and we don't want any overlap during the cross-fade.
-    this.preview.stop();
+    // Suspend the now-playing player before gameplay — gameplay starts its own
+    // audio (a different channel) from 0, so stop ours and forbid a re-arm until
+    // we're back on the menu/selection.
+    this.preview.suspend();
     this.lastGameplayScene?.remove();
     const gameplayScene = new GameplayScene(this.engine, map, this.mods.get());
     void this.sceneManager.transitionPush(gameplayScene, fadeOutResizeIn);
@@ -321,7 +357,8 @@ export class BeatmapSelectionScene extends CanvasScene {
   }
 
   public goBack(): void {
-    this.preview.stop();
+    // Don't stop the now-playing player — the menu inherits the song + background
+    // and continues it (its jukebox takes over when the track ends).
     void this.sceneManager.transitionPop(fadeThenResize);
   }
 

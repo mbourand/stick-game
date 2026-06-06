@@ -210,6 +210,15 @@ export class CircleAudioVisualizer implements Entity {
   }
 
   /**
+   * Retarget the bars to a new ring radius. Read live by `render()` (and the
+   * per-bar `overlap`), so a per-frame write is enough — no bin recompute.
+   * Used by the shared now-playing visualizer to follow the resizing ring.
+   */
+  public setRadius(radius: number): void {
+    this.radius = radius;
+  }
+
+  /**
    * Supply the precomputed kick timeline and the song clock that drives it.
    * `songTimeMs` must be monotonic non-decreasing within a play session
    * (BeatmapClock.now() — frozen on pause, never rewound). Events are assumed

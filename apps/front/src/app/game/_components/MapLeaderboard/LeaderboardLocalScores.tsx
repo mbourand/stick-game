@@ -1,5 +1,6 @@
 import { localScoresBeatmapLeaderboardQueryOptions } from "@/modules/db/queries/local-scores-beatmap-leaderboard";
 import { LATEST_SCORE_VERSION } from "@/modules/score/constants";
+import { useAuth } from "@/modules/auth/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { ScoreRow } from "./ScoreRow";
 
@@ -10,9 +11,8 @@ type LeaderboardLocalScoresProps = {
 };
 
 export const LeaderboardLocalScores = ({ beatmapId }: LeaderboardLocalScoresProps) => {
-  const leaderboardQuery = useQuery(
-    localScoresBeatmapLeaderboardQueryOptions(beatmapId, LATEST_SCORE_VERSION),
-  );
+  const session = useAuth();
+  const leaderboardQuery = useQuery(localScoresBeatmapLeaderboardQueryOptions(beatmapId, LATEST_SCORE_VERSION));
 
   if (leaderboardQuery.isLoading) return <Status text="Loading…" />;
   if (leaderboardQuery.isError) return <Status text="Failed to load" />;
@@ -26,6 +26,7 @@ export const LeaderboardLocalScores = ({ beatmapId }: LeaderboardLocalScoresProp
           key={entry.submissionTime.getTime()}
           rank={index + 1}
           playerName={entry.playerName}
+          avatarUrl={session && entry.userId === session.user.id ? session.user.avatarUrl : null}
           score={entry.score}
           accuracy={entry.accuracy}
           maxCombo={entry.maxCombo}

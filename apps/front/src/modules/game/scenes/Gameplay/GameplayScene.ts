@@ -287,7 +287,7 @@ export class GameplayScene extends CanvasScene {
 
   private onNoteShouldSpawn(event: NoteShouldSpawnEventType) {
     const { parsedNote } = event;
-    const angleSpan = Math.max((Math.random() * Math.PI) / 3, Math.PI / 5);
+    const angleSpan = parsedNote.angleSpan;
 
     if (parsedNote.isHold) {
       this.notesContainer.add(

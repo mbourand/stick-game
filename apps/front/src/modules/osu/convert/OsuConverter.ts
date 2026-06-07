@@ -6,6 +6,9 @@ export type ParsedNote = {
   holdDuration?: number;
   holdTicksHitTimes?: number[];
   angle: number;
+  /** Angular width of the note arc, in radians. Computed deterministically at
+   * conversion time (seeded RNG) so a map plays identically every run. */
+  angleSpan: number;
   color: NoteColor;
   effectiveBPMAtHitTime: number;
 };
@@ -42,6 +45,29 @@ const OSU_FIELD_CENTER = {
   y: OSU_FIELD_HEIGHT / 2,
 } as const;
 
+// Deterministic PRNG (mulberry32) so note arc widths are stable across plays of
+// the same map instead of being re-randomised every run.
+const makeRng = (seed: number): (() => number) => {
+  let state = seed >>> 0;
+  return () => {
+    state |= 0;
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+// Stable 32-bit string hash (FNV-1a) used to seed the per-map RNG.
+const hashString = (str: string): number => {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+};
+
 const binarySearchEffectiveTimingPoint = (timingPoints: TimingPoint[], time: number): TimingPoint => {
   if (timingPoints.length === 0) {
     throw new Error("No timing points available");
@@ -73,6 +99,11 @@ const binarySearchEffectiveTimingPoint = (timingPoints: TimingPoint[], time: num
 const parseHitObjects = (lines: string[], timingPoints: TimingPoint[], baseSliderMultiplier: number): ParsedNote[] => {
   const notes: ParsedNote[] = [];
 
+  // Seed from a cheap, stable fingerprint of the hit objects (count + first/last
+  // line) so the arc widths are deterministic per map (same .osu -> same spans)
+  // yet vary naturally from note to note — no need to hash the whole blob.
+  const rng = makeRng(hashString(`${lines.length}:${lines[0]}:${lines[lines.length - 1]}`));
+
   for (const line of lines) {
     const parts = line.split(",");
     const x = parseInt(parts[0], 10);
@@ -92,9 +123,12 @@ const parseHitObjects = (lines: string[], timingPoints: TimingPoint[], baseSlide
       return previousNote.color === NoteColor.Red ? NoteColor.Blue : NoteColor.Red;
     })();
 
+    // Matches the old play-time formula, now driven by the seeded RNG.
+    const angleSpan = Math.max((rng() * Math.PI) / 3, Math.PI / 5);
+
     const isHold = (parseInt(parts[3], 10) & 0b10) > 0;
     if (!isHold) {
-      notes.push({ hitTime, isHold, angle, color, effectiveBPMAtHitTime: timingPoint.bpm });
+      notes.push({ hitTime, isHold, angle, angleSpan, color, effectiveBPMAtHitTime: timingPoint.bpm });
       continue;
     }
 
@@ -114,6 +148,7 @@ const parseHitObjects = (lines: string[], timingPoints: TimingPoint[], baseSlide
       isHold,
       holdDuration,
       angle,
+      angleSpan,
       color,
       effectiveBPMAtHitTime: timingPoint.bpm,
       holdTicksHitTimes,

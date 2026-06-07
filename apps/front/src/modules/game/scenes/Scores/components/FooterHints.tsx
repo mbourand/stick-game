@@ -11,10 +11,9 @@ export const FooterHints = ({ activeTab }: { activeTab: ScoresTab }) => {
       className="flex items-center gap-4 text-[11px] text-white/40 tracking-[0.3em] uppercase"
       {...motionProps}
     >
-      <Hint keys="◀ ▶">Tabs</Hint>
-      {activeTab === "rank" && <Hint keys="L R">Board</Hint>}
+      {activeTab === "rank" && <Hint keys="Y">Leaderboard</Hint>}
       <Hint keys="A">Retry</Hint>
-      <Hint keys="B">Select</Hint>
+      <Hint keys="B">Back</Hint>
     </motion.div>
   );
 };

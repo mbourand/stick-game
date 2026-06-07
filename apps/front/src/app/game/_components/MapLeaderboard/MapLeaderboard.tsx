@@ -1,5 +1,6 @@
 import { LeaderboardGlobalScores } from "@/app/game/_components/MapLeaderboard/LeaderboardGlobalScores";
 import { LeaderboardLocalScores } from "@/app/game/_components/MapLeaderboard/LeaderboardLocalScores";
+import { KeyHint } from "@/modules/game/scenes/shared/KeyHint";
 import { twMerge } from "tailwind-merge";
 
 export type LeaderboardTab = "global" | "modded" | "local";
@@ -23,9 +24,11 @@ type MapLeaderboardProps = {
   beatmapId: string;
   tab: LeaderboardTab;
   className?: string;
+  /** Dim the "X Refresh" hint while a refresh is on cooldown. */
+  refreshCoolingDown?: boolean;
 };
 
-export const MapLeaderboard = ({ beatmapId, tab, className }: MapLeaderboardProps) => {
+export const MapLeaderboard = ({ beatmapId, tab, className, refreshCoolingDown = false }: MapLeaderboardProps) => {
   return (
     <div className={twMerge("text-white", className)}>
       <div className="flex items-center justify-center gap-4 mb-3">
@@ -39,6 +42,14 @@ export const MapLeaderboard = ({ beatmapId, tab, className }: MapLeaderboardProp
         ) : (
           <LeaderboardGlobalScores beatmapId={beatmapId} modded={tab === "modded"} />
         )}
+      </div>
+      <div className="mt-2 flex items-center justify-center gap-4 text-[10px] tracking-[0.25em] uppercase text-white/40">
+        <span>
+          <KeyHint label="Y" /> Full leaderboard
+        </span>
+        <span className={refreshCoolingDown ? "opacity-40" : undefined}>
+          <KeyHint label="X" /> Refresh
+        </span>
       </div>
     </div>
   );

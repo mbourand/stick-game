@@ -1,4 +1,5 @@
 import { motionValue, type MotionValue } from "motion/react";
+import { browserQueryClient } from "@/components/QueryProvider";
 import { type LeaderboardTab, cycleLeaderboardTab } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
 import type { V3BeatmapEntity } from "@/modules/db/versions/v3";
 import type { ParsedMap } from "../../../osu/convert/OsuConverter";
@@ -9,6 +10,7 @@ import type { TickContext } from "../../engine/TickContext";
 import { crossfade, fadeOutResizeIn, resizeBetween } from "../transitions";
 import { sharedCircle } from "../../sharedCircle";
 import { BEATMAP_SELECTION_CIRCLE_RADIUS } from "../../utils/constants";
+import { BeatmapLeaderboardScene } from "../BeatmapLeaderboard/BeatmapLeaderboardScene";
 import { DownloaderScene } from "../Downloader/DownloaderScene";
 import type { DifficultyFilter } from "../Filter/filterTypes";
 import { FilterScene } from "../Filter/FilterScene";
@@ -49,6 +51,9 @@ export type LeftAction = {
  */
 const SIDE_COMMIT_THRESHOLD = 0.3;
 
+/** Minimum gap between leaderboard refreshes — keeps X from hammering the backend. */
+const LEADERBOARD_REFRESH_COOLDOWN_MS = 10_000;
+
 export class BeatmapSelectionScene extends CanvasScene {
   public readonly id = "beatmap-selection";
   public override readonly UI = BeatmapSelectionView;
@@ -60,6 +65,21 @@ export class BeatmapSelectionScene extends CanvasScene {
   public readonly scrollZone = new Store<ScrollZone>(null);
   public readonly leaderboardTab = new Store<LeaderboardTab>("global");
   public readonly focusedLeftButton = new Store<number | null>(null);
+
+  /**
+   * The beatmap whose compact leaderboard is currently shown — mirrored here by
+   * the view (from its sticky `previewBeatmap`) so the scene's "view-leaderboard"
+   * action can open the full board for it without reaching into the view tree.
+   */
+  public readonly focusedPreview = new Store<V3BeatmapEntity | null>(null);
+
+  /**
+   * True while a leaderboard refresh is on cooldown. Mirrored to the view so the
+   * "X Refresh" hint can dim until the next refresh is allowed. See
+   * `refreshLeaderboard`.
+   */
+  public readonly leaderboardRefreshCoolingDown = new Store<boolean>(false);
+  private refreshCooldownTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * Active mods for the next play. Lives on the scene (not in the Mods overlay)
@@ -177,6 +197,8 @@ export class BeatmapSelectionScene extends CanvasScene {
   public override onEntered() {
     this.onAction("back", () => this.goBack());
     this.onAction("confirm", () => void this.confirmFocused());
+    this.onAction("view-leaderboard", () => this.openLeaderboard());
+    this.onAction("refresh-leaderboard", () => this.refreshLeaderboard());
     this.onAction("leaderboard-prev", () => this.cycleLeaderboardTab(-1));
     this.onAction("leaderboard-next", () => this.cycleLeaderboardTab(1));
     this.onActionRepeat("nav-up", () => this.navByDPad(-1));
@@ -199,6 +221,10 @@ export class BeatmapSelectionScene extends CanvasScene {
     // The now-playing player is shared/persistent — detach it (don't destroy)
     // and DON'T stop its audio: popping back to the menu inherits the song.
     this.root.detach(this.preview);
+    if (this.refreshCooldownTimer !== null) {
+      clearTimeout(this.refreshCooldownTimer);
+      this.refreshCooldownTimer = null;
+    }
     super.onDestroy();
   }
 
@@ -364,6 +390,43 @@ export class BeatmapSelectionScene extends CanvasScene {
     // Preview audio is deliberately left playing — the downloader is just an
     // overlay scene and we want the user's track to keep going behind it.
     void this.sceneManager.transitionPush(new DownloaderScene(this.engine), crossfade);
+  }
+
+  public openLeaderboard(): void {
+    const beatmap = this.focusedPreview.get();
+    if (!beatmap) return;
+    // Preview audio keeps playing under the board (it's just an overlay scene);
+    // the current compact tab carries over as the board it opens on.
+    void this.sceneManager.transitionPush(
+      new BeatmapLeaderboardScene(this.engine, {
+        beatmapId: beatmap.idv2,
+        title: beatmap.title,
+        artist: beatmap.artist,
+        difficulty: beatmap.difficulty,
+        initialTab: this.leaderboardTab.get(),
+        exitFactory: crossfade,
+      }),
+      crossfade,
+    );
+  }
+
+  /**
+   * Refetch the focused beatmap's global/modded boards from the backend. Rate-
+   * limited: ignored while the previous refresh is still cooling down. Local
+   * scores are IndexedDB-backed and always current, so only the network boards
+   * are invalidated — the prefix `["scores", id, "leaderboard"]` matches both
+   * the no-mods and modded queries (they differ only in the trailing flag).
+   */
+  public refreshLeaderboard(): void {
+    if (this.leaderboardRefreshCoolingDown.get()) return;
+    const beatmap = this.focusedPreview.get();
+    if (!beatmap) return;
+    void browserQueryClient?.invalidateQueries({ queryKey: ["scores", beatmap.idv2, "leaderboard"] });
+    this.leaderboardRefreshCoolingDown.set(true);
+    this.refreshCooldownTimer = setTimeout(() => {
+      this.leaderboardRefreshCoolingDown.set(false);
+      this.refreshCooldownTimer = null;
+    }, LEADERBOARD_REFRESH_COOLDOWN_MS);
   }
 
   public openMods(): void {

@@ -14,9 +14,10 @@ import { backgroundLayer } from "../../BackgroundLayer";
 import { sharedCircle } from "../../sharedCircle";
 import { SCORES_CIRCLE_RADIUS } from "../../utils/constants";
 import { BEATMAP_AUDIO_ID, GameplayScene } from "../Gameplay/GameplayScene";
+import { BeatmapLeaderboardScene } from "../BeatmapLeaderboard/BeatmapLeaderboardScene";
 import { CanvasScene } from "../CanvasScene";
 import { ScoresView } from "./ScoresView";
-import { fadeOutResizeIn, fadeResizeRevealStaged } from "../transitions";
+import { crossfade, fadeOutResizeIn, fadeResizeRevealStaged } from "../transitions";
 
 const MUSIC_FADE_OUT_MS = 500;
 
@@ -115,6 +116,7 @@ export class ScoresScene extends CanvasScene {
     // Bumpers step through the three leaderboards (no-mods / modded / local).
     this.onAction("leaderboard-prev", () => this.cycleLeaderboardTab(-1));
     this.onAction("leaderboard-next", () => this.cycleLeaderboardTab(1));
+    this.onAction("view-leaderboard", () => this.openLeaderboard());
   }
 
   public override onBeforeExit() {
@@ -144,6 +146,31 @@ export class ScoresScene extends CanvasScene {
 
   public cycleLeaderboardTab(dir: -1 | 1): void {
     this.leaderboardTab.set(cycleLeaderboardTab(this.leaderboardTab.get(), dir));
+  }
+
+  /**
+   * Open the full beatmap leaderboard (the same scene the selection screen uses)
+   * for the map just played, on whichever board the Rank tab is showing. A
+   * crossfade overlay — the scores ring stays put behind it.
+   */
+  public openLeaderboard(): void {
+    void this.sceneManager.transitionPush(
+      new BeatmapLeaderboardScene(this.engine, {
+        beatmapId: this.parsedMap.id,
+        title: this.parsedMap.title,
+        artist: this.parsedMap.artist,
+        difficulty: this.parsedMap.difficulty,
+        initialTab: this.leaderboardTab.get(),
+        // The just-played run, so the full board highlights it and scrolls to it.
+        currentScore: {
+          localId: this.submission.get().localId,
+          score: this.scoreCounter.getScore(),
+          modded: this.modded,
+        },
+        exitFactory: crossfade,
+      }),
+      crossfade,
+    );
   }
 
   public retry(): void {

@@ -18,6 +18,7 @@ import { useGlobalTypeahead } from "./useGlobalTypeahead";
 import { CIRCLE_RADIUS_PX, getLeftButtonYCenter, LIST_RIGHT_OVERHANG_PX, RADIAL_LIST_MASK } from "./layout";
 import { useBeatmapCatalog } from "./useBeatmapCatalog";
 import { usePreviewBeatmap } from "./usePreviewBeatmap";
+import { usePreviewDuration } from "./usePreviewDuration";
 import { useSceneFocusSync } from "./useSceneFocusSync";
 import { useScenePreviewBridge } from "./useScenePreviewBridge";
 import { useSceneResolverBridge } from "./useSceneResolverBridge";
@@ -54,6 +55,12 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
   useSceneResolverBridge(scene, filteredBeatmaps, resolveMediaUrls);
   const { focusedIndex, focusedBeatmap } = useSceneFocusSync(scene, filteredBeatmaps, isNoMatch, isLoaded);
   const previewBeatmap = usePreviewBeatmap(focusedBeatmap);
+  const previewDurationMs = usePreviewDuration(previewBeatmap);
+  const previewDurationSeconds = previewDurationMs === null ? null : Math.round(previewDurationMs / 1000);
+  const previewDurationLabel =
+    previewDurationSeconds === null
+      ? null
+      : `${Math.floor(previewDurationSeconds / 60)}:${(previewDurationSeconds % 60).toString().padStart(2, "0")}`;
   // Gate the expensive preview side effects (audio restart + background
   // crossfade) on focus settling, so fast scrolling through maps doesn't fire
   // one per intermediate map. The info card / leaderboard keep tracking the
@@ -187,22 +194,30 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
                 <span className="text-white/40"> · mapped by </span>
                 {previewBeatmap.creator}
               </div>
-              <div
-                className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm"
-                style={{
-                  border: `1px solid ${difficultyColor(previewBeatmap.difficulty)}`,
-                  boxShadow: `0 0 16px ${difficultyColorRgba(previewBeatmap.difficulty, 0.3)}`,
-                }}
-              >
-                <span className="text-xs" style={{ color: difficultyColor(previewBeatmap.difficulty) }}>
-                  ★
-                </span>
-                <span
-                  className="font-bold tabular-nums text-sm"
-                  style={{ color: difficultyColor(previewBeatmap.difficulty) }}
+              <div className="mt-3 flex items-center justify-center gap-2">
+                <div
+                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm"
+                  style={{
+                    border: `1px solid ${difficultyColor(previewBeatmap.difficulty)}`,
+                    boxShadow: `0 0 16px ${difficultyColorRgba(previewBeatmap.difficulty, 0.3)}`,
+                  }}
                 >
-                  {previewBeatmap.difficulty.toFixed(2)}
-                </span>
+                  <span className="text-xs" style={{ color: difficultyColor(previewBeatmap.difficulty) }}>
+                    ★
+                  </span>
+                  <span
+                    className="font-bold tabular-nums text-sm"
+                    style={{ color: difficultyColor(previewBeatmap.difficulty) }}
+                  >
+                    {previewBeatmap.difficulty.toFixed(2)}
+                  </span>
+                </div>
+                {previewDurationLabel !== null && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 text-white/80">
+                    <span className="text-xs">◷</span>
+                    <span className="font-bold tabular-nums text-sm">{previewDurationLabel}</span>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

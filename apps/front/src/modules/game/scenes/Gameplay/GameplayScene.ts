@@ -6,6 +6,7 @@ import type { ParsedMap } from "../../../osu/convert/OsuConverter";
 import { type SettingsListType } from "../../../settings/Settings";
 import { EventEmitter } from "../../../utils/EventEmitter";
 import { ScoreHUDEntity } from "../../entities/ScoreHUDEntity";
+import { SongProgressEntity } from "../../entities/SongProgressEntity";
 import { StickDotsEntity } from "../../entities/StickDotsEntity";
 import { easeInOutCubic } from "../../engine/animation/Easing";
 import type { Playable } from "../../engine/animation/Playable";
@@ -15,13 +16,7 @@ import { EXIT_FADE_DURATION_MS } from "../../engine/transitions/durations";
 import { BeatmapClock } from "../../engine/BeatmapClock";
 import { Container } from "../../engine/Container";
 import type { Engine } from "../../engine/Engine";
-import {
-  fadeOut,
-  fadeResizeRevealConcurrent,
-  fadeResizeRevealSequenced,
-  pauseEnter,
-  pauseExit,
-} from "../transitions";
+import { fadeOut, fadeResizeRevealConcurrent, fadeResizeRevealSequenced, pauseEnter, pauseExit } from "../transitions";
 import { ScoresScene } from "../Scores/ScoresScene";
 import { CanvasScene } from "../CanvasScene";
 import type { SceneTransitionSlot } from "../Scene";
@@ -99,7 +94,13 @@ export class GameplayScene extends CanvasScene {
     const musicContext = engine.audio.music.getAudioContext();
     this.clock = new BeatmapClock(musicContext);
     // Bar height scales with the circle so the visualizer keeps its proportions.
-    this.audioVisualizer = new CircleAudioVisualizer(musicContext, 40, this.displayedRadius, 25 * scale, engine.settings);
+    this.audioVisualizer = new CircleAudioVisualizer(
+      musicContext,
+      40,
+      this.displayedRadius,
+      25 * scale,
+      engine.settings,
+    );
     // Notes are re-timed into rate-adjusted coordinates so the rest of the
     // pipeline (clock, scroll, judge) needs no rate awareness; the audio plays
     // at the matching playbackRate in onEntered.
@@ -267,6 +268,11 @@ export class GameplayScene extends CanvasScene {
     });
     this.circleInnerContentContainer.add(this.audioVisualizer);
     this.circleInnerContentContainer.add(new ScoreHUDEntity(this.scoreCounter));
+    // Notes are pre-scaled by the rate mod, so the clock runs in rate-adjusted
+    // time — divide the song-time duration to match (faster rate = shorter play).
+    this.circleInnerContentContainer.add(
+      new SongProgressEntity(this.clock, this.parsedMap.durationMs / this.mods.rate),
+    );
 
     // Children render in insertion order (back -> front).
     const circle = sharedCircle(this.engine);
@@ -348,7 +354,9 @@ export class GameplayScene extends CanvasScene {
   }
 
   private spawnNoteHitFlair(note: Note | HoldNote) {
-    this.fxContainer.add(new NoteHitFlair(note.getStartAngle(), note.getEndAngle(), 400, "white", this.displayedRadius));
+    this.fxContainer.add(
+      new NoteHitFlair(note.getStartAngle(), note.getEndAngle(), 400, "white", this.displayedRadius),
+    );
   }
 
   private spawnNoteHitGlowFlair(note: Note | HoldNote) {
@@ -366,7 +374,9 @@ export class GameplayScene extends CanvasScene {
           throw new Error("Invalid judgment kind for flair color");
       }
     })();
-    this.fxContainer.add(new NoteHitGlowFlair(note.getStartAngle(), note.getEndAngle(), 400, color, this.displayedRadius));
+    this.fxContainer.add(
+      new NoteHitGlowFlair(note.getStartAngle(), note.getEndAngle(), 400, color, this.displayedRadius),
+    );
   }
 
   private onBeatmapEnded(_event: BeatmapEndedEventType) {

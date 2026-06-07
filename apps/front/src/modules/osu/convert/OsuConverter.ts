@@ -22,6 +22,8 @@ export type ParsedMap = {
   creator: string;
   difficulty: number;
   notes: ParsedNote[];
+  /** Playable length in ms (song-time): the last note's end. Drives the in-game progress arc and the selection-menu length badge. */
+  durationMs: number;
   backgroundUrl: string;
   backgroundOffsetX: number;
   backgroundOffsetY: number;
@@ -415,6 +417,10 @@ export const convertFromOsu = (
     throw new Error("Invalid osu! map file");
   }
 
+  // Playable length = the final note's end (notes are validated non-empty above).
+  const lastNote = notes[notes.length - 1];
+  const durationMs = lastNote.hitTime + (lastNote.holdDuration ?? 0);
+
   return {
     title,
     artist,
@@ -423,6 +429,7 @@ export const convertFromOsu = (
     audioUrl: makeAbsoluteUrlFromRelativePath(audioRelativePath),
     mapStartDelayAfterAudioStart: audioLeadIn,
     notes,
+    durationMs,
     backgroundUrl: makeAbsoluteUrlFromRelativePath(backgroundRelativePath),
     backgroundOffsetX: 0,
     backgroundOffsetY: 0,

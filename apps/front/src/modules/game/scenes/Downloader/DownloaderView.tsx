@@ -137,6 +137,10 @@ const BeatmapsetRow = forwardRef<HTMLButtonElement, RowProps>(function Beatmapse
   const diffs = beatmapset.beatmaps;
   const minDiff = diffs.length > 0 ? Math.min(...diffs.map((d) => d.difficulty_rating)) : 0;
   const maxDiff = diffs.length > 0 ? Math.max(...diffs.map((d) => d.difficulty_rating)) : 0;
+  // Difficulties in a set share the song; total_length (seconds) can vary a hair
+  // by mapped end, so take the longest as the set's length.
+  const lengthSeconds = diffs.length > 0 ? Math.max(...diffs.map((d) => d.total_length)) : 0;
+  const lengthLabel = `${Math.floor(lengthSeconds / 60)}:${(lengthSeconds % 60).toString().padStart(2, "0")}`;
 
   // No-ops while already downloading/done; retries on error (see the store).
   const handleClick = useCallback(() => startBeatmapsetInstall(beatmapset.id), [beatmapset.id]);
@@ -178,7 +182,8 @@ const BeatmapsetRow = forwardRef<HTMLButtonElement, RowProps>(function Beatmapse
         >
           {phaseLabel ?? (
             <>
-              {minDiff.toFixed(1)} — {maxDiff.toFixed(1)} ★ · {diffs.length} {diffs.length === 1 ? "map" : "maps"}
+              ◷ {lengthLabel} · {minDiff.toFixed(1)} — {maxDiff.toFixed(1)} ★ · {diffs.length}{" "}
+              {diffs.length === 1 ? "map" : "maps"}
             </>
           )}
         </div>

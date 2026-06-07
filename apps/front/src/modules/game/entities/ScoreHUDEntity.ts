@@ -20,6 +20,6 @@ export class ScoreHUDEntity implements Entity {
 
     ctx.font = "22px Rostex";
     ctx.fillText(this.scoreCounter.getScore().toString().padStart(6, "0"), 0, 48);
-    ctx.fillText(this.scoreCounter.getAccuracy() + "%", 0, 96);
+    ctx.fillText(this.scoreCounter.getAccuracy() + "%", 0, 86);
   }
 }

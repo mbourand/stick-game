@@ -9,9 +9,6 @@ import { useStore } from "../../../engine/state/useStore";
 import { useAuth } from "@/modules/auth/useAuth";
 import type { ScoresScene, SubmissionState } from "../ScoresScene";
 
-/** Approximate per-row stride (row height + gap) for centering the player's row. */
-const ROW_STRIDE = 36;
-
 const TAB_LABEL: Record<LeaderboardTab, string> = { global: "Global", modded: "Modded", local: "Local" };
 
 type Row = {
@@ -127,15 +124,23 @@ const Toggle = ({
 /**
  * Full ranked list, scrollable within the fixed tab body so a long local
  * history never pushes the layout out of the circle. The player's own row is
- * centered into view on mount.
+ * highlighted and centered into view on mount.
  */
 const LeaderboardList = ({ rows, playerIndex }: { rows: Row[]; playerIndex: number }) => {
   const listRef = useRef<HTMLOListElement>(null);
+  const focusedRef = useRef<HTMLLIElement>(null);
 
+  // Center the player's row by adjusting only the list's own scroll — measured
+  // off the elements so it lands centered regardless of the (two-line) row
+  // height. We deliberately avoid scrollIntoView: it also scrolls the
+  // overflow-hidden scores circle, which briefly shifts the whole UI sideways.
   useEffect(() => {
-    const el = listRef.current;
-    if (!el || playerIndex < 0) return;
-    el.scrollTop = Math.max(0, playerIndex * ROW_STRIDE - el.clientHeight / 2 + ROW_STRIDE / 2);
+    const list = listRef.current;
+    const el = focusedRef.current;
+    if (!list || !el) return;
+    const listRect = list.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    list.scrollTop += elRect.top - listRect.top - (list.clientHeight - el.clientHeight) / 2;
   }, [playerIndex]);
 
   return (
@@ -149,6 +154,7 @@ const LeaderboardList = ({ rows, playerIndex }: { rows: Row[]; playerIndex: numb
       {rows.map((row, i) => (
         <ScoreRow
           key={row.key}
+          ref={i === playerIndex ? focusedRef : null}
           rank={i + 1}
           playerName={row.playerName}
           avatarUrl={row.avatarUrl}

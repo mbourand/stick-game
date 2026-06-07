@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { computeGrade, GRADE_COLOR } from "@/modules/game/score/grade";
 import { Avatar } from "@/components/Avatar";
 
@@ -11,56 +12,54 @@ type ScoreRowProps = {
   maxCombo: number;
   /** Miss count for the play — used (with accuracy) to derive the displayed grade. */
   missCount: number;
-  /** Human-readable mod summary (e.g. "Rate ×1.50"); shown as a badge when non-empty. */
+  /** Human-readable mod summary (e.g. "Rate ×1.50"); folded into the stat line when non-empty. */
   mods?: string;
-  /** Highlights the row as the local player's own score (e.g. the just-played run). */
+  /** Highlights the row as the player's own score (e.g. the just-played run). */
   highlighted?: boolean;
+  /** Marks the row as the controller cursor's current target (full leaderboard view). */
+  focused?: boolean;
 };
 
-export const ScoreRow = ({
-  rank,
-  playerName,
-  avatarUrl,
-  score,
-  accuracy,
-  maxCombo,
-  missCount,
-  mods,
-  highlighted = false,
-}: ScoreRowProps) => {
+/**
+ * One leaderboard row. The name owns the whole flexible middle column and the
+ * secondary stats (accuracy · combo · mods) drop onto a line beneath it, so even
+ * a long name keeps its room instead of being squeezed by the stat columns. The
+ * score stays pinned to the right.
+ */
+export const ScoreRow = forwardRef<HTMLLIElement, ScoreRowProps>(function ScoreRow(
+  { rank, playerName, avatarUrl, score, accuracy, maxCombo, missCount, mods, highlighted = false, focused = false },
+  ref,
+) {
   const grade = computeGrade(accuracy, missCount);
+  const state = focused
+    ? "bg-white/10 ring-2 ring-white/70"
+    : highlighted
+      ? "bg-white/15 ring-1 ring-white/40 shadow-[0_0_18px_rgba(255,255,255,0.12)]"
+      : "hover:bg-white/5";
   return (
-    <li
-      className={`flex items-center gap-3 px-2 py-1.5 rounded ${
-        highlighted
-          ? "bg-white/15 ring-1 ring-white/40 shadow-[0_0_18px_rgba(255,255,255,0.12)]"
-          : "hover:bg-white/5"
-      }`}
-    >
-      <span className="text-xs text-white/40 tabular-nums w-5 text-right">{rank}</span>
+    <li ref={ref} className={`flex items-center gap-3 px-2 py-1.5 rounded ${state}`}>
+      <span className="w-6 text-right text-xs text-white/40 tabular-nums">{rank}</span>
       <span
-        className="w-9 text-center text-sm font-bold"
+        className="w-8 text-center text-sm font-bold"
         style={{ color: GRADE_COLOR[grade], textShadow: `0 0 10px ${GRADE_COLOR[grade]}66` }}
       >
         {grade}
       </span>
-      <Avatar src={avatarUrl} name={playerName} size={26} />
-      {/* Name owns the full flexible column; the mod tag sits on its own line
-          beneath it so a long "Rate ×1.50" never squeezes the name. */}
-      <span className="flex-1 min-w-0 flex flex-col justify-center leading-tight">
+      <Avatar src={avatarUrl} name={playerName} size={28} />
+      <div className="flex-1 min-w-0 flex flex-col justify-center leading-tight">
         <span className="truncate text-sm text-white/90 tracking-wide">{playerName}</span>
-        {mods ? (
-          <span className="truncate text-[9px] uppercase tracking-[0.15em] text-amber-300/80">{mods}</span>
-        ) : null}
-      </span>
-      <span className="text-sm text-white/90 tabular-nums">{formatScore(score)}</span>
-      <span className="text-xs text-white/50 tabular-nums w-12 text-right">{accuracy.toFixed(1)}%</span>
-      <span className="text-xs text-white/50 tabular-nums w-10 text-right">{maxCombo}x</span>
+        <span className="truncate text-[10px] tabular-nums text-white/45">
+          {accuracy.toFixed(1)}% · {maxCombo}x
+          {mods ? <span className="text-amber-300/80"> · {mods}</span> : null}
+        </span>
+      </div>
+      <span className="shrink-0 text-sm text-white/90 tabular-nums">{formatScore(score)}</span>
     </li>
   );
-};
+});
 
-function formatScore(score: number): string {
+/** Group a score's digits into space-separated thousands (e.g. "12 345 678"). */
+export function formatScore(score: number): string {
   return score
     .toString()
     .split("")

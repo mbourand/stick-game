@@ -21,7 +21,7 @@ export const BUTTONS: RadialButtonConfig[] = [
   { id: "play", label: "Play", hint: "Browse and play beatmaps" },
   { id: "leaderboards", label: "Leaderboards", hint: "Global player rankings" },
   { id: "edit", label: "Edit", hint: "Create or edit beatmapsets" },
-  { id: "settings", label: "Settings", hint: "Configure Tau! to suit your preferences" },
+  { id: "settings", label: "Settings", hint: "Configure Tau to suit your preferences" },
   { id: "account", label: "Sign In", hint: "Sign in or manage your account" },
 ];
 

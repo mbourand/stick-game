@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { MapLeaderboard } from "@/app/game/_components/MapLeaderboard/MapLeaderboard";
 import { useScenePresence } from "../../engine/animation/scenePresence";
 import { fade } from "../../engine/animation/poses";
@@ -68,8 +68,15 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
   const debouncedPreviewBeatmap = useDebouncedValue(previewBeatmap, 50);
   useScenePreviewBridge(scene, debouncedPreviewBeatmap, resolveMediaUrls);
 
+  // Mirror the shown beatmap onto the scene so the "view-leaderboard" action can
+  // open its full board (the handler lives on the scene, not in this view tree).
+  useEffect(() => {
+    scene.focusedPreview.set(previewBeatmap);
+  }, [previewBeatmap, scene]);
+
   const scrollZone = useStore(scene.scrollZone);
   const leaderboardTab = useStore(scene.leaderboardTab);
+  const refreshCoolingDown = useStore(scene.leaderboardRefreshCoolingDown);
   const focusedLeftButton = useStore(scene.focusedLeftButton);
   const visible = useVisibleBeatmaps(scene.scrollOffset, filteredBeatmaps);
 
@@ -234,7 +241,11 @@ export const BeatmapSelectionView: SceneUIComponent<BeatmapSelectionScene> = ({ 
               exit={{ opacity: 0, y: 12 }}
               transition={{ duration: 0.2 }}
             >
-              <MapLeaderboard beatmapId={previewBeatmap.idv2} tab={leaderboardTab} />
+              <MapLeaderboard
+                beatmapId={previewBeatmap.idv2}
+                tab={leaderboardTab}
+                refreshCoolingDown={refreshCoolingDown}
+              />
             </motion.div>
           )}
         </AnimatePresence>

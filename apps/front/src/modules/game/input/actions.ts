@@ -4,6 +4,8 @@ export type ButtonAction =
   | "confirm"
   | "back"
   | "pause"
+  | "view-leaderboard"
+  | "refresh-leaderboard"
   | "leaderboard-prev"
   | "leaderboard-next"
   | "nav-up"
@@ -36,6 +38,15 @@ export const DEFAULT_ACTION_BINDINGS: ActionBindings = {
     { device: "gamepad", button: GamepadButton.Start },
     { device: "keyboard", key: "Escape" },
   ],
+  // Opens the focused beatmap's full leaderboard view (podium + scrollable
+  // list). The bumpers keep cycling the global/modded/local boards.
+  "view-leaderboard": [
+    { device: "gamepad", button: GamepadButton.Y },
+    { device: "keyboard", key: "Tab" },
+  ],
+  // Refetch the focused beatmap's global boards. Gamepad-only: a printable
+  // keyboard key would be swallowed by the beatmap-selection typeahead search.
+  "refresh-leaderboard": [{ device: "gamepad", button: GamepadButton.X }],
   "leaderboard-prev": [
     { device: "gamepad", button: GamepadButton.LB },
     { device: "keyboard", key: "PageUp" },

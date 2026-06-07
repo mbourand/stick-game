@@ -48,6 +48,10 @@ model User {
   avatarData Bytes?
   /// @zod.string().max(64)
   avatarMime String?
+  /// Total submitted plays (attempts), bumped on every submit. The Score table
+  /// keeps only personal bests, so true play count can't be derived from it and
+  /// is tracked here instead. Powers the play-count global board.
+  playCount  Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   scores     Score[]

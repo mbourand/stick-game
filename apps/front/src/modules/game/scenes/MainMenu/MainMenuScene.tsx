@@ -8,6 +8,7 @@ import { BeatmapSelectionScene } from "../BeatmapSelection/BeatmapSelectionScene
 import { CanvasScene } from "../CanvasScene";
 import { SettingsScene } from "../Settings/SettingsScene";
 import { ProfileScene } from "../Profile/ProfileScene";
+import { PlayerRankingsScene } from "../Leaderboards/PlayerRankingsScene";
 import { backgroundLayer } from "../../BackgroundLayer";
 import { nowPlaying } from "../../nowPlaying";
 import type { NowPlayingController } from "../../NowPlayingController";
@@ -191,6 +192,7 @@ export class MainMenuScene extends CanvasScene {
 
   public activateFocused(id: ButtonId) {
     if (id === "play") this.goToBeatmapSelection();
+    else if (id === "leaderboards") this.openLeaderboards();
     else if (id === "settings") this.openSettings();
     else if (id === "account") this.openProfile();
   }
@@ -212,6 +214,10 @@ export class MainMenuScene extends CanvasScene {
 
   public openProfile() {
     void this.sceneManager.transitionPush(new ProfileScene(this.engine, crossfade), crossfade);
+  }
+
+  public openLeaderboards() {
+    void this.sceneManager.transitionPush(new PlayerRankingsScene(this.engine, crossfade), crossfade);
   }
 
   public override update(tick: TickContext) {

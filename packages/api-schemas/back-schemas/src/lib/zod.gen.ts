@@ -166,6 +166,49 @@ export const zScoresControllerSubmitScoreData = z.object({
 
 export const zScoresControllerSubmitScoreResponse = zPostScoresSubmitResponseDtoOutput;
 
+// --- Global player-ranking boards ---
+
+export const zPlayerRankEntry = z.object({
+    rank: z.int().gte(1),
+    userId: z.string(),
+    username: z.string().min(1).max(32),
+    avatarUrl: z.string().nullable(),
+    value: z.int().gte(0)
+});
+
+export const zGetLeaderboardsPlayersResponseDtoOutput = z.object({
+    entries: z.array(zPlayerRankEntry),
+    total: z.int().gte(0)
+});
+
+// `rank` is 0 when the caller is unranked (zero value) on this board.
+export const zGetLeaderboardsPlayersMeResponseDtoOutput = z.object({
+    rank: z.int().gte(0),
+    value: z.int().gte(0)
+});
+
+export const zLeaderboardsControllerGetPlayerRankingsData = z.object({
+    body: z.optional(z.never()),
+    path: z.optional(z.never()),
+    query: z.optional(z.object({
+        metric: z.optional(z.enum(['sss', 'fc', 'ssPlus', 'playCount'])).default('sss'),
+        limit: z.optional(z.number().gte(1).lte(100)).default(50),
+        offset: z.optional(z.number().gte(0)).default(0)
+    }))
+});
+
+export const zLeaderboardsControllerGetPlayerRankingsResponse = zGetLeaderboardsPlayersResponseDtoOutput;
+
+export const zLeaderboardsControllerGetMyPlayerRankData = z.object({
+    body: z.optional(z.never()),
+    path: z.optional(z.never()),
+    query: z.optional(z.object({
+        metric: z.optional(z.enum(['sss', 'fc', 'ssPlus', 'playCount'])).default('sss')
+    }))
+});
+
+export const zLeaderboardsControllerGetMyPlayerRankResponse = zGetLeaderboardsPlayersMeResponseDtoOutput;
+
 // --- Auth / account routes ---
 
 export const zAuthControllerProvidersData = z.object({

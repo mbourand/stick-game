@@ -6,7 +6,7 @@
  */
 export const MAIN_MENU_CIRCLE_RADIUS = 400;
 
-export type ButtonId = "play" | "edit" | "settings" | "account";
+export type ButtonId = "play" | "leaderboards" | "edit" | "settings" | "account";
 
 export type RadialButtonConfig = {
   id: ButtonId;
@@ -19,6 +19,7 @@ export type RadialButtonConfig = {
 // the logged-out defaults.
 export const BUTTONS: RadialButtonConfig[] = [
   { id: "play", label: "Play", hint: "Browse and play beatmaps" },
+  { id: "leaderboards", label: "Leaderboards", hint: "Global player rankings" },
   { id: "edit", label: "Edit", hint: "Create or edit beatmapsets" },
   { id: "settings", label: "Settings", hint: "Configure Tau! to suit your preferences" },
   { id: "account", label: "Sign In", hint: "Sign in or manage your account" },

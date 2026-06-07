@@ -122,9 +122,7 @@ export const MainMenuView: SceneUIComponent<MainMenuScene> = ({ scene }) => {
             {session ? (
               <ProfileMeta provider={session.user.provider} createdAt={session.user.createdAt} />
             ) : (
-              <div className="text-xs text-white/45 tracking-[0.2em] uppercase mt-2">
-                Sign in to save your scores
-              </div>
+              <div className="text-xs text-white/45 tracking-[0.2em] uppercase mt-2">Sign in to save your scores</div>
             )}
           </button>
         </motion.div>
@@ -206,7 +204,7 @@ export const MainMenuView: SceneUIComponent<MainMenuScene> = ({ scene }) => {
                 className="absolute left-0 right-0 -translate-y-1/2 flex justify-center"
                 style={{ top: MAIN_MENU_CIRCLE_RADIUS + JUKEBOX_LABEL_Y_FROM_CENTER }}
               >
-                <span className="max-w-75 truncate text-sm text-white/75 tracking-wide">
+                <span className="max-w-150 truncate text-sm text-white/75 tracking-wide">
                   ♪ {nowPlayingTrack.artist} – {nowPlayingTrack.title}
                 </span>
               </div>
@@ -249,13 +247,7 @@ const activateControl = (scene: MainMenuScene, control: JukeboxControl) => {
 };
 
 /** The "via Discord · since Jun 2026" identity line under a logged-in player's name. */
-const ProfileMeta = ({
-  provider,
-  createdAt,
-}: {
-  provider: string | null;
-  createdAt: string;
-}) => {
+const ProfileMeta = ({ provider, createdAt }: { provider: string | null; createdAt: string }) => {
   const memberSince = new Date(createdAt).toLocaleDateString(undefined, {
     month: "short",
     year: "numeric",

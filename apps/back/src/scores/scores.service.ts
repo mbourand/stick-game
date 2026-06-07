@@ -4,6 +4,7 @@ import { ScoreModel } from "../prisma/generated/client/models";
 import { isUniqueViolation } from "../prisma/prisma-errors";
 import { LeaderboardEntry, toLeaderboardEntry } from "../prisma/dto/score.dto";
 import { buildAvatarUrl } from "../users/users.service";
+import { LeaderboardStatsRefresher } from "../leaderboards/leaderboard-stats.refresher";
 import { SCORE_VERSION } from "./scores.constants";
 
 /** Score metrics a client submits; identity is taken from the session, never the body. */
@@ -23,7 +24,10 @@ export type SubmitScoreInput = {
 
 @Injectable()
 export class ScoresService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly statsRefresher: LeaderboardStatsRefresher,
+  ) {}
 
   /** Top scores for a board, joined with each owner's live name + avatar. */
   async getBeatmapLeaderboard(beatmapId: string, scoreVersion: number, modded: boolean): Promise<LeaderboardEntry[]> {
@@ -47,8 +51,32 @@ export class ScoresService {
     });
   }
 
-  /** Save the play if it beats the account's current best on this board. */
+  /**
+   * Record a play: count it toward the account's play total, then save it as the
+   * new personal best if it beats the current one. Every submit is an attempt,
+   * so `playCount` bumps regardless of whether the score was uploaded.
+   */
   async submitScore(
+    userId: string,
+    playerName: string,
+    input: SubmitScoreInput,
+  ): Promise<{ wasUploaded: boolean; score: ScoreModel }> {
+    const result = await this.upsertPersonalBest(userId, playerName, input);
+
+    // Independent atomic increment — kept out of the personal-best path above,
+    // whose create-then-conditional-update can't share one Postgres transaction
+    // (a P2002 there aborts the whole transaction).
+    await this.prisma.user.update({ where: { id: userId }, data: { playCount: { increment: 1 } } });
+
+    // Both the new best and the higher play count change the boards — flag them
+    // stale so the next refresh tick picks the change up.
+    this.statsRefresher.markDirty();
+
+    return result;
+  }
+
+  /** Save the play if it beats the account's current best on this board. */
+  private async upsertPersonalBest(
     userId: string,
     playerName: string,
     input: SubmitScoreInput,

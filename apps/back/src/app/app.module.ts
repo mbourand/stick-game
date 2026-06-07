@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { ZodSerializerInterceptor, ZodValidationPipe } from "nestjs-zod";
 import { HttpExceptionFilter } from "./http-exception.filter";
 import { ScoresModule } from "../scores/scores.module";
+import { LeaderboardsModule } from "../leaderboards/leaderboards.module";
 import { PrismaModule } from "../prisma/prisma.module";
 import { AuthModule } from "../auth/auth.module";
 import { UsersModule } from "../users/users.module";
@@ -13,6 +14,7 @@ import { UsersModule } from "../users/users.module";
   imports: [
     OsuModule,
     ScoresModule,
+    LeaderboardsModule,
     PrismaModule,
     AuthModule,
     UsersModule,
